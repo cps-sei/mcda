@@ -209,7 +209,7 @@ daig::madara::Function_Visitor::exitEXO (EXOExpr & expression)
 {
   std::string spacer (indentation_, ' '), sub_spacer (indentation_ + 2, ' ');
 
-  unsigned int processes = nodeNum_;
+  unsigned int processes = builder_.program.processes.size ();
   
   bool started_i = false;
   for (unsigned int i = 0; i < processes; ++i)
@@ -262,7 +262,7 @@ daig::madara::Function_Visitor::exitEXH (EXHExpr & expression)
 {
   std::string spacer (indentation_, ' '), sub_spacer (indentation_ + 2, ' ');
 
-  unsigned int processes = nodeNum_;
+  unsigned int processes = builder_.program.processes.size ();
   
   bool started_i = false;
   for (unsigned int i = 0; i + 1 < processes; ++i)
@@ -311,7 +311,7 @@ daig::madara::Function_Visitor::exitEXL (EXLExpr & expression)
 {
   std::string spacer (indentation_, ' '), sub_spacer (indentation_ + 2, ' ');
 
-  unsigned int processes = nodeNum_;
+  unsigned int processes = builder_.program.processes.size ();
   
   bool started_i = false;
   for (unsigned int i = 1; i < processes; ++i)
