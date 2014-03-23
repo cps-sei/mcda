@@ -1,6 +1,6 @@
-On Linux (tested on Kubuntu 13.10 64bit)
-----------------------------------------
+0. INTRODUCTION
 
+<<<<<<< HEAD
 Step 1. Set environment variables, e.g., on bash:
 
 $ export MCDA_ROOT=directory-where-MCDA-was-checked-out
@@ -8,15 +8,87 @@ $ export ACE_ROOT=$MCDA_ROOT/madara/ace/ACE_wrappers
 $ export MADARA_ROOT=$MCDA_ROOT/madara/madara
 $ export LD_LIBRARY_PATH=$ACE_ROOT/lib:$MADARA_ROOT/lib:$LD_LIBRARY_PATH
 $ export PATH=$ACE_ROOT/bin:$MADARA_ROOT/bin:$PATH
+=======
+  In this file, you will find instructions for building and installing the
+  tools in the Model Checking for Distributed Applications (MCDA) project.
 
-These should also be set in your .bashrc file.
+1. PREREQUISITES
 
-Step 2. Compile:
+  Follow instructions to install MADARA:
+   https://code.google.com/p/madara/wiki/InstallationFromSource
+>>>>>>> 1d9b7fa0c371acb98de4d68f9095f88e7ddd7b3d
 
+  Download MCDA with Git:
+    https://code.google.com/p/mcda/source/checkout  
+  
+
+2. ENVIRONMENT VARIABLES
+
+<<<<<<< HEAD
 $ make -C $MCDA_ROOT
 
 This will produce binary $MCDA_ROOT/tools/daig/src/daslc/daslc. You can
 add $MCDA_ROOT/tools/daig/src/daslc to your path for convenience.
+=======
+  For each platform, you'll need to set the following environment variables:
 
-On Windows (tested on Windows 7)
---------------------------------
+  MCDA_ROOT = <the installation directory for the MCDA project>
+  
+  The installation directory for MCDA should have tools and examples
+  directories inside of it.
+>>>>>>> 1d9b7fa0c371acb98de4d68f9095f88e7ddd7b3d
+
+  2.1 LINUX ENVIRONMENT VARIABLES:
+
+    The following shows an example configuration, potentially in .bashrc or .profile,
+    assuming that mcda is checked out into the user's home directory.
+
+    export MCDA_ROOT=$HOME/mcda
+    export PATH=$MCDA_ROOT/tools/daig/bin:$PATH
+    export LD_LIBRARY_PATH=$MCDA_ROOT/tools/daig/lib:$PATH
+
+  2.2 WINDOWS ENVIRONMENT VARIABLES:
+
+    The following shows an example configuration, via right-clicking My Computer,
+    selecting Advanced system settings, and then clicking Environment Variables.
+    We assume that MCDA is checked out into the main drive (likely C:)
+
+    MCDA_ROOT=\mcda
+    PATH=%MCDA_ROOT%\tools\daig\bin;%MCDA_ROOT%\tools\daig\lib
+
+
+3. BUILDING MCDA
+
+  To build MCDA, we use the tools made available through our prerequisites (see
+  MADARA installation in Section 1. Specifically, we make use of the Makefile Project
+  Creator (MPC) which is useful for generating standard GNU Makefiles and Visual
+  Studio projects to allow for greater portability. This section assumes that you've
+  already built MADARA and set your environment variables (Section 1 and 2 of this
+  file).
+
+  3.1 LINUX
+
+    After MADARA has been built, building MCDA involves three commands in a terminal:
+
+    cd $MCDA_ROOT/tools/daig
+    mwc.pl -type gnuace daig.mwc
+    make
+
+    This should create an executable in $MCDA_ROOT/tools/daig/bin called daslc
+
+  3.2 WINDOWS
+
+    After MADARA has been built, building MCDA involves two commands in a terminal.
+    Here, we assume Visual Studio 2010 (vc10). Visual Studio 2008 would be vc9.
+
+    cd %MCDA_ROOT%\tools\daig
+    mwc.pl -type vc10 daig.mwc
+
+    This will create a Visual Studio solution in the %MCDA_ROOT%\tools\daig directory.
+    Open this solution and build. Remember that "Release" mode will produce the most
+    optimized, efficient binary. The resulting binary will be found in the bin directory.
+
+4. QUESTION/COMMENTS
+
+  Please feel free to contact the core developers or create issues on the project site
+  at http://mcda.googlecode.com.

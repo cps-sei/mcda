@@ -9,6 +9,15 @@ TARGET WIN_CPP %%{
 %%}
 TARGET GNU_CPP,WIN_CPP %%{
 #define GNU_WIN
+#include <stdlib.h>
+int in_cs()
+{
+  return random() < RAND_MAX / 2;
+}
+int should_enter()
+{
+  return random() < RAND_MAX / 10;
+}
 %%}
 
 CONST OUTSIDE = 0;
@@ -24,7 +33,7 @@ NODE node(id) {
 
   void ROUND() {
     _Bool c;
-    if(state == OUTSIDE) {
+    if(state == OUTSIDE && #N) {
       c = should_enter();
       if(c) {
         if(EXISTS_LOWER(idp,lock[idp])) return;
