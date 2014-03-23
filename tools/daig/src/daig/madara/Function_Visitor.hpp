@@ -69,7 +69,7 @@ namespace daig
        * @param  builder   the source for building a program
        * @param  buffer    the buffer being used to create the program text
        **/
-      Function_Visitor (Function & function, const Node & node, size_t nodeNum,
+      Function_Visitor (Function & function, const Node & node,
                         DaigBuilder & builder, std::stringstream & buffer);
       
     /**
@@ -385,9 +385,6 @@ namespace daig
 
       /// current node
       const Node & node_;
-
-      ///the number of nodes
-      size_t nodeNum_;
 
       /// the result of the DASL parsing function
       DaigBuilder & builder_;

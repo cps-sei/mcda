@@ -47,9 +47,8 @@
 #include "Function_Visitor.hpp"
 
 daig::madara::Sync_Builder::Sync_Builder (daig::DaigBuilder & builder,
-                                          size_t nodeNum,
                                           const std::string &target)
-  : builder_ (builder),nodeNum_(nodeNum),target_(target)
+  : builder_ (builder), target_(target)
 {
 
 }
@@ -570,7 +569,7 @@ daig::madara::Sync_Builder::build_function (
   
   buffer_ << "\n";
 
-  Function_Visitor visitor (function, node, nodeNum_, builder_, buffer_);
+  Function_Visitor visitor (function, node, builder_, buffer_);
 
   //transform the body of safety
   BOOST_FOREACH(const Stmt & statement, function.body)

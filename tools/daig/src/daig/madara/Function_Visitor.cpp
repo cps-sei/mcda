@@ -49,9 +49,9 @@
 
 
 daig::madara::Function_Visitor::Function_Visitor (
-  Function & function, const Node & node, size_t nodeNum,
+  Function & function, const Node & node,
   DaigBuilder & builder, std::stringstream & buffer)
-  : function_ (function), node_ (node), nodeNum_(nodeNum),
+  : function_ (function), node_ (node),
     builder_ (builder), buffer_ (buffer), indentation_ (2),
     privatize_ (false), assignment_ (0)
 {
@@ -150,7 +150,7 @@ void
 daig::madara::Function_Visitor::exitComp (CompExpr & expression)
 {
   if(expression.op == TNODENUM) {
-    buffer_ << nodeNum_;
+    buffer_ << builder_.program.processes.size ();
     return;
   }
 

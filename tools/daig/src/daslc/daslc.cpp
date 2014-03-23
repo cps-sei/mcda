@@ -104,8 +104,15 @@ int main(int argc, char **argv)
   // right now, we're just using a realize flag to indicate madara generation
   if (madaraNodeNum)
   {
+    //fill in the processes with madaraNodeNum nodes
+    daig::Program &program = builder.program;
+    const std::string &nodeName = program.nodes.begin()->first;
+    program.processes.clear();
+    for(size_t i = 0;i < madaraNodeNum;++i)
+      program.processes.push_back(daig::Process(nodeName,i));
+
     // create a madara builder instance of the daig builder parse
-    daig::madara::Sync_Builder madara_builder (builder,madaraNodeNum,madaraTarget);
+    daig::madara::Sync_Builder madara_builder (builder,madaraTarget);
     madara_builder.build ();
 
     //print the generated code
@@ -124,54 +131,58 @@ int main(int argc, char **argv)
   {
     std::string moc = builder.program.moc.to_string_type();
 
-    //for synchronous programs
-    if(moc == "MOC_SYNC")
-    {
-      //the C program produced by sequentialization
-      daig::CProgram cprog;
+    //only support synchronous programs
+    if(moc != "MOC_SYNC") {
+      std::cerr << "ERROR: cannot sequentialize " << moc << " programs!!\n";
+      exit(1);
+    }
 
-      //if doing naive sequentialization to the semantics
-      if(seqSem) {
-        daig::SyncSem syncSem(builder,seqNodeNum,roundNum);
-        syncSem.run();
-        cprog = syncSem.cprog;
-      }
-      //if doing optimized sequentialization with double buffering
-      else if(seqDbl) {
-        daig::SyncSeqDbl syncSeqDbl(builder,seqNodeNum,roundNum);
-        syncSeqDbl.run();
-        cprog = syncSeqDbl.cprog;
-      }
-      //if doing optimized sequentialization
-      else {
-        daig::SyncSeq syncSeq(builder,seqNodeNum,roundNum);
-        syncSeq.run();
-        cprog = syncSeq.cprog;
-      }      
+    //fill in the processes with seqNodeNum nodes
+    daig::Program &program = builder.program;
+    const std::string &nodeName = program.nodes.begin()->first;
+    program.processes.clear();
+    for(size_t i = 0;i < seqNodeNum;++i)
+      program.processes.push_back(daig::Process(nodeName,i));
 
-      //eliminate arrays
-      if(seqNoArray) {
-        daig::ArrayElim ae(cprog,initGlobals);
-        ae.run();
-        cprog = ae.outProg;
-      }
-
-      if(outFileName.empty())
+    //the C program produced by sequentialization
+    daig::CProgram cprog;
+    
+    //if doing naive sequentialization to the semantics
+    if(seqSem) {
+      daig::SyncSem syncSem(builder,roundNum);
+      syncSem.run();
+      cprog = syncSem.cprog;
+    }
+    //if doing optimized sequentialization with double buffering
+    else if(seqDbl) {
+      daig::SyncSeqDbl syncSeqDbl(builder,roundNum);
+      syncSeqDbl.run();
+      cprog = syncSeqDbl.cprog;
+    }
+    //if doing optimized sequentialization
+    else {
+      daig::SyncSeq syncSeq(builder,roundNum);
+      syncSeq.run();
+      cprog = syncSeq.cprog;
+    }      
+    
+    //eliminate arrays
+    if(seqNoArray) {
+      daig::ArrayElim ae(cprog,initGlobals);
+      ae.run();
+      cprog = ae.outProg;
+    }
+    
+    if(outFileName.empty())
       {
         cprog.print(std::cout,0);
       }
-      else
+    else
       {
         std::ofstream os(outFileName.c_str());
         cprog.print(os,0);
         os.close();
       }
-
-      return 0;
-    }
-
-    //unsuppored model of computation
-    std::cerr << "ERROR: cannot sequentialize " << moc << " programs!!\n";
   }
 
   //all done

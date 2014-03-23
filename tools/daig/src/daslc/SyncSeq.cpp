@@ -347,10 +347,10 @@ void daig::syncseq::NodeTransformer::exitFAOH(daig::FAOHStmt &stmt)
 /*********************************************************************/
 //constructor
 /*********************************************************************/
-daig::SyncSeq::SyncSeq(daig::DaigBuilder &b,size_t n,int r) 
-  : builder(b),nodeNum(n),roundNum(r)
+daig::SyncSeq::SyncSeq(daig::DaigBuilder &b,int r) 
+  : builder(b),roundNum(r)
 {
-  Program &prog = builder.program;
+  nodeNum = builder.program.processes.size();
 }
 
 /*********************************************************************/

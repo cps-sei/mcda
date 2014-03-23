@@ -146,7 +146,7 @@ namespace daig {
     int roundNum;
     CProgram cprog;
 
-    SyncSeq(DaigBuilder &b,size_t n,int r);
+    SyncSeq(DaigBuilder &b,int r);
     void createGlobVars();
     void createCopyStmts(bool fwd,const Variable &var,StmtList &res,ExprList indx);
     void createRoundCopier();
