@@ -116,7 +116,7 @@ daig::madara::Sync_Builder::build_common_global_variables ()
   buffer_ << "\n";
   buffer_ << "// number of participating processes\n";
   buffer_ << "Integer processes (";
-  buffer_ << builder_.program.processes.size ();
+  buffer_ << nodeNum_;
   buffer_ << ");\n\n";
 }
 
@@ -205,7 +205,7 @@ daig::madara::Sync_Builder::build_program_variables_bindings ()
 { 
   buffer_ << "  // Binding common variables\n";
   buffer_ << "  barrier.set_name (\"mbarrier\", knowledge, ";
-  buffer_ << builder_.program.processes.size ();
+  buffer_ << nodeNum_;
   buffer_ << ");\n";
 
   buffer_ << "  id.set_name (\".id\", knowledge);\n";
@@ -254,7 +254,7 @@ daig::madara::Sync_Builder::build_program_variable_binding (
   if (var.type->dims.size () == 1)
   {
     buffer_ << ", ";
-    buffer_ << builder_.program.processes.size ();
+    buffer_ << nodeNum_;
   }
 
   buffer_ << ");\n";
