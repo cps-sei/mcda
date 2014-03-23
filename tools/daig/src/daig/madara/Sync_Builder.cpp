@@ -123,9 +123,16 @@ void
 daig::madara::Sync_Builder::build_target_thunk ()
 {
   buffer_ << "// target (" << target_ << ") specific thunk\n";
-  Program::TargetType::const_iterator it = builder_.program.targets.find(target_);
-  if (it == builder_.program.targets.end()) return;
-  buffer_ << it->second << '\n';
+
+  // we use target_ as a key to all related thunks
+  Program::TargetType::const_iterator it =
+    builder_.program.targets.find (target_);
+  
+  // if there was any such target, print it
+  if (it != builder_.program.targets.end ())
+  {
+    buffer_ << it->second << '\n';
+  }
 }
 
 void
@@ -455,17 +462,17 @@ daig::madara::Sync_Builder::build_refresh_modify_global (const Variable & var)
 void
 daig::madara::Sync_Builder::build_external_functions (void)
 {
-  
-  buffer_ << "/**\n";
-  buffer_ << " * Defining external function stubs so this code will compile.\n\n";
-  buffer_ << " * TODO: THESE STUBS SHOULD BE REMOVED OR FILLED IN WITH ACTUAL\n";
-  buffer_ << "   IMPLEMENTATIONS.\n";
-  buffer_ << " **/\n\n";
-  Functions & funcs = builder_.program.externalFuncs;
-  for (Functions::iterator i = funcs.begin (); i != funcs.end (); ++i)
-  {
-    build_external_function (i->second);
-  }
+  //
+  //buffer_ << "/**\n";
+  //buffer_ << " * Defining external function stubs so this code will compile.\n\n";
+  //buffer_ << " * TODO: THESE STUBS SHOULD BE REMOVED OR FILLED IN WITH ACTUAL\n";
+  //buffer_ << "   IMPLEMENTATIONS.\n";
+  //buffer_ << " **/\n\n";
+  //Functions & funcs = builder_.program.externalFuncs;
+  //for (Functions::iterator i = funcs.begin (); i != funcs.end (); ++i)
+  //{
+  //  build_external_function (i->second);
+  //}
 }
 
 void
