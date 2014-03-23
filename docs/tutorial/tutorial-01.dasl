@@ -2,7 +2,13 @@
 MOC_SYNC;
 
 TARGET GNU_CPP %%{
-#include <stdio.h>
+#define GNU
+%%}
+TARGET WIN_CPP %%{
+#define WIN
+%%}
+TARGET GNU_CPP,WIN_CPP %%{
+#define GNU_WIN
 %%}
 
 CONST OUTSIDE = 0;

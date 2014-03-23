@@ -49,6 +49,7 @@ std::string thunk;
     daig::StmtList *stmtList;
     std::list<int> *intList;
     std::string *string;
+    std::list<std::string> *strList;
     int token;
 }
 
@@ -79,6 +80,7 @@ std::string thunk;
 %type <token> program moc const_list constant node node_body
 %type <token> node_body_elem_list node_body_elem
 %type <token> global_var local_var dimension
+%type <strList> target_id_list
 %type <type> simp_type type
 %type <lvalExpr> lval
 %type <expr> expr
@@ -120,13 +122,23 @@ moc :
 ;
 
 target_list : {}
-| TTARGET TIDENTIFIER TTHUNK {
-  builder->program.addTarget(*$2,thunk);
+| TTARGET target_id_list TTHUNK {
+  BOOST_FOREACH(const std::string &t,*$2) builder->program.addTarget(t,thunk);
   delete $2;
 }
-| target_list TTARGET TIDENTIFIER TTHUNK {
-  builder->program.addTarget(*$3,thunk);
+| target_list TTARGET target_id_list TTHUNK {
+  BOOST_FOREACH(const std::string &t,*$3) builder->program.addTarget(t,thunk);
   delete $3;
+}
+;
+
+target_id_list : TIDENTIFIER {
+  $$ = new std::list<std::string>();
+  $$->push_back(*$1); delete $1;
+}
+| target_id_list TCOMMA TIDENTIFIER {
+  $$ = $1;
+  $$->push_back(*$3); delete $3;
 }
 ;
 
