@@ -44,13 +44,14 @@
  *      distribution.
  **/
 #include "Function_Visitor.hpp"
+#include "daslc/daig-parser.hpp"
 #include "boost/foreach.hpp"
 
 
 daig::madara::Function_Visitor::Function_Visitor (
-  Function & function, const Node & node, 
+  Function & function, const Node & node, size_t nodeNum,
   DaigBuilder & builder, std::stringstream & buffer)
-  : function_ (function), node_ (node), 
+  : function_ (function), node_ (node), nodeNum_(nodeNum),
     builder_ (builder), buffer_ (buffer), indentation_ (2),
     privatize_ (false), assignment_ (0)
 {
@@ -148,6 +149,11 @@ daig::madara::Function_Visitor::enterComp (CompExpr & expression)
 void
 daig::madara::Function_Visitor::exitComp (CompExpr & expression)
 {
+  if(expression.op == TNODENUM) {
+    buffer_ << nodeNum_;
+    return;
+  }
+
   ExprList::iterator arg = expression.args.begin ();
 
   if (expression.args.size () == 2)

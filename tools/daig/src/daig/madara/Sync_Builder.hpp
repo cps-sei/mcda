@@ -65,7 +65,7 @@ namespace daig
        * Constructor
        * @param  builder   the source for building a program
        **/
-      Sync_Builder (DaigBuilder & builder,const std::string &target);
+      Sync_Builder (DaigBuilder & builder,size_t nodeNum,const std::string &target);
 
       /**
        * Builds the underlying character stream that can then be printed
@@ -192,6 +192,9 @@ namespace daig
       
       /// the result of the DASL parsing function
       DaigBuilder & builder_;
+
+      ///the number of nodes
+      size_t nodeNum_;
 
       ///the target to build against
       std::string target_;
