@@ -1,0 +1,63 @@
+//a correct synchronous collision avoidance protocol
+MOC_SYNC;
+
+TARGET GNU_CPP %%{
+#include <stdio.h>
+%%}
+
+CONST OUTSIDE = 0;
+CONST TRYING = 1; 
+CONST INSIDE = 2;
+
+EXTERN int in_cs();
+EXTERN int should_enter();
+
+NODE node(id) {
+  GLOBAL _Bool lock[#N];
+  LOCAL unsigned char state;
+
+  void ROUND() {
+    _Bool c;
+    if(state == OUTSIDE) {
+      c = should_enter();
+      if(c) {
+        if(EXISTS_LOWER(idp,lock[idp])) return;
+        lock[id] = 1; state = TRYING;
+      }
+    } else if(state == TRYING) {
+        if(EXISTS_HIGHER(idp,lock[idp])) return;
+        state = INSIDE;
+    } else if(state == INSIDE) {
+      if(in_cs()) return; 
+      lock[id] = 0; state = OUTSIDE;
+    }
+  }
+}
+
+//PROGRAM = node(0) || node(1);
+PROGRAM = node(0) || node(1) || node(2) || node(3);
+
+void INIT()
+{
+  FORALL_NODE(id) {
+    ND(state.id); ND(lock[id]);
+    ASSUME(state.id == OUTSIDE && 
+      lock[id] == 0 || 
+      state.id == INSIDE && 
+      lock[id] == 1);
+  }
+  FORALL_DISTINCT_NODE_PAIR
+    (id1,id2) {
+    ASSUME(state.id1 != INSIDE || 
+           state.id2 != INSIDE);
+  }
+}
+
+void SAFETY()
+{
+  FORALL_DISTINCT_NODE_PAIR
+    (id1,id2) {
+    ASSERT(state.id1 != INSIDE || 
+           state.id2 != INSIDE);
+  }
+}
