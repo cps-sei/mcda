@@ -20,7 +20,7 @@ $(ACE_LIB) :
 $(MADARA_LIB) :
 	@echo "building MADARA"
 	(cd madara && \
-	svn co -r1156 http://madara.googlecode.com/svn/trunk madara && \
+	svn co -r1301 http://madara.googlecode.com/svn/trunk madara && \
 	cd madara && \
 	perl $(ACE_ROOT)/bin/mwc.pl -type gnuace MADARA.mwc && \
 	make tests=1)
