@@ -59,11 +59,11 @@
 /*********************************************************************/
 //options
 /*********************************************************************/
-std::string fileName, outFileName, madaraFileName;
+std::string fileName, outFileName;
 std::string madaraTarget("GNU_CPP");
 bool debug = false, print=false, seqSem = false;
 bool seqDbl = false, seqNoArray = false, initGlobals = false;
-size_t nodeNum = 0;
+size_t seqNodeNum = 0, madaraNodeNum = 0;
 int roundNum = -1;
 
 //constant definitions supplied via command line
@@ -102,22 +102,25 @@ int main(int argc, char **argv)
   }
   
   // right now, we're just using a realize flag to indicate madara generation
-  if (!madaraFileName.empty ())
+  if (madaraNodeNum)
   {
-    // create an output stream from the file name
-    std::ofstream os(madaraFileName.c_str());
-
     // create a madara builder instance of the daig builder parse
-    daig::madara::Sync_Builder madara_builder (builder,madaraTarget);
+    daig::madara::Sync_Builder madara_builder (builder,madaraNodeNum,madaraTarget);
     madara_builder.build ();
 
-    // print the resulting information to the string and close the stream
-    madara_builder.print (os);
-    os.close();
+    //print the generated code
+    if(outFileName.empty())
+      madara_builder.print (std::cout);
+    else
+      {
+        std::ofstream os(outFileName.c_str());
+        madara_builder.print (os);
+        os.close();
+      }
   }
 
   //sequentialize and print result
-  if(nodeNum)
+  if(seqNodeNum)
   {
     std::string moc = builder.program.moc.to_string_type();
 
@@ -129,19 +132,19 @@ int main(int argc, char **argv)
 
       //if doing naive sequentialization to the semantics
       if(seqSem) {
-        daig::SyncSem syncSem(builder,nodeNum,roundNum);
+        daig::SyncSem syncSem(builder,seqNodeNum,roundNum);
         syncSem.run();
         cprog = syncSem.cprog;
       }
       //if doing optimized sequentialization with double buffering
       else if(seqDbl) {
-        daig::SyncSeqDbl syncSeqDbl(builder,nodeNum,roundNum);
+        daig::SyncSeqDbl syncSeqDbl(builder,seqNodeNum,roundNum);
         syncSeqDbl.run();
         cprog = syncSeqDbl.cprog;
       }
       //if doing optimized sequentialization
       else {
-        daig::SyncSeq syncSeq(builder,nodeNum,roundNum);
+        daig::SyncSeq syncSeq(builder,seqNodeNum,roundNum);
         syncSeq.run();
         cprog = syncSeq.cprog;
       }      
@@ -188,7 +191,7 @@ void parseOptions(int argc, char **argv)
     }
     else if(strstr(argv[i],"--seq=") == argv[i])
     {
-      nodeNum = atoi(argv[i] + 6);
+      seqNodeNum = atoi(argv[i] + 6);
     }
     else if(!strcmp(argv[i],"--seq-sem")) seqSem = true;
     else if(!strcmp(argv[i],"--seq-dbl")) seqDbl = true;
@@ -225,7 +228,7 @@ void parseOptions(int argc, char **argv)
     }
     else if(strstr(argv[i],"--madara=") == argv[i])
     {
-      madaraFileName = std::string(argv[i] + 9);
+      madaraNodeNum = atoi(argv[i] + 9);
     }
     else if(strstr(argv[i],"--target=") == argv[i])
     {
@@ -262,7 +265,7 @@ void usage(char *cmd)
             << "--Dconstant=value\n\t--seq=node-num\n\t"
             << "--seq-sem\n\t--seq-dbl\n\t--out=output-filename\n\t"
             << "--seq-no-array\n\t--init-globals\n\t--rounds=round-num\n\t"
-            << "--madara=madara-ouput-filename\n\t"
+            << "--madara=node-num\n\t"
             << "--target=target-name [default=GNU_CPP]\n";
   exit(1);
 }
