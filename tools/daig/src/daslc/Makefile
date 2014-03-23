@@ -9,11 +9,12 @@ OBJ=$(patsubst %.cpp,%.o,$(SRC))
 INC=-I../../../../madara/ace/ACE_wrappers \
 -I../../../../madara/madara/include -I..
 LIB=../../../../madara/madara/libMADARA.so
+CXX=g++
 
 all : daslc
 
 daslc : daslc.cpp daig-parser.hpp $(OBJ)
-	g++ -o $@ $(INC) daslc.cpp $(OBJ) $(LIB)
+	$(CXX) -o $@ $(INC) daslc.cpp $(OBJ) $(LIB)
 
 daig-scanner.cpp : daig-scanner.ll
 	flex -o daig-scanner.cpp daig-scanner.ll
@@ -22,10 +23,10 @@ daig-parser.cpp daig-parser.hpp : daig-parser.yy
 	bison -d -o daig-parser.cpp daig-parser.yy
 
 %.o : %.cpp
-	g++ -c -o $@ $(INC) $<
+	$(CXX) -c -o $@ $(INC) $<
 
 %.d : %.cpp
-	g++ -MM -MT $(@:%.d=%.o) -o $@ $(INC) $<
+	$(CXX) -MM -MT $(@:%.d=%.o) -o $@ $(INC) $<
 
 clean :
 	rm -f daslc daig-scanner.cpp daig-parser.cpp daig-parser.hpp \
