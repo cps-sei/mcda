@@ -1,14 +1,5 @@
 0. INTRODUCTION
 
-<<<<<<< HEAD
-Step 1. Set environment variables, e.g., on bash:
-
-$ export MCDA_ROOT=directory-where-MCDA-was-checked-out
-$ export ACE_ROOT=$MCDA_ROOT/madara/ace/ACE_wrappers
-$ export MADARA_ROOT=$MCDA_ROOT/madara/madara
-$ export LD_LIBRARY_PATH=$ACE_ROOT/lib:$MADARA_ROOT/lib:$LD_LIBRARY_PATH
-$ export PATH=$ACE_ROOT/bin:$MADARA_ROOT/bin:$PATH
-=======
   In this file, you will find instructions for building and installing the
   tools in the Model Checking for Distributed Applications (MCDA) project.
 
@@ -16,7 +7,6 @@ $ export PATH=$ACE_ROOT/bin:$MADARA_ROOT/bin:$PATH
 
   Follow instructions to install MADARA:
    https://code.google.com/p/madara/wiki/InstallationFromSource
->>>>>>> 1d9b7fa0c371acb98de4d68f9095f88e7ddd7b3d
 
   Download MCDA with Git:
     https://code.google.com/p/mcda/source/checkout  
@@ -24,19 +14,12 @@ $ export PATH=$ACE_ROOT/bin:$MADARA_ROOT/bin:$PATH
 
 2. ENVIRONMENT VARIABLES
 
-<<<<<<< HEAD
-$ make -C $MCDA_ROOT
-
-This will produce binary $MCDA_ROOT/tools/daig/src/daslc/daslc. You can
-add $MCDA_ROOT/tools/daig/src/daslc to your path for convenience.
-=======
   For each platform, you'll need to set the following environment variables:
 
   MCDA_ROOT = <the installation directory for the MCDA project>
   
   The installation directory for MCDA should have tools and examples
   directories inside of it.
->>>>>>> 1d9b7fa0c371acb98de4d68f9095f88e7ddd7b3d
 
   2.1 LINUX ENVIRONMENT VARIABLES:
 
