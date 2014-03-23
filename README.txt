@@ -23,3 +23,7 @@ DIRECTORIES
 
   Contains various examples used to drive our work. This is very much
   a scratch area.
+
+  /tools
+
+  Contains tools such as the dasl compiler and daig
