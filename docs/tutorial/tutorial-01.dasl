@@ -11,13 +11,21 @@ TARGET WIN_CPP %%{
 TARGET GNU_CPP,WIN_CPP %%{
 #define GNU_WIN
 #include <stdlib.h>
+#include "madara/utility/Utility.h"
 int in_cs()
 {
-  return random() < (RAND_MAX / 10);
+  return rand() < (RAND_MAX / 10);
 }
 int should_enter()
 {
-  return random() < (RAND_MAX / 2);
+  return rand() < (RAND_MAX / 2);
+}
+
+int my_sleep (int seconds)
+{
+  Madara::Utility::sleep (seconds);
+  
+  return 0;
 }
 
 int round = 0;
@@ -41,7 +49,7 @@ CONST INSIDE = 2;
 
 EXTERN int in_cs();
 EXTERN int should_enter();
-EXTERN int sleep(int seconds);
+EXTERN int my_sleep(int seconds);
 EXTERN void print_state(int n,int id,int incs);
 
 NODE node(id) {
@@ -55,25 +63,25 @@ NODE node(id) {
       c = should_enter();
       if(c) {
         if(EXISTS_LOWER(idp,lock[idp])) {
-          sleep(1);
+          my_sleep(1);
           return;
         }
         lock[id] = 1; state = TRYING;
       }
     } else if(state == TRYING) {
       if(EXISTS_HIGHER(idp,lock[idp])) {
-        sleep(1);
+        my_sleep(1);
         return;
       }
       state = INSIDE;
     } else if(state == INSIDE) {
       if(in_cs()) {
-        sleep(1);
+        my_sleep(1);
         return; 
       }
       lock[id] = 0; state = OUTSIDE;
     }
-    sleep(1);
+    my_sleep(1);
   }
 }
 

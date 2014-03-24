@@ -14,6 +14,7 @@ project (daslc) : using_madara, using_ace, using_boost, using_daig {
 
   Documentation_Files {
     README.txt
+    VERSION.txt
     ../../examples/*.mcda
     src/daslc/daig-parser.yy
     src/daslc/daig-scanner.ll

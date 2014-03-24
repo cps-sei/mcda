@@ -607,11 +607,19 @@ daig::madara::Sync_Builder::build_main_function ()
 
   buffer_ << "  // create the knowledge base with the transport settings\n";
   buffer_ << "  Madara::Knowledge_Engine::Knowledge_Base knowledge (host, settings);\n\n";
+  
+  build_program_variables_bindings ();
+  build_main_define_functions ();
+  
+  // set the values for id and processes
+  buffer_ << "  id = Integer (settings.id);\n";
+  buffer_ << "  num_processes = processes;\n\n";
+
+  // build the barrier string
+  
   buffer_ << "  std::map <std::string, bool>  barrier_send_list;\n";
   buffer_ << "  barrier_send_list [knowledge.expand_statement (";
   buffer_ << "\"mbarrier.{.id}\")] = true;\n\n";
-  
-  // build the barrier string
   
   buffer_ << "  // Building the barrier string for this node\n";
   buffer_ << "  std::stringstream barrier_string, barrier_sync;\n";
@@ -657,11 +665,6 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  }\n\n";
   buffer_ << "  barrier_sync << \")\";\n\n";
 
-  build_program_variables_bindings ();
-  build_main_define_functions ();
-
-  buffer_ << "  id = Integer (settings.id);\n";
-  buffer_ << "  num_processes = processes;\n\n";
   buffer_ << "  // Compile frequently used expressions\n";
   buffer_ << "  engine::Compiled_Expression round_logic = knowledge.compile (\n";
   buffer_ << "    knowledge.expand_statement (\"ROUND (); ++mbarrier.{.id}\"));\n";
