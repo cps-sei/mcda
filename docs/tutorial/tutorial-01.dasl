@@ -3,6 +3,7 @@ MOC_SYNC;
 
 TARGET GNU_CPP %%{
 #define GNU
+#include <unistd.h>
 %%}
 TARGET WIN_CPP %%{
 #define WIN
@@ -12,11 +13,25 @@ TARGET GNU_CPP,WIN_CPP %%{
 #include <stdlib.h>
 int in_cs()
 {
-  return random() < RAND_MAX / 2;
+  return random() < (RAND_MAX / 10);
 }
 int should_enter()
 {
-  return random() < RAND_MAX / 10;
+  return random() < (RAND_MAX / 2);
+}
+
+int round = 0;
+
+void print_state(int n,int id,int incs)
+{
+  printf("round = %d : id = %d : ", ++round, id);
+  for(size_t i = 0;i < n;++i) {
+    if(i == id) {
+      if(incs) printf("ooo");
+      else printf("---");
+    } else printf("---");
+  }
+  printf("\n");
 }
 %%}
 
@@ -26,6 +41,8 @@ CONST INSIDE = 2;
 
 EXTERN int in_cs();
 EXTERN int should_enter();
+EXTERN int sleep(int seconds);
+EXTERN void print_state(int n,int id,int incs);
 
 NODE node(id) {
   GLOBAL _Bool lock[#N];
@@ -33,19 +50,30 @@ NODE node(id) {
 
   void ROUND() {
     _Bool c;
-    if(state == OUTSIDE && #N) {
+    print_state(#N,id,state==INSIDE);
+    if(state == OUTSIDE) {
       c = should_enter();
       if(c) {
-        if(EXISTS_LOWER(idp,lock[idp])) return;
+        if(EXISTS_LOWER(idp,lock[idp])) {
+          sleep(1);
+          return;
+        }
         lock[id] = 1; state = TRYING;
       }
     } else if(state == TRYING) {
-        if(EXISTS_HIGHER(idp,lock[idp])) return;
-        state = INSIDE;
+      if(EXISTS_HIGHER(idp,lock[idp])) {
+        sleep(1);
+        return;
+      }
+      state = INSIDE;
     } else if(state == INSIDE) {
-      if(in_cs()) return; 
+      if(in_cs()) {
+        sleep(1);
+        return; 
+      }
       lock[id] = 0; state = OUTSIDE;
     }
+    sleep(1);
   }
 }
 
