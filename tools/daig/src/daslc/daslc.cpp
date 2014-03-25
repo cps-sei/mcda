@@ -193,7 +193,7 @@ int main (int argc, char **argv)
 /*********************************************************************/
 //parse command line options and populate global variables
 /*********************************************************************/
-void parseOptions (int argc, char **argv)
+void parse_options (int argc, char **argv)
 {
   for (int i = 1; i < argc; ++i)
   {
