@@ -59,29 +59,20 @@ NODE node(id) {
   void ROUND() {
     _Bool c;
     print_state(#N,id,state==INSIDE);
+    //my_sleep(1);
     if(state == OUTSIDE) {
       c = should_enter();
       if(c) {
-        if(EXISTS_LOWER(idp,lock[idp])) {
-          my_sleep(1);
-          return;
-        }
+        if(EXISTS_LOWER(idp,lock[idp])) return;
         lock[id] = 1; state = TRYING;
       }
     } else if(state == TRYING) {
-      if(EXISTS_HIGHER(idp,lock[idp])) {
-        my_sleep(1);
-        return;
-      }
+      if(EXISTS_HIGHER(idp,lock[idp])) return;
       state = INSIDE;
     } else if(state == INSIDE) {
-      if(in_cs()) {
-        my_sleep(1);
-        return; 
-      }
+      if(in_cs()) return;
       lock[id] = 0; state = OUTSIDE;
     }
-    my_sleep(1);
   }
 }
 
