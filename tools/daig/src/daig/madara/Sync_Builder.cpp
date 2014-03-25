@@ -176,6 +176,15 @@ daig::madara::Sync_Builder::build_program_variables ()
 }
 
 void
+daig::madara::Sync_Builder::build_program_variable_init (
+  const Variable & var)
+{
+  buffer_ << "Integer var_init_";
+  buffer_ << var.name;
+  buffer_ << " (0);\n";
+}
+
+void
 daig::madara::Sync_Builder::build_program_variable (const Variable & var)
 {
   // is this an array type?
@@ -197,6 +206,8 @@ daig::madara::Sync_Builder::build_program_variable (const Variable & var)
     buffer_ << var.name;
     buffer_ << ";\n";
   }
+  build_program_variable_init (var);
+  buffer_ << "\n";
 }
 
 void
@@ -257,6 +268,32 @@ daig::madara::Sync_Builder::build_program_variable_binding (
   }
 
   buffer_ << ");\n";
+
+  build_program_variable_assignment (var);
+
+  buffer_ << "\n";
+}
+
+void
+daig::madara::Sync_Builder::build_program_variable_assignment (
+  const Variable & var)
+{
+  buffer_ << "  " << var.name;
+
+  // is this an array type?
+  if (var.type->dims.size () == 1)
+  {
+    buffer_ << ".set (settings.id, var_init_";
+    buffer_ << var.name;
+    buffer_ << ");\n";
+  }
+  else
+  {
+    buffer_ << " = ";
+    buffer_ << "var_init_";
+    buffer_ << var.name;
+    buffer_ << ";\n";
+  }
 }
 
 void
@@ -357,6 +394,28 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "    {\n";
   buffer_ << "      settings.send_reduced_message_header = true;\n";
   buffer_ << "    }\n";
+
+
+  Nodes & nodes = builder_.program.nodes;
+  for (Nodes::iterator n = nodes.begin (); n != nodes.end (); ++n)
+  {
+    buffer_ << "    // Providing init for global variables\n";
+    Variables & vars = n->second.globVars;
+    for (Variables::iterator i = vars.begin (); i != vars.end (); ++i)
+    {
+      Variable & var = i->second;
+      build_parse_args (var);
+    }
+    
+    buffer_ << "\n    // Providing init for local variables\n";
+    Variables & locals = n->second.locVars;
+    for (Variables::iterator i = locals.begin (); i != locals.end (); ++i)
+    {
+      Variable & var = i->second;
+      build_parse_args (var);
+    }
+  }
+
   buffer_ << "    else\n";
   buffer_ << "    {\n";
   buffer_ << "      MADARA_DEBUG (MADARA_LOG_EMERGENCY, (LM_DEBUG, \n";
@@ -370,13 +429,40 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "        \" [-o|--host hostname]     the hostname of this process (def:localhost)\\n\"\\\n";
   buffer_ << "        \" [-r|--reduced]           use the reduced message header\\n\"\\\n";
   buffer_ << "        \" [-u|--udp ip:port]       the udp ips to send to (first is self to bind to)\\n\"\\\n";
-  buffer_ << "        \" [-x|--cols num_cols]     setup a board with num_cols number of columns\\n\"\\\n";
-  buffer_ << "        \" [-y|--rows num_rows]     setup a board with num_rows number of rows\\n\"\\\n";
   buffer_ << "        , argv[0]));\n";
   buffer_ << "      exit (0);\n";
   buffer_ << "    }\n";
   buffer_ << "  }\n";
   buffer_ << "}\n\n";
+}
+
+std::string
+daig::madara::Sync_Builder::build_parse_args (const Variable & var)
+{
+  std::stringstream return_value;
+  
+  
+  buffer_ << "    else if (arg1 == \"--var_";
+  buffer_ << var.name;
+  buffer_ << "\")\n";
+  buffer_ << "    {\n";
+  buffer_ << "      if (i + 1 < argc)\n";
+  buffer_ << "      {\n";
+  buffer_ << "        std::stringstream buffer (argv[i + 1]);\n";
+  buffer_ << "        buffer >> var_init_";
+  buffer_ << var.name;
+  buffer_ << ";\n";
+  buffer_ << "      }\n";
+  buffer_ << "      \n";
+  buffer_ << "      ++i;\n";
+  buffer_ << "    }\n";
+
+  // build the help string
+  return_value << "        \" [--var_";
+  return_value << var.name;
+  return_value << "] sets the initial value of a generated variable\\n\"\\\n";
+
+  return return_value.str ();
 }
 
 void

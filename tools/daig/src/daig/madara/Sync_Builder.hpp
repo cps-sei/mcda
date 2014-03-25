@@ -98,6 +98,11 @@ namespace daig
       void build_program_variable (const Variable & var);
       
       /**
+       * Builds the program's MADARA generated variables
+       **/
+      void build_program_variable_init (const Variable & var);
+      
+      /**
        * Builds the program's MADARA generated variable bindings in main
        **/
       void build_program_variables_bindings (void);
@@ -106,12 +111,23 @@ namespace daig
        * Builds a MADARA generated variable binding in main
        **/
       void build_program_variable_binding (const Variable & var);
+      
+      /**
+       * Builds a MADARA generated variable binding in main
+       **/
+      void build_program_variable_assignment (const Variable & var);
 
       /**
        * Builds the arguments parser
        **/
       void build_parse_args (void);
       
+      /**
+       * Builds variable value parsing
+       * @return help printout for variable
+       **/
+      std::string build_parse_args (const Variable & var);
+
       /**
        * Builds external functions
        **/
