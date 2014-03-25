@@ -299,6 +299,8 @@ daig::madara::Sync_Builder::build_program_variable_assignment (
 void
 daig::madara::Sync_Builder::build_parse_args ()
 {
+  std::stringstream variable_help;
+
   buffer_ << "// handle arguments from the command line\n";
   buffer_ << "void handle_arguments (int argc, char ** argv)\n";
   buffer_ << "{\n";
@@ -404,7 +406,7 @@ daig::madara::Sync_Builder::build_parse_args ()
     for (Variables::iterator i = vars.begin (); i != vars.end (); ++i)
     {
       Variable & var = i->second;
-      build_parse_args (var);
+      variable_help << build_parse_args (var);
     }
     
     buffer_ << "\n    // Providing init for local variables\n";
@@ -412,7 +414,7 @@ daig::madara::Sync_Builder::build_parse_args ()
     for (Variables::iterator i = locals.begin (); i != locals.end (); ++i)
     {
       Variable & var = i->second;
-      build_parse_args (var);
+      variable_help << build_parse_args (var);
     }
   }
 
@@ -429,6 +431,9 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "        \" [-o|--host hostname]     the hostname of this process (def:localhost)\\n\"\\\n";
   buffer_ << "        \" [-r|--reduced]           use the reduced message header\\n\"\\\n";
   buffer_ << "        \" [-u|--udp ip:port]       the udp ips to send to (first is self to bind to)\\n\"\\\n";
+
+  buffer_ << variable_help.str ();
+
   buffer_ << "        , argv[0]));\n";
   buffer_ << "      exit (0);\n";
   buffer_ << "    }\n";
