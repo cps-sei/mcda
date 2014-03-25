@@ -287,7 +287,7 @@ daig::madara::Sync_Builder::build_program_variable_assignment (
     buffer_ << var.name;
     buffer_ << ");\n";
   }
-  else
+  else if (var.type->dims.size () == 0)
   {
     buffer_ << " = ";
     buffer_ << "var_init_";
