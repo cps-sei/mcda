@@ -179,9 +179,12 @@ void
 daig::madara::Sync_Builder::build_program_variable_init (
   const Variable & var)
 {
-  buffer_ << "Integer var_init_";
-  buffer_ << var.name;
-  buffer_ << " (0);\n";
+  if (var.type->dims.size () <= 1)
+  {
+    buffer_ << "Integer var_init_";
+    buffer_ << var.name;
+    buffer_ << " (0);\n";
+  }
 }
 
 void
@@ -278,17 +281,17 @@ void
 daig::madara::Sync_Builder::build_program_variable_assignment (
   const Variable & var)
 {
-  buffer_ << "  " << var.name;
-
   // is this an array type?
   if (var.type->dims.size () == 1)
   {
+    buffer_ << "  " << var.name;
     buffer_ << ".set (settings.id, var_init_";
     buffer_ << var.name;
     buffer_ << ");\n";
   }
   else if (var.type->dims.size () == 0)
   {
+    buffer_ << "  " << var.name;
     buffer_ << " = ";
     buffer_ << "var_init_";
     buffer_ << var.name;
@@ -446,26 +449,29 @@ daig::madara::Sync_Builder::build_parse_args (const Variable & var)
 {
   std::stringstream return_value;
   
-  
-  buffer_ << "    else if (arg1 == \"--var_";
-  buffer_ << var.name;
-  buffer_ << "\")\n";
-  buffer_ << "    {\n";
-  buffer_ << "      if (i + 1 < argc)\n";
-  buffer_ << "      {\n";
-  buffer_ << "        std::stringstream buffer (argv[i + 1]);\n";
-  buffer_ << "        buffer >> var_init_";
-  buffer_ << var.name;
-  buffer_ << ";\n";
-  buffer_ << "      }\n";
-  buffer_ << "      \n";
-  buffer_ << "      ++i;\n";
-  buffer_ << "    }\n";
+  // we do not allow setting multi-dimensional vars from command line
+  if (var.type->dims.size () <= 1)
+  {
+    buffer_ << "    else if (arg1 == \"--var_";
+    buffer_ << var.name;
+    buffer_ << "\")\n";
+    buffer_ << "    {\n";
+    buffer_ << "      if (i + 1 < argc)\n";
+    buffer_ << "      {\n";
+    buffer_ << "        std::stringstream buffer (argv[i + 1]);\n";
+    buffer_ << "        buffer >> var_init_";
+    buffer_ << var.name;
+    buffer_ << ";\n";
+    buffer_ << "      }\n";
+    buffer_ << "      \n";
+    buffer_ << "      ++i;\n";
+    buffer_ << "    }\n";
 
-  // build the help string
-  return_value << "        \" [--var_";
-  return_value << var.name;
-  return_value << "] sets the initial value of a generated variable\\n\"\\\n";
+    // build the help string
+    return_value << "        \" [--var_";
+    return_value << var.name;
+    return_value << "] sets the initial value of a generated variable\\n\"\\\n";
+  }
 
   return return_value.str ();
 }
