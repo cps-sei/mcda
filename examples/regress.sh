@@ -76,7 +76,7 @@ function test_verif_array {
     echo "==== testing verifier with array sequentialization"
     for i in "${TESTS[@]}"; do
         CMDS=($i)
-        daslc ${CMDS[0]} --seq=${CMDS[1]} --rounds=${CMDS[2]} --out=$TMPF1.c &> /dev/null
+        daslc ${CMDS[0]} --nodes ${CMDS[1]} --rounds ${CMDS[2]} --seq-out $TMPF1.c &> /dev/null
         run_cbmc "${CMDS[0]}" $TMPF1.c "${CMDS[3]}"
     done
 }
@@ -86,7 +86,7 @@ function test_verif_no_array {
     echo "==== testing verifier with no-array sequentialization"
     for i in "${TESTS[@]}"; do
         CMDS=($i)
-        daslc ${CMDS[0]} --seq=${CMDS[1]} --rounds=${CMDS[2]} --seq-no-array --out=$TMPF1.c &> /dev/null
+        daslc ${CMDS[0]} --nodes ${CMDS[1]} --rounds ${CMDS[2]} --seq-no-array --seq-out $TMPF1.c &> /dev/null
         run_cbmc "${CMDS[0]}" $TMPF1.c "${CMDS[3]}"
     done
 }
@@ -96,7 +96,7 @@ function test_verif_sem {
     echo "==== testing verifier with semantics sequentialization"
     for i in "${TESTS[@]}"; do
         CMDS=($i)
-        daslc ${CMDS[0]} --seq=${CMDS[1]} --rounds=${CMDS[2]} --seq-sem --out=$TMPF1.c &> /dev/null
+        daslc ${CMDS[0]} --nodes ${CMDS[1]} --rounds ${CMDS[2]} --seq-sem --seq-out $TMPF1.c &> /dev/null
         run_cbmc "${CMDS[0]}" $TMPF1.c "${CMDS[3]}"
     done
 }
@@ -115,7 +115,7 @@ function test_verif_dbl {
     echo "==== testing verifier with double-buffer sequentialization"
     for i in "${TESTS[@]}"; do
         CMDS=($i)
-        daslc ${CMDS[0]} --seq=${CMDS[1]} --rounds=${CMDS[2]} --seq-dbl --out=$TMPF1.c &> /dev/null
+        daslc ${CMDS[0]} --nodes ${CMDS[1]} --rounds ${CMDS[2]} --seq-dbl --seq-out $TMPF1.c &> /dev/null
         run_cbmc "${CMDS[0]}" $TMPF1.c "${CMDS[3]}"
     done
 }
