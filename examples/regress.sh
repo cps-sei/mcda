@@ -101,15 +101,6 @@ function test_verif_sem {
     done
 }
 
-#run a single regression test for verification. this function takes
-#four arguments: the name of the DASL file, the number of nodes, the
-#number of rounds of sequentialization, and the expected result. this
-#does double-buffer-based sequentialization
-function verify_dbl {
-    daslc $1 --seq=$2 --rounds=$3 --seq-dbl --out=$TMPF1.c &> /dev/null
-    run_cbmc "${1}-dbl" $TMPF1.c "$4"
-}
-
 #test verification with double-buffer-based sequentialization
 function test_verif_dbl {
     echo "==== testing verifier with double-buffer sequentialization"
