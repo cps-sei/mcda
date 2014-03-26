@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export PATH=$PATH:$(pwd)
-export LD_LIBRARY_PATH=$LIBRARY_PATH:$(pwd)
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)
 BRFMT="ExpName:Nodes:Rounds:CPLING-Time:Status"
 BRUNCH="./brunch --cpu 100000 --mem 100000 --format $BRFMT"
 BRUNCHFAIL="./brunch --cpu 3 --mem 100000 --format $BRFMT"
