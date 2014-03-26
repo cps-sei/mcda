@@ -61,9 +61,9 @@
 /*********************************************************************/
 std::string file_name, out_file;
 std::string madara_target ("GNU_CPP");
-std::string madara_file;
-bool debug = false, print=false, seq_sem = false;
-bool seq_dbl = false, seq_no_array = false, init_globals = false;
+bool do_print = false, do_madara = false, do_seq = false;
+bool debug = false, seq_sem = false, seq_dbl = false;
+bool seq_no_array = false, init_globals = false;
 size_t nodes = 0;
 int round_num = -1;
 
@@ -88,7 +88,7 @@ int main (int argc, char **argv)
   builder.run ();
 
   //print the program
-  if (print)
+  if (do_print)
   {
     if (out_file.empty ())
     {
@@ -103,7 +103,7 @@ int main (int argc, char **argv)
   }
   
   // right now, we're just using a realize flag to indicate madara generation
-  if (madara_file != "")
+  if (do_madara)
   {
     //fill in the processes with nodes nodes
     daig::Program & program = builder.program;
@@ -121,14 +121,14 @@ int main (int argc, char **argv)
       madara_builder.print (std::cout);
     else
     {
-      std::ofstream os (madara_file.c_str ());
+      std::ofstream os (out_file.c_str ());
       madara_builder.print (os);
       os.close ();
     }
   }
 
   //sequentialize and print result
-  if (nodes > 0)
+  if (do_seq)
   {
     std::string moc = builder.program.moc.to_string_type ();
 
@@ -203,11 +203,11 @@ void parse_options (int argc, char **argv)
     {
       debug = true;
     }
-    else if (arg1 == "-g" || arg1 == "--init-globals")
+    else if (arg1 == "-h" || arg1 == "--help")
     {
-      init_globals = true;
+      usage (argv[0]);
     }
-    else if (arg1 == "-o" || arg1 == "--seq-out" || arg1 == "--out")
+    else if (arg1 == "-o" || arg1 == "--out")
     {
       if (i + 1 < argc)
       {
@@ -215,24 +215,14 @@ void parse_options (int argc, char **argv)
       }
       else
       {
-        std::cerr << "ERROR: output file (-o) must have file name\n";
+        std::cerr << "ERROR: output file (-o|--out) must have file name\n";
         usage (argv[0]);
       }
       ++i;
     }
-    else if (arg1 == "-m" || arg1 == "--madara-out")
+    else if (arg1 == "-p" || arg1 == "--print")
     {
-      if (i + 1 < argc)
-      {
-        madara_file = argv[i + 1];
-      }
-      else
-      {
-        std::cerr << "ERROR: MADARA output file (-m) must have file name ";
-        std::cerr << "(e.g. -m my_output.cpp)\n";
-        usage (argv[0]);
-      }
-      ++i;
+      do_print = true;
     }
     else if (arg1 == "-n" || arg1 == "--nodes")
     {
@@ -240,6 +230,48 @@ void parse_options (int argc, char **argv)
       {
         std::stringstream buffer (argv[i + 1]);
         buffer >> nodes;
+      }
+      else
+      {
+        std::cerr << "ERROR: nodes (-n|--nodes) must have value (e.g. -n 5)\n";
+        usage (argv[0]);
+      }
+      ++i;
+    }
+    else if (arg1 == "-m" || arg1 == "--madara")
+    {
+      do_madara = true;
+    }
+    else if (arg1 == "-t" || arg1 == "--target" || arg1 == "--platform")
+    {
+      if (i + 1 < argc)
+      {
+        madara_target = argv[i + 1];
+      }
+      else
+      {
+        std::cerr << "ERROR: Target platform (-t|--target|--platform) must have a ";
+        std::cerr << " target (e.g. -t WIN_CPP)\n";
+        usage (argv[0]);
+      }
+      ++i;
+    }
+    else if (arg1 == "-s" || arg1 == "--seq")
+    {
+      do_seq = true;
+    }
+    else if (arg1 == "-r" || arg1 == "--rounds")
+    {
+      if (i + 1 < argc)
+      {
+        std::stringstream buffer (argv[i + 1]);
+        buffer >> round_num;
+      }
+      else
+      {
+        std::cerr << "ERROR: Number of rounds (-r|--rounds) must have a ";
+        std::cerr << " number of rounds (e.g. -r 5)\n";
+        usage (argv[0]);
       }
       ++i;
     }
@@ -255,38 +287,9 @@ void parse_options (int argc, char **argv)
     {
       seq_sem = true;
     }
-    else if (arg1 == "--print")
+    else if (arg1 == "-g" || arg1 == "--init-globals")
     {
-      print = true;
-    }
-    else if (arg1 == "-r" || arg1 == "--rounds")
-    {
-      if (i + 1 < argc)
-      {
-        std::stringstream buffer (argv[i + 1]);
-        buffer >> round_num;
-      }
-      else
-      {
-        std::cerr << "ERROR: Number of rounds (via -r) must have a ";
-        std::cerr << " number of rounds (e.g. -r 5)\n";
-        usage (argv[0]);
-      }
-      ++i;
-    }
-    else if (arg1 == "-t" || arg1 == "--target-platform" || arg1 == "--platform")
-    {
-      if (i + 1 < argc)
-      {
-        madara_target = argv[i + 1];
-      }
-      else
-      {
-        std::cerr << "ERROR: Target platform (via -t) must have a ";
-        std::cerr << " target (e.g. -t WIN_CPP)\n";
-        usage (argv[0]);
-      }
-      ++i;
+      init_globals = true;
     }
     else if (arg1.substr (0,3) == "--D")
     {
@@ -308,10 +311,6 @@ void parse_options (int argc, char **argv)
       }
       ++i;
 
-    }
-    else if (arg1 == "-h" || arg1 == "--help")
-    {
-      usage (argv[0]);
     }
     else
     {
@@ -337,19 +336,21 @@ void usage (char *cmd)
 {
   std::cerr << "Usage : " << cmd << " <options optionval> filename\n";
   std::cerr << "Options :\n";
-  std::cerr << "  -d|--debug              print debugging information\n";
-  std::cerr << "  -g|--init-globals       initialize global variables\n";
-  std::cerr << "  -h|--help               print help and usage\n";
-  std::cerr << "  -m|--madara-out file    specify a madara output file\n";
-  std::cerr << "  -n|--nodes nodes        number of nodes\n";
-  std::cerr << "  -o|--out|--seq-out file specify a verifiable output file\n";
-  std::cerr << "  -r|--rounds rounds      number of verification rounds\n";
-  std::cerr << "  --seq-dbl      use double buffering during verification\n";
-  std::cerr << "  --seq-no-array do not use arrays during verification\n";
-  std::cerr << "  --seq-sem      use variable copying during verification\n";
+  std::cerr << "  -d|--debug               print debugging information\n";
+  std::cerr << "  -h|--help                print help and usage\n";
+  std::cerr << "  -o|--out file            output file, default is stdout\n";
+  std::cerr << "  -p|--print               parse and print DASL file\n";
+  std::cerr << "  -n|--nodes nodes         number of nodes\n";
+  std::cerr << "  -m|--madara              generate C++/MADARA code to run\n";
   std::cerr << "  -t|--target|--platform p specify a target platform\n";
-  std::cerr << "        Available platforms: WIN_CPP, GNU_CPP\n";
-  std::cerr << "  --D<const_name> value   set a const to a value\n";
+  std::cerr << "        Available platforms: WIN_CPP, GNU_CPP (default)\n";
+  std::cerr << "  -s|--seq                 generate sequentialized code to verify\n";
+  std::cerr << "  -r|--rounds rounds       number of verification rounds\n";
+  std::cerr << "  --seq-dbl                use double buffering during verification\n";
+  std::cerr << "  --seq-no-array           do not use arrays during verification\n";
+  std::cerr << "  --seq-sem                use variable copying during verification\n";
+  std::cerr << "  -g|--init-globals        initialize global variables\n";
+  std::cerr << "  --D<const_name> value    set a const to a value\n";
   exit (0);
 }
 
