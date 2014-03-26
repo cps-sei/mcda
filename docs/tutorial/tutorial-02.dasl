@@ -1,0 +1,154 @@
+//a correct synchronous collision avoidance protocol
+MOC_SYNC;
+
+TARGET GNU_CPP,WIN_CPP %%{
+#define GNU_WIN
+#include <stdlib.h>
+#include "madara/utility/Utility.h"
+
+int MOVE_TO(unsigned char x,unsigned char y)
+{
+  return rand() < (RAND_MAX / 10 * 6);
+}
+
+int my_sleep (int seconds)
+{
+  Madara::Utility::sleep (seconds);
+  return 0;
+}
+
+int round = 0;
+int xi,yi;
+
+void print_line(int _X)
+{
+  printf("-");
+  for(int i = 0;i < _X;++i) printf("--");
+  printf("\n");
+}
+
+void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf)
+{
+  if(round == 0) {
+    xi = x; yi = y;
+  }
+
+  for(int i = 0;i < 150;++i) printf("\n");
+  
+  printf("round = %d : id = %d\n", ++round, id);
+  printf("_X = %d _Y = %d\n",_X,_Y);
+  print_line(_X);
+  for(int i = 0;i < _Y;++i) {
+    printf("|");
+    for(int j = 0;j < _X;++j) {
+      //printf("i = %d j = %d\n", i, j);
+      if(j == xf && i == yf) printf("o|");        
+      else if(j == x && i == y) printf("%d|",id);
+      else printf(" |");
+    }
+    printf("\n");
+    print_line(_X);
+  }
+}
+%%}
+
+//number of X and Y coordinates
+CONST X = 10;
+CONST Y = 10;
+
+//states of each node
+CONST INITS = 0;
+CONST NEXT = 1;
+CONST REQUEST = 2;
+CONST WAITING = 3;
+CONST MOVE = 4;
+
+EXTERN int MOVE_TO(unsigned char x,unsigned char y);
+EXTERN int my_sleep(int seconds);
+EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
+
+NODE uav (id)
+{
+  //shared variables -- visible across nodes. 
+  //must be accessed via R() and W()
+  GLOBAL _Bool lock [X][Y][#N];
+
+  //private variables -- local to the node.
+  //preserved across rounds
+  LOCAL unsigned char state; //the state
+  LOCAL unsigned char x,y; //current coordinates
+  LOCAL unsigned char xp,yp; //next coordinates
+  LOCAL unsigned char xf,yf; //final coordinates
+  
+  void NEXT_XY () {
+    ATOMIC {
+      xp = x; yp = y;
+      if(x < xf) xp = x + 1;
+      else if(x > xf) xp = x - 1;
+      else if(y < yf) yp = y + 1;
+      else yp = y - 1;
+    }
+  }
+
+  void ROUND () {
+    print_state(X,Y,id,x,y,xf,yf);
+    //my_sleep(1);
+    if(state == INITS) {
+      lock[x][y][id] = 1;
+      state = NEXT;
+    } if(state == NEXT) {
+      //compute next point on route
+      if(x == xf && y == yf) return;
+      NEXT_XY();
+      state = REQUEST;
+    } else if(state == REQUEST) {
+      //request the lock but only if it is free
+      if(EXISTS_LOWER(idp,lock[xp][yp][idp] != 0)) return;
+      lock[xp][yp][id] = 1;
+      state = WAITING;
+    } else if(state == WAITING) {
+      //grab the lock if we are the highest 
+      //id node to request or hold the lock
+      if(EXISTS_HIGHER(idp, lock[xp][yp][idp] != 0)) return;
+      state = MOVE;
+    } else if(state == MOVE) {
+      //now we have the lock on (x’,y’)
+      if(MOVE_TO(xp,yp)) return;
+      lock[x][y][id] = 0; 
+      x = xp; y = yp;
+      state = NEXT;
+    }
+  }
+}
+
+//program has two nodes with ids 0 and 1
+//PROGRAM = uav (0) || uav (1);
+
+//program has four nodes with ids 0, 1, 2, and 3
+PROGRAM = uav (0) || uav (1) || uav (2) || uav (3);
+
+//initial state
+void INIT () 
+{
+  ATOMIC {
+    FORALL_NODE(id) {
+      state.id = INITS;
+      ND(x.id); ND(y.id);
+      ASSUME(0 <= x.id && x.id < X && 0 <= y.id && y.id < Y);
+      ND(xf.id); ND(yf.id);
+      ASSUME(0 <= xf.id && xf.id < X && 0 <= yf.id && yf.id < Y);
+    }
+  }
+
+  FORALL_DISTINCT_NODE_PAIR (id1,id2) {
+    ASSUME(x.id1 != x.id2 || y.id1 != y.id2);
+  }
+}
+
+//the safety property checked at the beginning of each round
+void SAFETY ()
+{
+  FORALL_DISTINCT_NODE_PAIR (id1,id2) {
+    ASSERT(x.id1 != x.id2 || y.id1 != y.id2);
+  }
+}
