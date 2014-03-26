@@ -41,7 +41,7 @@ echo "BRUNCH_STAT Rounds $ROUNDS"
 DARGS=$(echo "$1" | awk -F ':' '{print $5}' | sed 's/--/ --/g')
 
 TMPF=$(mktemp) && rm -f $TMPF
-daslc $DFILE --node $NODES --rounds $ROUNDS $DARGS --seq-out $TMPF.c
+daslc $DFILE --nodes $NODES --rounds $ROUNDS $DARGS --seq-out $TMPF.c
 #/usr/bin/time -f "BRUNCH_STAT CBMC-Time %e" cbmc $TMPF.c
 /usr/bin/time -f "BRUNCH_STAT CPLING-Time %e" ./cbmc-plingeling.sh $TMPF.c &> $TMPF.out
 cat $TMPF.out
