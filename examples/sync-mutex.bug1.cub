@@ -1,0 +1,152 @@
+(***************
+int Lock[N];
+int State[N];
+1. if (State[i] == 0) {
+     //if (forall j . j < i -> lock[j] = 0)
+     State[i] = 1;
+     //else
+     //State[i] = 0;
+1. } else if(State[i] == 1) {
+     if (forall j . j > i -> lock[j] = 0)
+       State[i] = 2;
+     else
+       State[i] = 1;
+1. } else if(State[i] == 2) {
+     if (nondet()) {
+       State[i] = 0; Lock[i] = 0;
+     }
+   }
+****************)
+
+type round = Out | In
+type trans = Zero | One | Two
+type loc = L1
+type state = S0 | S1 | S2
+var Round : round
+array Trans[proc] : trans
+array Loc[proc] : loc
+array State[proc] : state
+array Lock[proc] : bool
+
+(* initial state *)
+init (z) {
+  Round = Out && Trans[z] = Zero && Loc[z] = L1 && 
+    State[z] = S0 && Lock[z] = False
+}
+
+(* error state *)
+unsafe (x y) {
+  Round = Out && State[x] = S2 && State[y] = S2
+}
+
+(* a node starts entering the round -- this only happens when Round is
+   Out *)
+transition enter_round_local (i)
+requires { Round = Out }
+{
+  Trans[i] := One;
+}
+
+(* once all nodes have entered the round, Round becomes In *)
+transition enter_round_global (i)
+requires { Round = Out && Trans[i] = One && forall_other j. Trans[j] = One }
+{
+  Round := In;
+}
+
+(* when Round is In, any node can start executing its Round()
+   function, but only if no other node is also executing its Round()
+   function. *)
+transition start_trans (i)
+requires { Round = In && Trans[i] = One && forall_other j. Trans[j] <> Two }
+{
+  Trans[i] := Two;
+  Loc[i] := L1;
+}
+
+(* remain in S0 non-deterministically *)
+transition trans_00 (i)
+requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0 }
+{
+  State[i] := S0; Trans[i] := Zero; Loc[i] := L1;
+}
+
+(* go from S0 to S1 non-deterministically *)
+transition trans_01 (i)
+requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0 
+    (* the following commented out for the BUG *)
+    (* && forall_other j. (i < j || Lock[j] = False) *) 
+}
+{
+  State[i] := S1; Trans[i] := Zero; Loc[i] := L1; Lock[i] := True;
+}
+
+(* the following commented out for the BUG *)
+(* remain in S0 if a lower id node has the lock *)
+(*
+transition trans_02 (i)
+requires { Round = In && Trans[i] = One && Loc[i] = L1 }
+{
+State[j] := case
+    | i < j && Lock[i] = True && State[j] = S0 && 
+    Trans[j] = Two && Loc[j] = L1 : S0
+    | _ : State[j];
+Trans[j] := case
+    | i < j && Lock[i] = True && State[j] = S0 &&
+    Trans[j] = Two && Loc[j] = L1 : Zero
+    | _ : Trans[j];
+Loc[j] := case
+    | i < j && Lock[i] = True && State[j] = S0 &&
+    Trans[j] = Two && Loc[j] = L1 : L1
+    | _ : Loc[j];
+}
+*)
+
+(* move from S1 to S2 if no higher id node requested the lock *)
+transition trans_03 (i)
+requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S1 && 
+    forall_other j. (j < i || Lock[j] = False) }
+{
+  State[i] := S2; Trans[i] := Zero; Loc[i] := L1;
+}
+
+(* remain in S1 if a higher id node has the lock *)
+transition trans_04 (i)
+requires { Round = In && Trans[i] = One && Loc[i] = L1 }
+{
+  State[j] := case
+    | j < i && Lock[i] = True && State[j] = S1 && 
+      Trans[j] = Two && Loc[j] = L1 : S1
+    | _ : State[j];
+  Trans[j] := case
+    | j < i && Lock[i] = True && State[j] = S1 &&
+      Trans[j] = Two && Loc[j] = L1 : Zero
+    | _ : Trans[j];
+  Loc[j] := case
+    | j < i && Lock[i] = True && State[j] = S1 &&
+      Trans[j] = Two && Loc[j] = L1 : L1
+    | _ : Loc[j];
+}
+
+(* go from S2 to S0 non-deterministically *)
+transition trans_05 (i)
+requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S2 }
+{
+  State[i] := S0; Trans[i] := Zero; Loc[i] := L1; Lock[i] := False;
+}
+
+(* stay in S2 non-deterministically *)
+transition trans_06 (i)
+requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S2 }
+{
+  State[i] := S2; Trans[i] := Zero; Loc[i] := L1;
+}
+
+(* If all nodes are in Zero and Round is In, this means that all nodes
+   have executed their round function. In this case, Round becomes out
+   and we repeat the whole process. *)
+transition exit_round (i)
+requires { Round = In && Trans[i] = Zero && forall_other j. Trans[j] = Zero }
+{
+  Round := Out;
+}
