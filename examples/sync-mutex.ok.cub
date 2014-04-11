@@ -28,28 +28,35 @@ array Loc[proc] : loc
 array State[proc] : state
 array Lock[proc] : bool
 
+(* initial state *)
 init (z) {
   Round = Out && Trans[z] = Zero && Loc[z] = L1 && 
     State[z] = S0 && Lock[z] = False
 }
 
+(* error state *)
 unsafe (x y) {
   Round = Out && State[x] = S2 && State[y] = S2
 }
 
+(* a node starts entering the round -- this only happens when Round is
+   Out *)
 transition enter_round_local (i)
 requires { Round = Out }
-         
 {
   Trans[i] := One;
 }
 
+(* once all nodes have entered the round, Round becomes In *)
 transition enter_round_global (i)
 requires { Round = Out && Trans[i] = One && forall_other j. Trans[j] = One }
 {
   Round := In;
 }
 
+(* when Round is In, any node can start executing its Round()
+   function, but only if no other node is also executing its Round()
+   function. *)
 transition start_trans (i)
 requires { Round = In && Trans[i] = One && forall_other j. Trans[j] <> Two }
 {
@@ -72,6 +79,7 @@ requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0 &&
   State[i] := S1; Trans[i] := Zero; Loc[i] := L1; Lock[i] := True;
 }
 
+(* remain in S0 if a lower id node has the lock *)
 transition trans_02 (i)
 requires { Round = In && Trans[i] = One && Loc[i] = L1 }
 {
@@ -89,6 +97,7 @@ Loc[j] := case
     | _ : Loc[j];
 }
 
+(* move from S1 to S2 if no higher id node requested the lock *)
 transition trans_03 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S1 && 
     forall_other j. (j < i || Lock[j] = False) }
@@ -96,20 +105,21 @@ requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S1 &&
   State[i] := S2; Trans[i] := Zero; Loc[i] := L1;
 }
 
+(* remain in S1 if a higher id node has the lock *)
 transition trans_04 (i)
 requires { Round = In && Trans[i] = One && Loc[i] = L1 }
 {
-State[j] := case
+  State[j] := case
     | j < i && Lock[i] = True && State[j] = S1 && 
-    Trans[j] = Two && Loc[j] = L1 : S1
+      Trans[j] = Two && Loc[j] = L1 : S1
     | _ : State[j];
-Trans[j] := case
+  Trans[j] := case
     | j < i && Lock[i] = True && State[j] = S1 &&
-    Trans[j] = Two && Loc[j] = L1 : Zero
+      Trans[j] = Two && Loc[j] = L1 : Zero
     | _ : Trans[j];
-Loc[j] := case
+  Loc[j] := case
     | j < i && Lock[i] = True && State[j] = S1 &&
-    Trans[j] = Two && Loc[j] = L1 : L1
+      Trans[j] = Two && Loc[j] = L1 : L1
     | _ : Loc[j];
 }
 
@@ -127,10 +137,11 @@ requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S2 }
   State[i] := S2; Trans[i] := Zero; Loc[i] := L1;
 }
 
+(* If all nodes are in Zero and Round is In, this means that all nodes
+   have executed their round function. In this case, Round becomes out
+   and we repeat the whole process. *)
 transition exit_round (i)
 requires { Round = In && Trans[i] = Zero && forall_other j. Trans[j] = Zero }
 {
   Round := Out;
 }
-
-
