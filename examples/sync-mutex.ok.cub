@@ -83,17 +83,17 @@ requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0 &&
 transition trans_02 (i)
 requires { Round = In && Trans[i] = One && Loc[i] = L1 }
 {
-State[j] := case
+  State[j] := case
     | i < j && Lock[i] = True && State[j] = S0 && 
-    Trans[j] = Two && Loc[j] = L1 : S0
+      Trans[j] = Two && Loc[j] = L1 : S0
     | _ : State[j];
-Trans[j] := case
+  Trans[j] := case
     | i < j && Lock[i] = True && State[j] = S0 &&
-    Trans[j] = Two && Loc[j] = L1 : Zero
+      Trans[j] = Two && Loc[j] = L1 : Zero
     | _ : Trans[j];
-Loc[j] := case
+  Loc[j] := case
     | i < j && Lock[i] = True && State[j] = S0 &&
-    Trans[j] = Two && Loc[j] = L1 : L1
+      Trans[j] = Two && Loc[j] = L1 : L1
     | _ : Loc[j];
 }
 
