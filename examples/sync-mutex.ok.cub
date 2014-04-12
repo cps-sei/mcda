@@ -71,7 +71,7 @@ requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0 }
   State[i] := S0; Trans[i] := Zero; Loc[i] := L1;
 }
 
-(* go from S0 to S1 non-deterministically *)
+(* go from S0 to S1 if no lower id node has the lock *)
 transition trans_01 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0 && 
     forall_other j. (i < j || Lock[j] = False) }
