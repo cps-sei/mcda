@@ -31,9 +31,9 @@ var XMAX : int
 var YMAX : int
 var Round : round
 array InitOK[proc] : bool
+array State[proc] : state
 array Trans[proc] : trans
 array Loc[proc] : loc
-array State[proc] : state
 array LockX[proc] : int
 array LockY[proc] : int
 array LockXP[proc] : int
@@ -49,8 +49,7 @@ array YF[proc] : int (* final Y coordinate *)
 init (z) {
   0 < XMAX && 0 < YMAX && Round = CheckInit && 
     XMAX = 3 && YMAX = 3 &&
-    InitOK[z] = False && Trans[z] = Zero && 
-    Loc[z] = L1 && State[z] = S0 && 
+    InitOK[z] = False && State[z] = S0 && Trans[z] = Zero && Loc[z] = L1 &&  
     0 <= X[z] && X[z] <= XMAX && 0 <= Y[z] && Y[z] <= YMAX && 
     0 <= XF[z] && XF[z] <= XMAX && 0 <= YF[z] && YF[z] <= YMAX && 
     XP[z] = XMAX+1 && YP[z] = YMAX+1 &&
@@ -60,7 +59,9 @@ init (z) {
 
 (* error state *)
 unsafe (x y) {
-  Round = Out && State[x] = S3 && State[y] = S3
+  Round = Out && X[x] = X[y] && Y[x] = Y[y] && 
+    Trans[x] = Zero && Loc[x] = L1 &&
+    Trans[y] = Zero && Loc[y] = L1
 }
 
 (* check the initial condition - no two nodes must be on the same XY
@@ -68,9 +69,7 @@ unsafe (x y) {
 transition check_init_0 (i)
 requires { Round = CheckInit && InitOK[i] = False && 
     State[i] = S0 && Trans[i] = Zero && Loc[i] = L1 &&
-    forall_other j. (State[j] = S0 && Trans[j] = Zero && Loc[j] = L1) &&
-    forall_other j. (X[i] <> X[j] || Y[i] <> Y[j]) &&
-    forall_other j. (XF[i] <> XF[j] || YF[i] <> YF[j]) }
+    forall_other j. (State[j] <> S0 || Trans[j] <> Zero || Loc[j] <> L1 || X[i] <> X[j] || Y[i] <> Y[j]) }
 {
   InitOK[i] := True;
 }
@@ -88,14 +87,15 @@ requires { Round = CheckInit && InitOK[i] = True &&
 (* a node starts entering the round -- this only happens when Round is
    Out *)
 transition enter_round_local (i)
-requires { Round = Out }
+requires { Round = Out && Trans[i] = Zero && Loc[i] = L1 }
 {
   Trans[i] := One;
 }
 
 (* once all nodes have entered the round, Round becomes In *)
 transition enter_round_global (i)
-requires { Round = Out && Trans[i] = One && forall_other j. Trans[j] = One }
+requires { Round = Out && Trans[i] = One && Loc[i] = L1 && 
+    forall_other j. (Trans[j] = One && Loc[j] = L1) }
 {
   Round := In;
 }
@@ -104,10 +104,9 @@ requires { Round = Out && Trans[i] = One && forall_other j. Trans[j] = One }
    function, but only if no other node is also executing its Round()
    function. *)
 transition start_trans (i)
-requires { Round = In && Trans[i] = One && forall_other j. Trans[j] <> Two }
+requires { Round = In && Trans[i] = One && Loc[i] = L1 && forall_other j. (Trans[j] <> Two && Loc[j] = L1) }
 {
   Trans[i] := Two;
-  Loc[i] := L1;
 }
 
 (* remain in S0 if already at (XF,YF) *)
@@ -115,50 +114,43 @@ transition trans_S0_0 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0 &&
          X[i] = XF[i] && Y[i] = YF[i] }
 {
-  State[i] := S0; Trans[i] := Zero; Loc[i] := L1;
+  State[i] := S0; Trans[i] := Zero;
 }
 
 (* go from S0 to S1 -- case X < XF *)
 transition trans_S0_1 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0  && X[i] < XF[i] }
 {
-  State[i] := S1; Trans[i] := Zero; Loc[i] := L1; XP[i] := X[i] + 1;
+  State[i] := S1; Trans[i] := Zero; XP[i] := X[i] + 1;
 }
 
 (* go from S0 to S1 -- case X > XF *)
 transition trans_S0_2 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0  && XF[i] < X[i] }
 {
-  State[i] := S1; Trans[i] := Zero; Loc[i] := L1; XP[i] := X[i] - 1;
+  State[i] := S1; Trans[i] := Zero; XP[i] := X[i] - 1;
 }
 
 (* go from S0 to S1 -- case X = XF && Y < YF *)
 transition trans_S0_3 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0  && X[i] = XF[i] && Y[i] < YF[i] }
 {
-  State[i] := S1; Trans[i] := Zero; Loc[i] := L1; YP[i] := Y[i] + 1;
+  State[i] := S1; Trans[i] := Zero; YP[i] := Y[i] + 1;
 }
 
 (* go from S0 to S1 -- case X = XF && Y > YF *)
 transition trans_S0_4 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0  && X[i] = XF[i] && YF[i] < Y[i] }
 {
-  State[i] := S1; Trans[i] := Zero; Loc[i] := L1; YP[i] := Y[i] - 1;
-}
-
-(* go from S0 to S1 -- case X = XF && Y = YF *)
-transition trans_S0_5 (i)
-requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0  && X[i] = XF[i] && YF[i] = Y[i] }
-{
-  State[i] := S1; Trans[i] := Zero; Loc[i] := L1;
+  State[i] := S1; Trans[i] := Zero; YP[i] := Y[i] - 1;
 }
 
 (* go from S1 to S2 if no lower-id node has the lock *)
 transition trans_01 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S1 && 
-    forall_other j. (i < j || LockX[j] <> XP[i] || LockY[j] <> YP[i]) }
+    forall_other j. (LockX[j] <> XP[i] || LockY[j] <> YP[i]) }
 {
-  State[i] := S2; Trans[i] := Zero; Loc[i] := L1; LockXP[i] := XP[i]; LockYP[i] := YP[i];
+  State[i] := S2; Trans[i] := Zero; LockXP[i] := XP[i]; LockYP[i] := YP[i];
 }
 
 (* remain in S1 if a lower id node has the lock *)
@@ -166,17 +158,17 @@ transition trans_02 (i)
 requires { Round = In && Trans[i] = One && Loc[i] = L1 }
 {
   State[j] := case
-    | i < j && LockX[i] = XP[j] && LockY[i] = YP[j] && State[j] = S1 && 
+    | i <> j && LockX[i] = XP[j] && LockY[i] = YP[j] && State[j] = S1 && 
       Trans[j] = Two && Loc[j] = L1 : S1
     | _ : State[j];
   Trans[j] := case
-    | i < j && LockX[i] = XP[j] && LockY[i] = YP[j] && State[j] = S1 &&
+    | i <> j && LockX[i] = XP[j] && LockY[i] = YP[j] && State[j] = S1 &&
       Trans[j] = Two && Loc[j] = L1 : Zero
     | _ : Trans[j];
   Loc[j] := case
-    | i < j && LockX[i] = XP[j] && LockY[i] = YP[j] && State[j] = S1 &&
+    | i <> j && LockX[i] = XP[j] && LockY[i] = YP[j] && State[j] = S1 &&
       Trans[j] = Two && Loc[j] = L1 : L1
-    | _ : Loc[j];
+    | _ : L1;
 }
 
 (* move from S2 to S3 if no higher id node requested the lock *)
@@ -184,7 +176,7 @@ transition trans_03 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S2 && 
     forall_other j. (j < i || LockXP[j] <> XP[i] || LockYP[j] <> YP[i]) }
 {
-  State[i] := S3; Trans[i] := Zero; Loc[i] := L1;
+  State[i] := S3; Trans[i] := Zero;
 }
 
 (* remain in S2 if a higher id node has the lock *)
@@ -202,14 +194,14 @@ requires { Round = In && Trans[i] = One && Loc[i] = L1 }
   Loc[j] := case
     | j < i && LockXP[i] = XP[j] && LockYP[i] = YP[j] && State[j] = S2 &&
       Trans[j] = Two && Loc[j] = L1 : L1
-    | _ : Loc[j];
+    | _ : L1;
 }
 
 (* go from S3 to S0 non-deterministically *)
 transition trans_05 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S3 }
 {
-  State[i] := S0; Trans[i] := Zero; Loc[i] := L1;   
+  State[i] := S0; Trans[i] := Zero;
   X[i] := XP[i]; Y[i] := YP[i];
   LockX[i] := XP[i]; LockY[i] := YP[i];
   XP[i] := XMAX+1; YP[i] := YMAX+1;
@@ -220,14 +212,14 @@ requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S3 }
 transition trans_06 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S3 }
 {
-  State[i] := S3; Trans[i] := Zero; Loc[i] := L1;
+  State[i] := S3; Trans[i] := Zero;
 }
 
 (* If all nodes are in Zero and Round is In, this means that all nodes
    have executed their round function. In this case, Round becomes out
    and we repeat the whole process. *)
 transition exit_round (i)
-requires { Round = In && Trans[i] = Zero && forall_other j. Trans[j] = Zero }
+requires { Round = In && Trans[i] = Zero && Loc[i] = L1 && forall_other j. (Trans[j] = Zero && Loc[j] = L1) }
 {
   Round := Out;
 }
