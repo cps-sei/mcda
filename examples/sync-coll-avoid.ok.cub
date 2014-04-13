@@ -145,10 +145,13 @@ requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0  && X[i]
   State[i] := S1; Trans[i] := Zero; YP[i] := Y[i] - 1;
 }
 
-(* go from S1 to S2 if no lower-id node has the lock *)
+(* go from S1 to S2 if no other node has the lock or is requesting the lock *)
 transition trans_01 (i)
 requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S1 && 
-    forall_other j. (LockX[j] <> XP[i] || LockY[j] <> YP[i]) }
+    forall_other j. (LockX[j] <> XP[i] && LockXP[j] <> XP[i] || 
+                       LockX[j] <> XP[i] && LockYP[j] <> YP[i] || 
+                       LockY[j] <> YP[i] && LockXP[j] <> XP[i] ||
+                       LockY[j] <> YP[i] && LockYP[j] <> YP[i]) }
 {
   State[i] := S2; Trans[i] := Zero; LockXP[i] := XP[i]; LockYP[i] := YP[i];
 }
@@ -160,13 +163,19 @@ requires { Round = In && Trans[i] = One && Loc[i] = L1 }
   State[j] := case
     | i <> j && LockX[i] = XP[j] && LockY[i] = YP[j] && State[j] = S1 && 
       Trans[j] = Two && Loc[j] = L1 : S1
+    | i <> j && LockXP[i] = XP[j] && LockYP[i] = YP[j] && State[j] = S1 && 
+      Trans[j] = Two && Loc[j] = L1 : S1
     | _ : State[j];
   Trans[j] := case
     | i <> j && LockX[i] = XP[j] && LockY[i] = YP[j] && State[j] = S1 &&
       Trans[j] = Two && Loc[j] = L1 : Zero
+    | i <> j && LockXP[i] = XP[j] && LockYP[i] = YP[j] && State[j] = S1 &&
+      Trans[j] = Two && Loc[j] = L1 : Zero
     | _ : Trans[j];
   Loc[j] := case
     | i <> j && LockX[i] = XP[j] && LockY[i] = YP[j] && State[j] = S1 &&
+      Trans[j] = Two && Loc[j] = L1 : L1
+    | i <> j && LockXP[i] = XP[j] && LockYP[i] = YP[j] && State[j] = S1 &&
       Trans[j] = Two && Loc[j] = L1 : L1
     | _ : L1;
 }
