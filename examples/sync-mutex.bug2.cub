@@ -20,17 +20,15 @@ int State[N];
 
 type round = Out | In
 type trans = Zero | One | Two
-type loc = L1
 type state = S0 | S1 | S2
 var Round : round
 array Trans[proc] : trans
-array Loc[proc] : loc
 array State[proc] : state
 array Lock[proc] : bool
 
 (* initial state *)
 init (z) {
-  Round = Out && Trans[z] = Zero && Loc[z] = L1 && 
+  Round = Out && Trans[z] = Zero && 
     State[z] = S0 && Lock[z] = False
 }
 
@@ -61,85 +59,75 @@ transition start_trans (i)
 requires { Round = In && Trans[i] = One && forall_other j. Trans[j] <> Two }
 {
   Trans[i] := Two;
-  Loc[i] := L1;
 }
 
 (* remain in S0 non-deterministically *)
 transition trans_00 (i)
-requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0 }
+requires { Round = In && Trans[i] = Two && State[i] = S0 }
 {
-  State[i] := S0; Trans[i] := Zero; Loc[i] := L1;
+  State[i] := S0; Trans[i] := Zero;
 }
 
 (* go from S0 to S1 if no lower id node has the lock *)
 transition trans_01 (i)
-requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S0 && 
+requires { Round = In && Trans[i] = Two && State[i] = S0 && 
     forall_other j. (i < j || Lock[j] = False) }
 {
-  State[i] := S1; Trans[i] := Zero; Loc[i] := L1; Lock[i] := True;
+  State[i] := S1; Trans[i] := Zero; Lock[i] := True;
 }
 
 (* remain in S0 if a lower id node has the lock *)
 transition trans_02 (i)
-requires { Round = In && Trans[i] = One && Loc[i] = L1 }
+requires { Round = In && Trans[i] = One }
 {
   State[j] := case
     | i < j && Lock[i] = True && State[j] = S0 && 
-      Trans[j] = Two && Loc[j] = L1 : S0
+      Trans[j] = Two : S0
     | _ : State[j];
   Trans[j] := case
     | i < j && Lock[i] = True && State[j] = S0 &&
-      Trans[j] = Two && Loc[j] = L1 : Zero
+      Trans[j] = Two : Zero
     | _ : Trans[j];
-  Loc[j] := case
-    | i < j && Lock[i] = True && State[j] = S0 &&
-      Trans[j] = Two && Loc[j] = L1 : L1
-    | _ : Loc[j];
 }
 
 (* move from S1 to S2 if no higher id node requested the lock *)
 transition trans_03 (i)
-requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S1 
+requires { Round = In && Trans[i] = Two && State[i] = S1 
     (* the following commented out for the BUG *)
     (* && forall_other j. (j < i || Lock[j] = False) *)
 }
 {
-  State[i] := S2; Trans[i] := Zero; Loc[i] := L1;
+  State[i] := S2; Trans[i] := Zero;
 }
 
 (* the following commented out for the BUG *)
 (* remain in S1 if a higher id node has the lock *)
 (*
   transition trans_04 (i)
-  requires { Round = In && Trans[i] = One && Loc[i] = L1 }
+  requires { Round = In && Trans[i] = One }
   {
   State[j] := case
   | j < i && Lock[i] = True && State[j] = S1 && 
-  Trans[j] = Two && Loc[j] = L1 : S1
+  Trans[j] = Two : S1
   | _ : State[j];
   Trans[j] := case
   | j < i && Lock[i] = True && State[j] = S1 &&
-  Trans[j] = Two && Loc[j] = L1 : Zero
+  Trans[j] = Two : Zero
   | _ : Trans[j];
-  Loc[j] := case
-  | j < i && Lock[i] = True && State[j] = S1 &&
-  Trans[j] = Two && Loc[j] = L1 : L1
-  | _ : Loc[j];
-  }
 *)
 
 (* go from S2 to S0 non-deterministically *)
 transition trans_05 (i)
-requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S2 }
+requires { Round = In && Trans[i] = Two && State[i] = S2 }
 {
-  State[i] := S0; Trans[i] := Zero; Loc[i] := L1; Lock[i] := False;
+  State[i] := S0; Trans[i] := Zero; Lock[i] := False;
 }
 
 (* stay in S2 non-deterministically *)
 transition trans_06 (i)
-requires { Round = In && Trans[i] = Two && Loc[i] = L1 && State[i] = S2 }
+requires { Round = In && Trans[i] = Two && State[i] = S2 }
 {
-  State[i] := S2; Trans[i] := Zero; Loc[i] := L1;
+  State[i] := S2; Trans[i] := Zero;
 }
 
 (* If all nodes are in Zero and Round is In, this means that all nodes
