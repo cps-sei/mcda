@@ -4,7 +4,6 @@
 :smt (define-type trans (subrange 0 2))
 :smt (define-type state (subrange 0 2))
 
-:smt (define-type locations (subrange 1 4))
 :smt (define-type boolean (subrange 0 1))
 :smt (define N::nat)
 
