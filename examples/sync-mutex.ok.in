@@ -1,0 +1,279 @@
+:comment Tests  whether all entries of the array a are pairwise different
+:comment
+:comment int I,J,r;
+:comment int a [N];
+:comment I=1; J=0; r=0;
+:comment
+:comment 1.   while(I<=N && r==0){
+:comment       J=I-1;
+:comment 2.    while(J>=0 && r==0){
+:comment         if(a[i]==a[j])r=1;
+:comment         J--;
+:comment       }
+:comment 3.    I++;
+:comment      }
+:comment 4.  assert r=0 -> forall i, j (0<=i<j<=N  ->  a[j]!=a[i])
+:comment
+
+:comment int Lock[N];
+:comment int State[N];
+:comment int I,J;
+:comment 1. if (State[i] == 0) {
+:comment      r = 0; I = 0;
+:comment 2.   while(I < i && r == 0) {
+:comment        if(lock[I])
+:comment          r = 1;
+:comment      }
+:comment      if(r == 0)
+:comment        State[i] = 1;
+:comment      else
+:comment        State[i] = 0;
+:comment 1. } else if(State[i] == 1) {
+:comment      r = 0; I = i+1;
+:comment 3.   while(I < N && r == 0) {
+:comment        if(lock[I])
+:comment          r = 1;
+:comment      }
+:comment      if(r == 0)
+:comment        State[i] = 2;
+:comment      else
+:comment        State[i] = 1;
+:comment 1. } else if(State[i] == 2) {
+:comment      if (nondet()) {
+:comment        State[i] = 0; Lock[i] = 0;
+:comment      }
+:comment    }
+
+:smt (define-type round (subrange 0 1))
+:smt (define-type trans (subrange 0 2))
+:smt (define-type state (subrange 0 2))
+
+:smt (define-type locations (subrange 1 4))
+:smt (define-type boolean (subrange 0 1))
+:smt (define N::nat)
+
+:global Round round
+:local Trans trans
+:local State state
+:local Lock boolean
+
+:initial 
+:var x
+:cnj (= Round[x] 0) (= Trans[x] 0) (= State[x] 0) (= Lock[x] 0)
+
+:unsafe
+:var z1
+:var z2
+:cnj (= Round[z1] 0) (= State[z1] 2) (= State[z2] 2)
+
+:comment a node starts entering the round -- this only happens when
+:comment Round = 0
+:comment Round Trans State Lock
+:transition
+:var x
+:var j
+:guard (= Round[x] 0)
+:numcases 1
+:case
+:val 0
+:val 1
+:val State[j]
+:val Lock[j]
+
+:comment once all nodes have entered round, round becomes In
+:comment Round Trans State Lock
+:transition
+:var x
+:var j
+:guard (= Round[x] 0) (= Trans[x] 1)
+:uguard (= Trans[j] 1)
+:numcases 1
+:case
+:val 1
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+
+:comment when Round is In, any node can start executing its Round()
+:comment function, but only if no other node is also executing its
+:comment Round() function.
+:comment Round Trans State Lock
+:transition
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 1)
+:uguard (not (= Trans[j] 2))
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val 2
+:val State[j]
+:val Lock[j]
+:case
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+
+:comment remain in S0 non-deterministically
+:comment Round Trans State Lock
+:transition
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 0)
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val 0
+:val State[j]
+:val Lock[j]
+:case
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+
+:comment go from S0 to S1 if no lower id node has the lock
+:comment Round Trans State Lock
+:transition
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 0)
+:uguard (< x j)
+:uguard (= Lock[j] 0)
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val 0
+:val 1
+:val 1
+:case
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+
+:comment remain in S0 if a lower id node has the lock
+:comment Round Trans State Lock
+:transition
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 1) (= Lock[x] 1)
+:numcases 3
+:case (= x j)
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+:case (not (= x j)) (= Trans[j] 2) (= State[j] 0) (= Lock[j] 0)
+:val Round[j]
+:val 0
+:val State[j]
+:val Lock[j]
+:case
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+
+:comment go from S1 to S2 if no higher id node has the lock
+:comment Round Trans State Lock
+:transition
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 1) (= Lock[x] 1)
+:uguard (< j x)
+:uguard (= Lock[j] 0)
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val 0
+:val 2
+:val Lock[j]
+:case
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+
+:comment remain in S1 if a higher id node has the lock
+:comment Round Trans State Lock
+:transition
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 1) (= Lock[x] 1)
+:numcases 3
+:case (= x j)
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+:case (not (= x j)) (= Trans[j] 2) (= State[j] 1) (= Lock[j] 1)
+:val Round[j]
+:val 0
+:val State[j]
+:val Lock[j]
+:case
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+
+:comment go from S2 to S0 non-deterministically
+:comment Round Trans State Lock
+:transition
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 2) (= Lock[x] 1)
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val 0
+:val 0
+:val 0
+:case
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+
+:comment remain in S2 non-deterministically
+:comment Round Trans State Lock
+:transition
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 2) (= Lock[x] 1)
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val 0
+:val State[j]
+:val Lock[j]
+:case
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+
+:comment If all nodes are in Zero and Round is In, this means that all
+:comment nodes have executed their round function. In this case, Round
+:comment becomes out and we repeat the whole process.
+:comment Round Trans State Lock
+:transition
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 0)
+:uguard (= Trans[j] 0)
+:numcases 1
+:case
+:val 0
+:val Trans[j]
+:val State[j]
+:val Lock[j]
+
+:variable_redundancy_test
+:comment term_abstraction_list 1 N I[z1] 
+
+
+
+
