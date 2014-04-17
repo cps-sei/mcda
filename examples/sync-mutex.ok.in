@@ -73,7 +73,12 @@
 :var x
 :var j
 :guard (= Round[x] 0)
-:numcases 1
+:numcases 2
+:case (= x j)
+:val 0
+:val 1
+:val State[j]
+:val Lock[j]
 :case
 :val 0
 :val 1
@@ -87,7 +92,12 @@
 :var j
 :guard (= Round[x] 0) (= Trans[x] 1)
 :uguard (= Trans[j] 1)
-:numcases 1
+:numcases 2
+:case (= x j)
+:val 1
+:val Trans[j]
+:val State[j]
+:val Lock[j]
 :case
 :val 1
 :val Trans[j]
@@ -139,8 +149,7 @@
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 0)
-:uguard (< x j)
-:uguard (= Lock[j] 0)
+:uguard (or (< x j) (= Lock[j] 0))
 :numcases 2
 :case (= x j)
 :val Round[j]
@@ -182,8 +191,7 @@
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 1) (= Lock[x] 1)
-:uguard (< j x)
-:uguard (= Lock[j] 0)
+:uguard (or (< j x) (= Lock[j] 0))
 :numcases 2
 :case (= x j)
 :val Round[j]
@@ -264,7 +272,12 @@
 :var j
 :guard (= Round[x] 1) (= Trans[x] 0)
 :uguard (= Trans[j] 0)
-:numcases 1
+:numcases 2
+:case (= x j)
+:val 0
+:val Trans[j]
+:val State[j]
+:val Lock[j]
 :case
 :val 0
 :val Trans[j]
