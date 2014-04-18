@@ -33,7 +33,7 @@
 :comment check initial condition -- if XY[x] is different from XY[j]
 :comment for all other j then State[x] becomes 1
 :comment Round Trans State Lock
-:transition
+:transition t1
 :var x
 :var j
 :guard (= Round[x] 2) (= State[x] 0)
@@ -62,7 +62,7 @@
 :comment Round becomes 0 and State[x] becomes 0. this means that round
 :comment becomes 0 iff all distinct nodes have distinct XY
 :comment Round Trans State Lock
-:transition
+:transition t2
 :var x
 :var j
 :guard (= Round[x] 2) (= State[x] 1)
@@ -90,7 +90,7 @@
 :comment a node starts entering the round -- this only happens when
 :comment Round = 0
 :comment Round Trans State Lock
-:transition
+:transition t3
 :var x
 :var j
 :guard (= Round[x] 0)
@@ -116,7 +116,7 @@
 
 :comment once all nodes have entered round, round becomes In
 :comment Round Trans State Lock
-:transition
+:transition t4
 :var x
 :var j
 :guard (= Round[x] 0) (= Trans[x] 1)
@@ -145,7 +145,7 @@
 :comment function, but only if no other node is also executing its
 :comment Round() function.
 :comment Round Trans State Lock
-:transition
+:transition t5
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 1)
@@ -172,7 +172,7 @@
 
 :comment go from S0 to S1, setting XYP appropriately
 :comment Round Trans State Lock
-:transition
+:transition t6
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 0)
@@ -234,7 +234,7 @@
 
 :comment go from S1 to S2 if no other node has the lock on XP
 :comment Round Trans State Lock
-:transition
+:transition t7
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 1)
@@ -261,7 +261,7 @@
 
 :comment remain in S1 if another node has the lock on XP
 :comment Round Trans State Lock
-:transition
+:transition t8
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 1)
@@ -297,7 +297,7 @@
 :comment go from S2 to S3 if no higher id node has the lock or is
 :comment requesting the lock
 :comment Round Trans State Lock
-:transition
+:transition t9
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 2)
@@ -324,7 +324,7 @@
 
 :comment remain in S2 if a higher id node has the lock
 :comment Round Trans State Lock
-:transition
+:transition t10
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 1)
@@ -359,7 +359,7 @@
 
 :comment go from S3 to S0 non-deterministically
 :comment Round Trans State Lock
-:transition
+:transition t11
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 3)
@@ -385,7 +385,7 @@
 
 :comment remain in S3 non-deterministically
 :comment Round Trans State Lock
-:transition
+:transition t12
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 3)
@@ -413,7 +413,7 @@
 :comment nodes have executed their round function. In this case, Round
 :comment becomes out and we repeat the whole process.
 :comment Round Trans State Lock
-:transition
+:transition t13
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 0)
