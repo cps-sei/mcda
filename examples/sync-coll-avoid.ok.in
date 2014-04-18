@@ -3,7 +3,8 @@
 :comment value of 2 for round is used to check the initial condition
 :smt (define-type round (subrange 0 2))
 :smt (define-type trans (subrange 0 2))
-:smt (define-type state (subrange 0 3))
+:comment value of 4 for state is used to check the initial condition
+:smt (define-type state (subrange 0 4))
 :smt (define-type coord (tuple nat nat))
 
 :smt (define-type boolean (subrange 0 1))
@@ -36,13 +37,13 @@
 :transition t1
 :var x
 :var j
-:guard (= Round[x] 2) (= State[x] 0)
-:uguard (not (= XY[x] XY[j]))
+:guard (= Round[x] 2) (= Trans[x] 0) (= State[x] 0)
+:uguard (= Trans[j] 0) (not (= XY[x] XY[j]))
 :numcases 2
 :case (= x j)
 :val 2
 :val Trans[j]
-:val 1
+:val 4
 :val XY[j]
 :val XYP[j]
 :val XYF[j]
@@ -65,8 +66,8 @@
 :transition t2
 :var x
 :var j
-:guard (= Round[x] 2) (= State[x] 1)
-:uguard (= State[j] 1)
+:guard (= Round[x] 2) (= Trans[x] 0) (= State[x] 4)
+:uguard (= Trans[j] 0) (= State[j] 4)
 :numcases 2
 :case (= x j)
 :val 0
@@ -93,7 +94,7 @@
 :transition t3
 :var x
 :var j
-:guard (= Round[x] 0)
+:guard (= Round[x] 0) (= Trans[x] 0)
 :numcases 2
 :case (= x j)
 :val 0
