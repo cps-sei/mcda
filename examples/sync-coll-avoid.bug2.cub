@@ -152,17 +152,16 @@ requires { Round = In && Trans[i] = Two && State[i] = S0  && X[i] = XF[i] && YF[
 
 (* go from S1 to S2 if no other node has the lock or is requesting the lock *)
 transition trans_01 (i)
-requires { Round = In && Trans[i] = Two && State[i] = S1 (* && 
+requires { Round = In && Trans[i] = Two && State[i] = S1 && 
     forall_other j. (LockX0[j] <> XP[i] && LockXP0[j] <> XP[i] || 
                        LockX0[j] <> XP[i] && LockYP0[j] <> YP[i] || 
                        LockY0[j] <> YP[i] && LockXP0[j] <> XP[i] ||
-                       LockY0[j] <> YP[i] && LockYP0[j] <> YP[i]) *) }
+                       LockY0[j] <> YP[i] && LockYP0[j] <> YP[i]) }
 {
   State[i] := S2; Trans[i] := Zero; LockXP1[i] := XP[i]; LockYP1[i] := YP[i];
 }
 
 (* remain in S1 if a lower id node has the lock *)
-(*
 transition trans_02 (i)
 requires { Round = In && Trans[i] = One }
 {
@@ -179,17 +178,17 @@ requires { Round = In && Trans[i] = One }
       Trans[j] = Two : Zero
     | _ : Trans[j];
 }
-*)
 
 (* move from S2 to S3 if no higher id node requested the lock *)
 transition trans_03 (i)
-requires { Round = In && Trans[i] = Two && State[i] = S2 && 
-    forall_other j. (j < i || LockXP0[j] <> XP[i] || LockYP0[j] <> YP[i]) }
+requires { Round = In && Trans[i] = Two && State[i] = S2 (* && 
+    forall_other j. (j < i || LockXP0[j] <> XP[i] || LockYP0[j] <> YP[i]) *) }
 {
   State[i] := S3; Trans[i] := Zero;
 }
 
 (* remain in S2 if a higher id node has the lock *)
+(*
 transition trans_04 (i)
 requires { Round = In && Trans[i] = One }
 {
@@ -202,6 +201,7 @@ requires { Round = In && Trans[i] = One }
       Trans[j] = Two : Zero
     | _ : Trans[j];
 }
+*)
 
 (* go from S3 to S0 non-deterministically *)
 transition trans_05 (i)
