@@ -10,11 +10,12 @@
 :global Round round
 :local Trans trans
 :local State state
-:local Lock boolean
+:local Lock0 boolean
+:local Lock1 boolean
 
 :initial 
 :var x
-:cnj (= Round[x] 0) (= Trans[x] 0) (= State[x] 0) (= Lock[x] 0)
+:cnj (= Round[x] 0) (= Trans[x] 0) (= State[x] 0) (= Lock0[x] 0)
 
 :unsafe
 :var z1
@@ -22,8 +23,8 @@
 :cnj (= Round[z1] 0) (= State[z1] 2) (= State[z2] 2)
 
 :comment a node starts entering the round -- this only happens when
-:comment Round = 0
-:comment Round Trans State Lock
+:comment Round = 0. also copy Lock0 to Lock1.
+:comment Round Trans State Lock0
 :transition
 :var x
 :var j
@@ -33,15 +34,17 @@
 :val 0
 :val 1
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock0[j]
 :case
 :val 0
 :val 1
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock0[j]
 
 :comment once all nodes have entered round, round becomes In
-:comment Round Trans State Lock
+:comment Round Trans State Lock0
 :transition
 :var x
 :var j
@@ -52,17 +55,19 @@
 :val 1
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 :case
 :val 1
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 
 :comment when Round is In, any node can start executing its Round()
 :comment function, but only if no other node is also executing its
 :comment Round() function.
-:comment Round Trans State Lock
+:comment Round Trans State Lock0
 :transition
 :var x
 :var j
@@ -73,15 +78,17 @@
 :val Round[j]
 :val 2
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 :case
 :val Round[j]
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 
 :comment remain in S0 non-deterministically
-:comment Round Trans State Lock
+:comment Round Trans State Lock0
 :transition
 :var x
 :var j
@@ -91,138 +98,154 @@
 :val Round[j]
 :val 0
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 :case
 :val Round[j]
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 
 :comment go from S0 to S1 if no lower id node has the lock
-:comment Round Trans State Lock
+:comment Round Trans State Lock0
 :transition
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 0)
-:uguard (or (< x j) (= Lock[j] 0))
+:uguard (or (< x j) (= Lock0[j] 0))
 :numcases 2
 :case (= x j)
 :val Round[j]
 :val 0
 :val 1
+:val Lock0[j]
 :val 1
 :case
 :val Round[j]
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 
 :comment remain in S0 if a lower id node has the lock
-:comment Round Trans State Lock
+:comment Round Trans State Lock0
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 1) (= Lock[x] 1)
+:guard (= Round[x] 1) (= Trans[x] 1) (= Lock0[x] 1)
 :numcases 3
 :case (= x j)
 :val Round[j]
 :val Trans[j]
 :val State[j]
-:val Lock[j]
-:case (< x j) (= Trans[j] 2) (= State[j] 0) (= Lock[j] 0)
+:val Lock0[j]
+:val Lock1[j]
+:case (< x j) (= Trans[j] 2) (= State[j] 0) (= Lock0[j] 0)
 :val Round[j]
 :val 0
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 :case
 :val Round[j]
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 
 :comment go from S1 to S2 if no higher id node has the lock
-:comment Round Trans State Lock
+:comment Round Trans State Lock0
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 1) (= Lock[x] 1)
-:comment following line commented to cause BUG
-:comment :uguard (or (< j x) (= Lock[j] 0))
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 1) (= Lock0[x] 1)
+:comment following line commented out to create bug
+:comment :uguard (or (< j x) (= Lock0[j] 0))
 :numcases 2
 :case (= x j)
 :val Round[j]
 :val 0
 :val 2
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 :case
 :val Round[j]
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 
 :comment remain in S1 if a higher id node has the lock
-:comment Round Trans State Lock
+:comment Round Trans State Lock0
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 1) (= Lock[x] 1)
+:guard (= Round[x] 1) (= Trans[x] 1) (= Lock0[x] 1)
 :numcases 3
 :case (= x j)
 :val Round[j]
 :val Trans[j]
 :val State[j]
-:val Lock[j]
-:case (> x j) (= Trans[j] 2) (= State[j] 1) (= Lock[j] 1)
+:val Lock0[j]
+:val Lock1[j]
+:case (> x j) (= Trans[j] 2) (= State[j] 1) (= Lock0[j] 1)
 :val Round[j]
 :val 0
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 :case
 :val Round[j]
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 
 :comment go from S2 to S0 non-deterministically
-:comment Round Trans State Lock
+:comment Round Trans State Lock0
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 2) (= Lock[x] 1)
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 2) (= Lock0[x] 1)
 :numcases 2
 :case (= x j)
 :val Round[j]
 :val 0
 :val 0
+:val Lock0[j]
 :val 0
 :case
 :val Round[j]
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 
 :comment remain in S2 non-deterministically
-:comment Round Trans State Lock
+:comment Round Trans State Lock0
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 2) (= Lock[x] 1)
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 2) (= Lock0[x] 1)
 :numcases 2
 :case (= x j)
 :val Round[j]
 :val 0
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 :case
 :val Round[j]
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock0[j]
+:val Lock1[j]
 
 :comment If all nodes are in Zero and Round is In, this means that all
 :comment nodes have executed their round function. In this case, Round
-:comment becomes out and we repeat the whole process.
-:comment Round Trans State Lock
+:comment becomes out and we repeat the whole process. Also copy L1 to L0.
+:comment Round Trans State Lock0
 :transition
 :var x
 :var j
@@ -233,12 +256,14 @@
 :val 0
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock1[j]
+:val Lock1[j]
 :case
 :val 0
 :val Trans[j]
 :val State[j]
-:val Lock[j]
+:val Lock1[j]
+:val Lock1[j]
 
 :variable_redundancy_test
 :comment term_abstraction_list 1 N I[z1] 
