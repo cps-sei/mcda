@@ -20,11 +20,10 @@
 :local XYF coord
 :local LockXY coord
 :local LockXYP coord
-:local Lock boolean
 
 :initial 
 :var x
-:cnj (= Round[x] 2) (= Trans[x] 0) (= State[x] 0) (= Lock[x] 0) (<= (select XY[x] 1) XMAX) (<= (select XY[x] 2) YMAX) (<= (select XYF[x] 1) XMAX) (<= (select XYF[x] 2) YMAX) (= LockXY[x] XY[x]) (= LockXYP[x] (mk-tuple (+ 1 XMAX) (+ 1 YMAX)))
+:cnj (= Round[x] 2) (= Trans[x] 0) (= State[x] 0) (<= (select XY[x] 1) XMAX) (<= (select XY[x] 2) YMAX) (<= (select XYF[x] 1) XMAX) (<= (select XYF[x] 2) YMAX) (= LockXY[x] XY[x]) (= LockXYP[x] (mk-tuple (+ 1 XMAX) (+ 1 YMAX)))
 
 :unsafe
 :var z1
@@ -49,7 +48,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case
 :val 2
 :val Trans[j]
@@ -59,7 +57,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment check initial condition -- if State[x] is 1 for all x then
 :comment Round becomes 0 and State[x] becomes 0. this means that round
@@ -80,7 +77,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case
 :val 0
 :val Trans[j]
@@ -90,7 +86,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment a node starts entering the round -- this only happens when
 :comment Round = 0
@@ -109,7 +104,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case
 :val 0
 :val 1
@@ -119,7 +113,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment once all nodes have entered round, round becomes In
 :comment Round Trans State Lock
@@ -138,7 +131,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case
 :val 1
 :val Trans[j]
@@ -148,7 +140,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment when Round is In, any node can start executing its Round()
 :comment function, but only if no other node is also executing its
@@ -169,7 +160,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case
 :val Round[j]
 :val Trans[j]
@@ -179,7 +169,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment go from S0 to S1, setting XYP appropriately
 :comment Round Trans State Lock
@@ -197,7 +186,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case (= x j) (> (select XY[x] 1) (select XYF[x] 1))
 :val Round[j]
 :val 0
@@ -207,7 +195,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case (= x j) (= (select XY[x] 1) (select XYF[x] 1)) (< (select XY[x] 2) (select XYF[x] 2))
 :val Round[j]
 :val 0
@@ -217,7 +204,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case (= x j) (= (select XY[x] 1) (select XYF[x] 1)) (> (select XY[x] 2) (select XYF[x] 2))
 :val Round[j]
 :val 0
@@ -227,7 +213,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case (= x j) (= XY[x] XYF[x])
 :val Round[j]
 :val 0
@@ -237,7 +222,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case
 :val Round[j]
 :val Trans[j]
@@ -247,7 +231,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment go from S1 to S2 if no other node has the lock on XP
 :comment Round Trans State Lock
@@ -266,7 +249,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val XYP[j]
-:val Lock[j]
 :case
 :val Round[j]
 :val Trans[j]
@@ -276,7 +258,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment remain in S1 if another node has the lock on XP
 :comment Round Trans State Lock
@@ -294,7 +275,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case (not (= x j)) (= Trans[j] 2) (= State[j] 1) (= XYP[j] LockXY[x])
 :val Round[j]
 :val 0
@@ -304,7 +284,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case
 :val Round[j]
 :val Trans[j]
@@ -314,7 +293,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment go from S2 to S3 if no higher id node has the lock or is
 :comment requesting the lock
@@ -334,7 +312,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case
 :val Round[j]
 :val Trans[j]
@@ -344,7 +321,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment remain in S2 if a higher id node has the lock
 :comment Round Trans State Lock
@@ -362,7 +338,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case (> x j) (= Trans[j] 2) (= State[j] 2) (= LockXYP[x] LockXYP[j])
 :val Round[j]
 :val 0
@@ -372,7 +347,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case
 :val Round[j]
 :val Trans[j]
@@ -382,7 +356,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment go from S3 to S0 non-deterministically
 :comment Round Trans State Lock
@@ -400,7 +373,6 @@
 :val XYF[j]
 :val LockXYP[j]
 :val (update (update XYP[j] 1 (+ 1 XMAX)) 2 (+ 1 YMAX))
-:val 0
 :case
 :val Round[j]
 :val Trans[j]
@@ -410,7 +382,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment remain in S3 non-deterministically
 :comment Round Trans State Lock
@@ -428,7 +399,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case
 :val Round[j]
 :val Trans[j]
@@ -438,7 +408,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :comment If all nodes are in Zero and Round is In, this means that all
 :comment nodes have executed their round function. In this case, Round
@@ -459,7 +428,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 :case
 :val 0
 :val Trans[j]
@@ -469,7 +437,6 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:val Lock[j]
 
 :variable_redundancy_test
 :comment term_abstraction_list 1 N I[z1] 
