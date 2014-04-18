@@ -24,12 +24,12 @@
 
 :initial 
 :var x
-:cnj (= Round[x] 2) (= Trans[x] 0) (= State[x] 0) (= Lock[x] 0) (<= (select XY[x] 1) XMAX) (<= (select XY[x] 2) YMAX)
+:cnj (= Round[x] 2) (= Trans[x] 0) (= State[x] 0) (= Lock[x] 0) (<= (select XY[x] 1) XMAX) (<= (select XY[x] 2) YMAX) (<= (select XYF[x] 1) XMAX) (<= (select XYF[x] 2) YMAX) (= LockXY[x] XY[x]) (= LockXYP[x] (mk-tuple (+ 1 XMAX) (+ 1 YMAX)))
 
 :unsafe
 :var z1
 :var z2
-:cnj (= Round[z1] 0) (= State[z1] 3) (= State[z2] 3)
+:cnj (= Round[z1] 0) (= XY[z1] XY[z2])
 
 :comment check initial condition -- if XY[x] is different from XY[j]
 :comment for all other j then State[x] becomes 1
@@ -249,13 +249,13 @@
 :val LockXYP[j]
 :val Lock[j]
 
-:comment go from S1 to S2 if no lower id node has the lock
+:comment go from S1 to S2 if no lower id node has the lock on XP
 :comment Round Trans State Lock
 :transition
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 1)
-:uguard (or (< x j) (= Lock[j] 0))
+:uguard (or (<= x j) (not (= LockXY[j] XYP[x])))
 :numcases 2
 :case (= x j)
 :val Round[j]
@@ -265,8 +265,8 @@
 :val XYP[j]
 :val XYF[j]
 :val LockXY[j]
-:val LockXYP[j]
-:val 1
+:val XYP[j]
+:val Lock[j]
 :case
 :val Round[j]
 :val Trans[j]
@@ -283,7 +283,7 @@
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 1) (= Lock[x] 1)
+:guard (= Round[x] 1) (= Trans[x] 1)
 :numcases 3
 :case (= x j)
 :val Round[j]
@@ -295,7 +295,7 @@
 :val LockXY[j]
 :val LockXYP[j]
 :val Lock[j]
-:case (not (= x j)) (= Trans[j] 2) (= State[j] 1) (= Lock[j] 0)
+:case (< x j) (= Trans[j] 2) (= State[j] 1) (= XYP[j] LockXY[x])
 :val Round[j]
 :val 0
 :val State[j]
@@ -316,13 +316,14 @@
 :val LockXYP[j]
 :val Lock[j]
 
-:comment go from S2 to S3 if no higher id node has the lock
+:comment go from S2 to S3 if no higher id node has the lock or is
+:comment requesting the lock
 :comment Round Trans State Lock
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 2) (= Lock[x] 1)
-:uguard (or (< j x) (= Lock[j] 0))
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 2)
+:uguard (or (< j x) (and (not (= LockXY[j] LockXYP[x])) (not (= LockXYP[j] LockXYP[x]))))
 :numcases 2
 :case (= x j)
 :val Round[j]
@@ -350,7 +351,7 @@
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 1) (= Lock[x] 1)
+:guard (= Round[x] 1) (= Trans[x] 1)
 :numcases 3
 :case (= x j)
 :val Round[j]
@@ -362,7 +363,7 @@
 :val LockXY[j]
 :val LockXYP[j]
 :val Lock[j]
-:case (not (= x j)) (= Trans[j] 2) (= State[j] 2) (= Lock[j] 1)
+:case (> x j) (= Trans[j] 2) (= State[j] 2) (or (= LockXY[x] LockXYP[j]) (= LockXYP[x] LockXYP[j]))
 :val Round[j]
 :val 0
 :val State[j]
@@ -388,17 +389,17 @@
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 3) (= Lock[x] 1)
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 3)
 :numcases 2
 :case (= x j)
 :val Round[j]
 :val 0
 :val 0
-:val XY[j]
 :val XYP[j]
+:val (update (update XYP[j] 1 (+ 1 XMAX)) 2 (+ 1 YMAX))
 :val XYF[j]
-:val LockXY[j]
 :val LockXYP[j]
+:val (update (update XYP[j] 1 (+ 1 XMAX)) 2 (+ 1 YMAX))
 :val 0
 :case
 :val Round[j]
@@ -416,7 +417,7 @@
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 3) (= Lock[x] 1)
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 3)
 :numcases 2
 :case (= x j)
 :val Round[j]
