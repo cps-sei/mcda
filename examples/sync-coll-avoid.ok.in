@@ -30,6 +30,7 @@
 :var z1
 :var z2
 :cnj (= Round[z1] 0) (= XY[z1] XY[z2])
+:comment :cnj (= Trans[z1] 2) (= Trans[z2] 2)
 
 :comment check initial condition -- if XY[x] is different from XY[j]
 :comment for all other j then State[x] becomes 1
@@ -41,7 +42,7 @@
 :uguard (= Trans[j] 0) (not (= XY[x] XY[j]))
 :numcases 2
 :case (= x j)
-:val 2
+:val Round[j]
 :val Trans[j]
 :val 4
 :val XY[j]
@@ -49,8 +50,8 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case
-:val 2
+:case (not (= x j))
+:val Round[j]
 :val Trans[j]
 :val State[j]
 :val XY[j]
@@ -78,7 +79,7 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case
+:case (not (= x j))
 :val 0
 :val Trans[j]
 :val 0
@@ -105,9 +106,9 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case
+:case (not (= x j))
 :val 0
-:val 1
+:val Trans[j]
 :val State[j]
 :val XY[j]
 :val XYP[j]
@@ -132,7 +133,7 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case
+:case (not (= x j))
 :val 1
 :val Trans[j]
 :val State[j]
@@ -161,7 +162,7 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case
+:case (not (= x j))
 :val Round[j]
 :val Trans[j]
 :val State[j]
@@ -223,7 +224,7 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case
+:case (not (= x j))
 :val Round[j]
 :val Trans[j]
 :val State[j]
@@ -239,7 +240,7 @@
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 1)
-:uguard (or (= x j) (not (= LockXY[j] XYP[x])))
+:uguard (or (= x j) (and (not (= LockXY[j] XYP[x])) (not (= LockXYP[j] XYP[x]))))
 :numcases 2
 :case (= x j)
 :val Round[j]
@@ -250,7 +251,7 @@
 :val XYF[j]
 :val LockXY[j]
 :val XYP[j]
-:case
+:case (not (= x j))
 :val Round[j]
 :val Trans[j]
 :val State[j]
@@ -266,6 +267,7 @@
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 1)
+:uguard (= Round[j] 1)
 :numcases 3
 :case (= x j)
 :val Round[j]
@@ -276,7 +278,7 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case (not (= x j)) (= Trans[j] 2) (= State[j] 1) (= XYP[j] LockXY[x])
+:case (not (= x j)) (= Trans[j] 2) (= State[j] 1) (or (= XYP[j] LockXY[x]) (= XYP[j] LockXYP[x]))
 :val Round[j]
 :val 0
 :val State[j]
@@ -285,7 +287,7 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case
+:case (not (= x j)) (not (and (= Trans[j] 2) (= State[j] 1) (or (= XYP[j] LockXY[x]) (= XYP[j] LockXYP[x]))))
 :val Round[j]
 :val Trans[j]
 :val State[j]
@@ -313,7 +315,7 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case
+:case (not (= x j))
 :val Round[j]
 :val Trans[j]
 :val State[j]
@@ -348,7 +350,7 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case
+:case (not (= x j)) (not (and (> x j) (= Trans[j] 2) (= State[j] 2) (= LockXYP[x] LockXYP[j])))
 :val Round[j]
 :val Trans[j]
 :val State[j]
@@ -374,7 +376,7 @@
 :val XYF[j]
 :val LockXYP[j]
 :val (update (update XYP[j] 1 (+ 1 XMAX)) 2 (+ 1 YMAX))
-:case
+:case (not (= x j))
 :val Round[j]
 :val Trans[j]
 :val State[j]
@@ -400,7 +402,7 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case
+:case (not (= x j))
 :val Round[j]
 :val Trans[j]
 :val State[j]
@@ -429,7 +431,7 @@
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
-:case
+:case (not (= x j))
 :val 0
 :val Trans[j]
 :val State[j]
@@ -441,7 +443,3 @@
 
 :variable_redundancy_test
 :comment term_abstraction_list 1 N I[z1] 
-
-
-
-
