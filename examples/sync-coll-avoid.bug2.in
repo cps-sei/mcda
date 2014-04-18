@@ -1,0 +1,446 @@
+:comment OK mutex
+
+:comment value of 2 for round is used to check the initial condition
+:smt (define-type round (subrange 0 2))
+:smt (define-type trans (subrange 0 2))
+:comment value of 4 for state is used to check the initial condition
+:smt (define-type state (subrange 0 4))
+:smt (define-type coord (tuple nat nat))
+
+:smt (define-type boolean (subrange 0 1))
+:smt (define N::nat)
+
+:smt (define XMAX::nat 3)
+:smt (define YMAX::nat 3)
+
+:global Round round
+:local Trans trans
+:local State state
+:local XY coord
+:local XYP coord
+:local XYF coord
+:local LockXY coord
+:local LockXYP coord
+
+:initial 
+:var x
+:cnj (= Round[x] 2) (= Trans[x] 0) (= State[x] 0) (<= (select XY[x] 1) XMAX) (<= (select XY[x] 2) YMAX) (<= (select XYF[x] 1) XMAX) (<= (select XYF[x] 2) YMAX) (= LockXY[x] XY[x]) (= LockXYP[x] (mk-tuple (+ 1 XMAX) (+ 1 YMAX)))
+
+:unsafe
+:var z1
+:var z2
+:cnj (= Round[z1] 0) (= XY[z1] XY[z2])
+:comment :cnj (= Trans[z1] 2) (= Trans[z2] 2)
+
+:comment check initial condition -- if XY[x] is different from XY[j]
+:comment for all other j then State[x] becomes 1
+:comment Round Trans State Lock
+:transition t1
+:var x
+:var j
+:guard (= Round[x] 2) (= Trans[x] 0) (= State[x] 0)
+:uguard (= Trans[j] 0) (not (= XY[x] XY[j]))
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val Trans[j]
+:val 4
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j))
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment check initial condition -- if State[x] is 1 for all x then
+:comment Round becomes 0 and State[x] becomes 0. this means that round
+:comment becomes 0 iff all distinct nodes have distinct XY
+:comment Round Trans State Lock
+:transition t2
+:var x
+:var j
+:guard (= Round[x] 2) (= Trans[x] 0) (= State[x] 4)
+:uguard (= Trans[j] 0) (= State[j] 4)
+:numcases 2
+:case (= x j)
+:val 0
+:val Trans[j]
+:val 0
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j))
+:val 0
+:val Trans[j]
+:val 0
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment a node starts entering the round -- this only happens when
+:comment Round = 0
+:comment Round Trans State Lock
+:transition t3
+:var x
+:var j
+:guard (= Round[x] 0) (= Trans[x] 0)
+:numcases 2
+:case (= x j)
+:val 0
+:val 1
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j))
+:val 0
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment once all nodes have entered round, round becomes In
+:comment Round Trans State Lock
+:transition t4
+:var x
+:var j
+:guard (= Round[x] 0) (= Trans[x] 1)
+:uguard (= Trans[j] 1)
+:numcases 2
+:case (= x j)
+:val 1
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j))
+:val 1
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment when Round is In, any node can start executing its Round()
+:comment function, but only if no other node is also executing its
+:comment Round() function.
+:comment Round Trans State Lock
+:transition t5
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 1)
+:uguard (not (= Trans[j] 2))
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val 2
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j))
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment go from S0 to S1, setting XYP appropriately
+:comment Round Trans State Lock
+:transition t6
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 0)
+:numcases 6
+:case (= x j) (< (select XY[x] 1) (select XYF[x] 1))
+:val Round[j]
+:val 0
+:val 1
+:val XY[j]
+:val (update XY[j] 1 (+ 1 (select XY[j] 1)))
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (= x j) (> (select XY[x] 1) (select XYF[x] 1))
+:val Round[j]
+:val 0
+:val 1
+:val XY[j]
+:val (update XY[j] 1 (+ -1 (select XY[j] 1)))
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (= x j) (= (select XY[x] 1) (select XYF[x] 1)) (< (select XY[x] 2) (select XYF[x] 2))
+:val Round[j]
+:val 0
+:val 1
+:val XY[j]
+:val (update XY[j] 2 (+ 1 (select XY[j] 2)))
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (= x j) (= (select XY[x] 1) (select XYF[x] 1)) (> (select XY[x] 2) (select XYF[x] 2))
+:val Round[j]
+:val 0
+:val 1
+:val XY[j]
+:val (update XY[j] 2 (+ -1 (select XY[j] 2)))
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (= x j) (= XY[x] XYF[x])
+:val Round[j]
+:val 0
+:val 0
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j))
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment go from S1 to S2 if no other node has the lock on XP
+:comment Round Trans State Lock
+:transition t7
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 1)
+:uguard (or (= x j) (and (not (= LockXY[j] XYP[x])) (not (= LockXYP[j] XYP[x]))))
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val 0
+:val 2
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val XYP[j]
+:case (not (= x j))
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment remain in S1 if another node has the lock on XP
+:comment Round Trans State Lock
+:transition t8
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 1)
+:uguard (= Round[j] 1)
+:numcases 3
+:case (= x j)
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j)) (= Trans[j] 2) (= State[j] 1) (or (= XYP[j] LockXY[x]) (= XYP[j] LockXYP[x]))
+:val Round[j]
+:val 0
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j)) (not (and (= Trans[j] 2) (= State[j] 1) (or (= XYP[j] LockXY[x]) (= XYP[j] LockXYP[x]))))
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment go from S2 to S3 if no higher id node has the lock or is
+:comment requesting the lock
+:comment Round Trans State Lock
+:transition t9
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 2)
+:comment the next line commented out to introduce bug
+:comment :uguard (or (< j x) (not (= LockXYP[j] LockXYP[x])))
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val 0
+:val 3
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j))
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment remain in S2 if a higher id node has the lock
+:comment Round Trans State Lock
+:transition t10
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 1)
+:numcases 3
+:case (= x j)
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (> x j) (= Trans[j] 2) (= State[j] 2) (= LockXYP[x] LockXYP[j])
+:val Round[j]
+:val 0
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j)) (not (and (> x j) (= Trans[j] 2) (= State[j] 2) (= LockXYP[x] LockXYP[j])))
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment go from S3 to S0 non-deterministically
+:comment Round Trans State Lock
+:transition t11
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 3)
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val 0
+:val 0
+:val XYP[j]
+:val (update (update XYP[j] 1 (+ 1 XMAX)) 2 (+ 1 YMAX))
+:val XYF[j]
+:val LockXYP[j]
+:val (update (update XYP[j] 1 (+ 1 XMAX)) 2 (+ 1 YMAX))
+:case (not (= x j))
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment remain in S3 non-deterministically
+:comment Round Trans State Lock
+:transition t12
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 3)
+:numcases 2
+:case (= x j)
+:val Round[j]
+:val 0
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j))
+:val Round[j]
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:comment If all nodes are in Zero and Round is In, this means that all
+:comment nodes have executed their round function. In this case, Round
+:comment becomes out and we repeat the whole process.
+:comment Round Trans State Lock
+:transition t13
+:var x
+:var j
+:guard (= Round[x] 1) (= Trans[x] 0)
+:uguard (= Trans[j] 0)
+:numcases 2
+:case (= x j)
+:val 0
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:case (not (= x j))
+:val 0
+:val Trans[j]
+:val State[j]
+:val XY[j]
+:val XYP[j]
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+
+:variable_redundancy_test
+:comment term_abstraction_list 1 N I[z1] 
