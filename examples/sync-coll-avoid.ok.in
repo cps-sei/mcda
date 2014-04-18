@@ -249,13 +249,13 @@
 :val LockXYP[j]
 :val Lock[j]
 
-:comment go from S1 to S2 if no lower id node has the lock on XP
+:comment go from S1 to S2 if no other node has the lock on XP
 :comment Round Trans State Lock
 :transition
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 1)
-:uguard (or (<= x j) (not (= LockXY[j] XYP[x])))
+:uguard (or (= x j) (not (= LockXY[j] XYP[x])))
 :numcases 2
 :case (= x j)
 :val Round[j]
@@ -278,7 +278,7 @@
 :val LockXYP[j]
 :val Lock[j]
 
-:comment remain in S1 if a lower id node has the lock
+:comment remain in S1 if another node has the lock on XP
 :comment Round Trans State Lock
 :transition
 :var x
@@ -295,7 +295,7 @@
 :val LockXY[j]
 :val LockXYP[j]
 :val Lock[j]
-:case (< x j) (= Trans[j] 2) (= State[j] 1) (= XYP[j] LockXY[x])
+:case (not (= x j)) (= Trans[j] 2) (= State[j] 1) (= XYP[j] LockXY[x])
 :val Round[j]
 :val 0
 :val State[j]
@@ -323,7 +323,7 @@
 :var x
 :var j
 :guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 2)
-:uguard (or (< j x) (and (not (= LockXY[j] LockXYP[x])) (not (= LockXYP[j] LockXYP[x]))))
+:uguard (or (< j x) (not (= LockXYP[j] LockXYP[x])))
 :numcases 2
 :case (= x j)
 :val Round[j]
@@ -363,7 +363,7 @@
 :val LockXY[j]
 :val LockXYP[j]
 :val Lock[j]
-:case (> x j) (= Trans[j] 2) (= State[j] 2) (or (= LockXY[x] LockXYP[j]) (= LockXYP[x] LockXYP[j]))
+:case (> x j) (= Trans[j] 2) (= State[j] 2) (= LockXYP[x] LockXYP[j])
 :val Round[j]
 :val 0
 :val State[j]
