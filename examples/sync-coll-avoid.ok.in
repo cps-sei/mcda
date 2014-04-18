@@ -29,7 +29,7 @@
 :unsafe
 :var z1
 :var z2
-:cnj (= Round[z1] 0) (= State[z1] 1) (= State[z2] 1)
+:cnj (= Round[z1] 0) (= State[z1] 3) (= State[z2] 3)
 
 :comment check initial condition -- if XY[x] is different from XY[j]
 :comment for all other j then State[x] becomes 1
@@ -186,18 +186,8 @@
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 0) (= Lock[x] 1)
+:guard (= Round[x] 1) (= Trans[x] 2) (= State[x] 0)
 :numcases 6
-:case (= x j) (= XY[x] XYF[x])
-:val Round[j]
-:val 0
-:val 0
-:val XY[j]
-:val XYP[j]
-:val XYF[j]
-:val LockXY[j]
-:val LockXYP[j]
-:val Lock[j]
 :case (= x j) (< (select XY[x] 1) (select XYF[x] 1))
 :val Round[j]
 :val 0
@@ -234,6 +224,16 @@
 :val 1
 :val XY[j]
 :val (update XY[j] 2 (+ -1 (select XY[j] 2)))
+:val XYF[j]
+:val LockXY[j]
+:val LockXYP[j]
+:val Lock[j]
+:case (= x j) (= XY[x] XYF[x])
+:val Round[j]
+:val 0
+:val 0
+:val XY[j]
+:val XYP[j]
 :val XYF[j]
 :val LockXY[j]
 :val LockXYP[j]
