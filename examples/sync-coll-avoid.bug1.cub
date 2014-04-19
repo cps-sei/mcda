@@ -191,7 +191,7 @@ requires { Round = In && Trans[i] = Two && State[i] = S2 &&
 
 (* remain in S2 if a higher id node has the lock *)
 transition trans_04 (i)
-requires { Round = In && Trans[i] = One }
+requires { Round = In }
 {
   State[j] := case
     | j < i && LockXP0[i] = XP[j] && LockYP0[i] = YP[j] && State[j] = S2 && 
