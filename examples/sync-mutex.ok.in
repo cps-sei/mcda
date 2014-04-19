@@ -133,7 +133,7 @@
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 1) (= Lock0[x] 1)
+:guard (= Round[x] 1) (not (= Trans[x] 2)) (= Lock0[x] 1)
 :numcases 3
 :case (= x j)
 :val Round[j]
@@ -180,7 +180,7 @@
 :transition
 :var x
 :var j
-:guard (= Round[x] 1) (= Trans[x] 1) (= Lock0[x] 1)
+:guard (= Round[x] 1) (not (= Trans[x] 2)) (= Lock0[x] 1)
 :numcases 3
 :case (= x j)
 :val Round[j]
