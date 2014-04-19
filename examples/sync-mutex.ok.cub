@@ -79,7 +79,7 @@ requires { Round = In && Trans[i] = Two && State[i] = S0 &&
 
 (* remain in S0 if a lower id node has the lock *)
 transition trans_02 (i)
-requires { Round = In && Trans[i] = One }
+requires { Round = In && Trans[i] <> Two }
 {
   State[j] := case
     | i < j && Lock0[i] = True && State[j] = S0 && 
@@ -101,7 +101,7 @@ requires { Round = In && Trans[i] = Two && State[i] = S1 &&
 
 (* remain in S1 if a higher id node has the lock *)
 transition trans_04 (i)
-requires { Round = In && Trans[i] = One }
+requires { Round = In && Trans[i] <> Two }
 {
   State[j] := case
     | j < i && Lock0[i] = True && State[j] = S1 && 
