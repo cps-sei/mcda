@@ -40,9 +40,9 @@ function run_exp {
     OUT="$EXP.$TOOL.out"
     echo "running $TOOL on $EXP -- result will be in $OUT"
     if [ "$TOOL" == "mcmt" ]; then
-        mcmt $FILE.in &> $OUT
+        (time mcmt $FILE.in) &> $OUT
     elif [ "$TOOL" == "cubicle" ]; then
-        cubicle $FILE.cub &> $OUT
+        (time cubicle $FILE.cub) &> $OUT
     else
         echo "ERROR: tool $TOOL not supported"
         usage
