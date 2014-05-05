@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <iostream>
 
 extern "C" {
@@ -47,10 +48,32 @@ int main()
 
   std::cout << "connected to VREP successfully ...\n";
   std::cout << "scene has " << getNumObjects(clientId) << " objects\n";
+
+  sleep(2);
   simxInt model1 = loadModel(clientId);
   std::cout << "scene now has " << getNumObjects(clientId) << " objects\n";
+
+  sleep(2);
+
   simxInt model2 = loadModel(clientId);
   std::cout << "scene now has " << getNumObjects(clientId) << " objects\n";
   moveModel(clientId,model2,0.5,0.5,0);
+
+  sleep(2);
+  simxStartSimulation(clientId,simx_opmode_oneshot_wait);
+  std::cout << "simulation started ...\n";
+
+  sleep(5);
+  simxPauseSimulation(clientId,simx_opmode_oneshot_wait);
+  std::cout << "simulation paused ...\n";
+
+  sleep(2);
+  simxStartSimulation(clientId,simx_opmode_oneshot_wait);
+  std::cout << "simulation started ...\n";
+
+  sleep(5);
+  simxStopSimulation(clientId,simx_opmode_oneshot_wait);
+  std::cout << "simulation stopped ...\n";
+
   return 0;
 }
