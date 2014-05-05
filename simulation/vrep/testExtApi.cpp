@@ -49,6 +49,10 @@ int main()
   std::cout << "connected to VREP successfully ...\n";
   std::cout << "scene has " << getNumObjects(clientId) << " objects\n";
 
+  simxInt pingTime = -1;
+  simxGetPingTime(clientId,&pingTime);
+  std::cout << "ping time is " << pingTime << " ms\n";
+
   sleep(2);
   simxInt model1 = loadModel(clientId);
   std::cout << "scene now has " << getNumObjects(clientId) << " objects\n";
