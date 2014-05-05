@@ -29,6 +29,20 @@ simxInt loadModel(simxInt clientId)
   return baseHandle;
 }
 
+//delete a hexapod model specified by handle
+simxInt deleteModel(simxInt clientId,simxInt handle)
+{
+  //delete all children
+  for(;;) {
+    simxInt childHandle = 0;
+    simxGetObjectChild(clientId,handle,0,&childHandle,simx_opmode_oneshot_wait);
+    if(childHandle == -1) break;
+    simxRemoveObject(clientId,childHandle,simx_opmode_oneshot_wait);
+  }
+
+  return simxRemoveObject(clientId,handle,simx_opmode_oneshot_wait);
+}
+
 //move a model to a new position
 simxInt moveModel(simxInt clientId,simxInt model,simxFloat x,simxFloat y,simxFloat z)
 {
@@ -55,11 +69,13 @@ int main()
 
   sleep(2);
   simxInt model1 = loadModel(clientId);
+  std::cout << "created robot 1\n";
   std::cout << "scene now has " << getNumObjects(clientId) << " objects\n";
 
   sleep(2);
 
   simxInt model2 = loadModel(clientId);
+  std::cout << "created robot 2\n";
   std::cout << "scene now has " << getNumObjects(clientId) << " objects\n";
   moveModel(clientId,model2,0.5,0.5,0);
 
@@ -78,6 +94,14 @@ int main()
   sleep(5);
   simxStopSimulation(clientId,simx_opmode_oneshot_wait);
   std::cout << "simulation stopped ...\n";
+
+  sleep(5);
+  deleteModel(clientId,model1);
+  std::cout << "deleted robot1\n";
+
+  sleep(5);
+  deleteModel(clientId,model2);
+  std::cout << "deleted robot2\n";
 
   return 0;
 }
