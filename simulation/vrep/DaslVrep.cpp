@@ -1,8 +1,6 @@
 #include <iostream>
 #include "DaslVrep.hpp"
 
-#define IPADDR "127.0.0.1"
-#define PORT 19998
 #define MODEL "/home/chaki/stuff/vrep/V-REP_PRO_EDU_V3_1_0_64_Linux/models/robots/mobile/Quadricopter.ttm"
 
 /*********************************************************************/
@@ -13,9 +11,9 @@ DaslVrep::DaslVrep() : clientId(-1),xdim(-1),ydim(-1) {}
 /*********************************************************************/
 //connect to the simulator
 /*********************************************************************/
-simxInt DaslVrep::connect()
+simxInt DaslVrep::connect(simxChar *ipAddr,simxInt port)
 {
-  clientId = simxStart((simxChar*)IPADDR,PORT,true,true,2000,5);
+  clientId = simxStart(ipAddr,port,true,true,2000,5);
   return clientId;
 }
 
