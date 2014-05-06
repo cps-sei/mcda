@@ -17,6 +17,15 @@ private:
   //X and Y dimensions
   simxInt xdim,ydim;
 
+  //the floor center coordinate in VREP
+  simxFloat floorCenter[3];
+
+  //the min and max X and Y coordinates of the floor in VREP
+  simxFloat minx,maxx,miny,maxy;
+
+  //map from nodes to target locations
+  typedef std::map<simxInt,std::vector<simxFloat> > TargetMap;
+  TargetMap targetMap;
 
   //default constructor is private
   DaslVrep() {}

@@ -16,6 +16,30 @@ DaslVrep::DaslVrep(simxInt _xdim,simxInt _ydim)
 simxInt DaslVrep::connect(simxChar *ipAddr,simxInt port)
 {
   clientId = simxStart(ipAddr,port,true,true,2000,5);
+
+  //compute floor dimensions and coordinates
+
+  //get the floor object
+  simxInt floor;
+  simxGetObjectHandle(clientId,FLOOR,&floor,simx_opmode_oneshot_wait);
+  //std::cout << "floor handle = " << floor << '\n';
+
+  //get the floor center coordinate
+  simxGetObjectPosition(clientId,floor,sim_handle_parent,floorCenter,simx_opmode_oneshot_wait);
+
+  //std::cout << "floor coordinates are : (" << floorCenter[0] << "," 
+  //<< floorCenter[1] << "," << floorCenter[2] << ")\n";
+
+  simxGetObjectFloatParameter(clientId,floor,15,&minx,simx_opmode_oneshot_wait);
+  //std::cout << "floor min x = " << minx << '\n';
+  simxGetObjectFloatParameter(clientId,floor,18,&maxx,simx_opmode_oneshot_wait);
+  //std::cout << "floor max x = " << maxx << '\n';
+
+  simxGetObjectFloatParameter(clientId,floor,16,&miny,simx_opmode_oneshot_wait);
+  //std::cout << "floor min y = " << miny << '\n';
+  simxGetObjectFloatParameter(clientId,floor,19,&maxy,simx_opmode_oneshot_wait);
+  //std::cout << "floor max y = " << maxy << '\n';
+
   return clientId;
 }
 
@@ -95,29 +119,6 @@ simxInt DaslVrep::getPingTime()
 /*********************************************************************/
 simxInt DaslVrep::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
 {
-  //get the floor object
-  simxInt floor;
-  simxGetObjectHandle(clientId,FLOOR,&floor,simx_opmode_oneshot_wait);
-  //std::cout << "floor handle = " << floor << '\n';
-
-  //get the floor center coordinate
-  simxFloat floorCenter[3];
-  simxGetObjectPosition(clientId,floor,sim_handle_parent,floorCenter,simx_opmode_oneshot_wait);
-
-  //std::cout << "floor coordinates are : (" << floorCenter[0] << "," 
-  //<< floorCenter[1] << "," << floorCenter[2] << ")\n";
-
-  simxFloat minx = 0,maxx = 0,miny = 0,maxy = 0;
-  simxGetObjectFloatParameter(clientId,floor,15,&minx,simx_opmode_oneshot_wait);
-  //std::cout << "floor min x = " << minx << '\n';
-  simxGetObjectFloatParameter(clientId,floor,18,&maxx,simx_opmode_oneshot_wait);
-  //std::cout << "floor max x = " << maxx << '\n';
-
-  simxGetObjectFloatParameter(clientId,floor,16,&miny,simx_opmode_oneshot_wait);
-  //std::cout << "floor min y = " << miny << '\n';
-  simxGetObjectFloatParameter(clientId,floor,19,&maxy,simx_opmode_oneshot_wait);
-  //std::cout << "floor max y = " << maxy << '\n';
-
   //compute object coordinates
   simxFloat objCoord[3];
 
