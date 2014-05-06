@@ -7,7 +7,8 @@
 /*********************************************************************/
 //constructor
 /*********************************************************************/
-DaslVrep::DaslVrep() : clientId(-1),xdim(-1),ydim(-1) {}
+DaslVrep::DaslVrep(simxInt _xdim,simxInt _ydim) 
+  : clientId(-1),xdim(_xdim),ydim(_ydim) {}
 
 /*********************************************************************/
 //connect to the simulator

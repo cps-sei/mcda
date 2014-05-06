@@ -17,9 +17,13 @@ private:
   //X and Y dimensions
   simxInt xdim,ydim;
 
+
+  //default constructor is private
+  DaslVrep() {}
+
 public:
   //constructors
-  DaslVrep();
+  DaslVrep(simxInt _xdim,simxInt _ydim);
 
   simxInt connect(simxChar *ipAddr,simxInt port);
   void disconnect();
