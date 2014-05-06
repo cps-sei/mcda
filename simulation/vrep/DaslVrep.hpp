@@ -36,8 +36,6 @@ public:
 
   simxInt connect(simxChar *ipAddr,simxInt port);
   void disconnect();
-  void setXDim(simxInt _x);
-  void setYDim(simxInt _y);
   simxInt createNode();
   simxInt destroyNode(const simxInt nodeId);
   simxInt getNumObjects();
