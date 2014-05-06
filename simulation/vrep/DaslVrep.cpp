@@ -2,6 +2,7 @@
 #include "DaslVrep.hpp"
 
 #define MODEL "/home/chaki/stuff/vrep/V-REP_PRO_EDU_V3_1_0_64_Linux/models/robots/mobile/Quadricopter.ttm"
+#define FLOOR "20mX20m_floor#"
 
 /*********************************************************************/
 //constructor
@@ -94,7 +95,7 @@ simxInt DaslVrep::moveNode(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
 {
   //get the floor object
   simxInt floor;
-  simxGetObjectHandle(clientId,"20mX20m_floor#",&floor,simx_opmode_oneshot_wait);
+  simxGetObjectHandle(clientId,FLOOR,&floor,simx_opmode_oneshot_wait);
   //std::cout << "floor handle = " << floor << '\n';
 
   //get the floor center coordinate
