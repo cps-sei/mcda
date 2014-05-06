@@ -121,5 +121,30 @@ simxInt DaslVrep::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z
 }
 
 /*********************************************************************/
+/*********************************************************************/
+//start simulatiom
+/*********************************************************************/
+simxInt DaslVrep::startSim()
+{
+  return simxStartSimulation(clientId,simx_opmode_oneshot_wait);
+}
+
+/*********************************************************************/
+//pause simulatiom
+/*********************************************************************/
+simxInt DaslVrep::pauseSim()
+{
+  return simxPauseSimulation(clientId,simx_opmode_oneshot_wait);
+}
+
+/*********************************************************************/
+//stop simulatiom
+/*********************************************************************/
+simxInt DaslVrep::stopSim()
+{
+  return simxStopSimulation(clientId,simx_opmode_oneshot_wait);
+}
+
+/*********************************************************************/
 //end of file
 /*********************************************************************/

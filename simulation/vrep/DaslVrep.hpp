@@ -41,6 +41,9 @@ public:
   simxInt getNumObjects();
   simxInt getPingTime();
   simxInt placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
+  simxInt startSim();
+  simxInt pauseSim();
+  simxInt stopSim();
 };
 
 #endif //__DASL_VREP_HPP__
