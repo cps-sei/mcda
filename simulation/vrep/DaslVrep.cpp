@@ -92,33 +92,37 @@ simxInt DaslVrep::getPingTime()
 /*********************************************************************/
 simxInt DaslVrep::moveNode(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
 {
-  simxFloat coord[3];
-
   //get the floor object
   simxInt floor;
-  simxGetObjectHandle(clientId,"Floor#",&floor,simx_opmode_oneshot_wait);
-  std::cout << "floor handle = " << floor << '\n';
+  simxGetObjectHandle(clientId,"20mX20m_floor#",&floor,simx_opmode_oneshot_wait);
+  //std::cout << "floor handle = " << floor << '\n';
 
-  //get the floor coordinate
-  simxGetObjectPosition(clientId,floor,sim_handle_parent,coord,simx_opmode_oneshot_wait);
+  //get the floor center coordinate
+  simxFloat floorCenter[3];
+  simxGetObjectPosition(clientId,floor,sim_handle_parent,floorCenter,simx_opmode_oneshot_wait);
 
-  std::cout << "floor coordinates are : (" << coord[0] << "," 
-            << coord[1] << "," << coord[2] << ")\n";
+  //std::cout << "floor coordinates are : (" << floorCenter[0] << "," 
+  //<< floorCenter[1] << "," << floorCenter[2] << ")\n";
 
-  float fval;
-  simxGetObjectFloatParameter(clientId,floor,15,&fval,simx_opmode_oneshot_wait);
-  std::cout << "floor min x = " << fval << '\n';
-  simxGetObjectFloatParameter(clientId,floor,18,&fval,simx_opmode_oneshot_wait);
-  std::cout << "floor max x = " << fval << '\n';
+  simxFloat minx = 0,maxx = 0,miny = 0,maxy = 0;
+  simxGetObjectFloatParameter(clientId,floor,15,&minx,simx_opmode_oneshot_wait);
+  //std::cout << "floor min x = " << minx << '\n';
+  simxGetObjectFloatParameter(clientId,floor,18,&maxx,simx_opmode_oneshot_wait);
+  //std::cout << "floor max x = " << maxx << '\n';
 
-  simxGetObjectFloatParameter(clientId,floor,16,&fval,simx_opmode_oneshot_wait);
-  std::cout << "floor min y = " << fval << '\n';
-  simxGetObjectFloatParameter(clientId,floor,19,&fval,simx_opmode_oneshot_wait);
-  std::cout << "floor max y = " << fval << '\n';
+  simxGetObjectFloatParameter(clientId,floor,16,&miny,simx_opmode_oneshot_wait);
+  //std::cout << "floor min y = " << miny << '\n';
+  simxGetObjectFloatParameter(clientId,floor,19,&maxy,simx_opmode_oneshot_wait);
+  //std::cout << "floor max y = " << maxy << '\n';
 
-  coord[0] += x; coord[1] += y; coord[2] += z;
+  //compute object coordinates
+  simxFloat objCoord[3];
 
-  return simxSetObjectPosition(clientId,nodeId,sim_handle_parent,coord,
+  objCoord[0] = floorCenter[0] + minx + x * (maxx - minx); 
+  objCoord[1] = floorCenter[1] + miny + y * (maxy - miny); 
+  objCoord[2] = floorCenter[2] + z;
+
+  return simxSetObjectPosition(clientId,nodeId,sim_handle_parent,objCoord,
                                simx_opmode_oneshot_wait) != simx_error_noerror;
 }
 
