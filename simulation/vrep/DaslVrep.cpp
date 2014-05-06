@@ -88,10 +88,11 @@ simxInt DaslVrep::getPingTime()
 }
 
 /*********************************************************************/
-//move node specified by nodeId to coordinates (x,y,z). return 0 on
-//success and 1 on failure.
+//move node specified by nodeId instantaneoulsy to coordinates
+//(x,y,z). return 0 on success and 1 on failure. this function should
+//not be called while the simulation is running.
 /*********************************************************************/
-simxInt DaslVrep::moveNode(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
+simxInt DaslVrep::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
 {
   //get the floor object
   simxInt floor;

@@ -29,7 +29,7 @@ public:
   simxInt destroyNode(const simxInt nodeId);
   simxInt getNumObjects();
   simxInt getPingTime();
-  simxInt moveNode(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
+  simxInt placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
 };
 
 #endif //__DASL_VREP_HPP__
