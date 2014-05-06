@@ -13,12 +13,18 @@ class DaslVrep
 private:
   //the client id
   simxInt clientId;
+
+  //X and Y dimensions
+  simxInt xdim,ydim;
+
 public:
   //constructors
   DaslVrep();
 
   simxInt connect();
   void disconnect();
+  void setXDim(simxInt _x);
+  void setYDim(simxInt _y);
   simxInt createNode();
   simxInt destroyNode(const simxInt nodeId);
   simxInt getNumObjects();
