@@ -39,9 +39,6 @@ private:
   //debug flag
   bool debug;
 
-  //default constructor is private
-  DaslVrep() {}
-
   //return true if the argument node is close enough to its target
   bool nodeAtTarget(simxInt nodeId);
 
@@ -51,6 +48,7 @@ private:
 
 public:
   //constructors
+  DaslVrep() {}
   DaslVrep(simxInt _xdim,simxInt _ydim);
 
   simxInt connect(simxChar *ipAddr,simxInt port);
