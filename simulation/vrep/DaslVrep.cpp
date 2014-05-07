@@ -143,8 +143,8 @@ simxInt DaslVrep::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z
   //compute object coordinates
   simxFloat objCoord[3];
 
-  objCoord[0] = floorCenter[0] + minx + x * (maxx - minx); 
-  objCoord[1] = floorCenter[1] + miny + y * (maxy - miny); 
+  objCoord[0] = floorCenter[0] + minx + x / xdim * (maxx - minx); 
+  objCoord[1] = floorCenter[1] + miny + y / ydim * (maxy - miny); 
   objCoord[2] = floorCenter[2] + z;
 
   return simxSetObjectPosition(clientId,nodeId,sim_handle_parent,objCoord,
