@@ -1,8 +1,15 @@
 #include <iostream>
+#include <math.h>
 #include "DaslVrep.hpp"
 
 #define MODEL "/home/chaki/stuff/vrep/V-REP_PRO_EDU_V3_1_0_64_Linux/models/robots/mobile/Quadricopter.ttm"
 #define FLOOR "20mX20m_floor#"
+
+//distance tolerance when determining if a node has reached a location.
+#define DIST_TOL 0.1
+
+//increment by which the target is shifted
+#define TARGET_INCR 0.5
 
 /*********************************************************************/
 //constructor
@@ -140,6 +147,8 @@ simxInt DaslVrep::getPingTime()
 /*********************************************************************/
 simxInt DaslVrep::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
 {
+  std::cout << "placing handle " << nodeId << " at (" << x << "," << y << "," << z << ")\n";
+
   //compute object coordinates
   simxFloat objCoord[3];
 
@@ -152,6 +161,107 @@ simxInt DaslVrep::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z
 }
 
 /*********************************************************************/
+//return true if the argument node is close enough to its target
+/*********************************************************************/
+bool DaslVrep::nodeAtTarget(simxInt nodeId)
+{
+  simxFloat currPos[3];
+  simxGetObjectPosition(clientId,nodeId,sim_handle_parent,currPos,simx_opmode_oneshot_wait);
+
+  //check if the current position is within tolerance of target
+  for(int i = 0;i < 3;++i) {
+    std::cout << "node[" << i << "] = " << currPos[i]
+              << "\t\ttarget[" << i << "] = " << node2TargetPos[nodeId][i] << '\n';
+    if(fabsf(currPos[i] - node2TargetPos[nodeId][i]) > DIST_TOL) return false;
+  }
+
+  return true;
+}
+
+/*********************************************************************/
+//return true if the argument node's target is close enough to its
+//waypoint
+/*********************************************************************/
+bool DaslVrep::targetAtWaypoint(simxInt nodeId)
+{
+  for(int i = 0;i < 3;++i)
+    if(fabsf(node2TargetPos[nodeId][i] - node2Waypoint[nodeId][i]) > DIST_TOL) return false;
+
+  return true;
+}
+
+/*********************************************************************/
+//move a node to specified coordinate -- return 0 if reached
+//destination, -1 if there is an error, and 1 otherwise. an
+//application should call this method repeatedly until it returns
+//0. there should be some delay between successive calls.
+/*********************************************************************/
+simxInt DaslVrep::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
+{
+  //if the waypoint has not been set, set it and move the waypoint
+  TargetMap::iterator it = node2Waypoint.find(nodeId);
+
+  if(it == node2Waypoint.end()) {
+    //set waypoint of node
+    node2Waypoint[nodeId].resize(3);
+    node2Waypoint[nodeId][0] = floorCenter[0] + minx + x / xdim * (maxx - minx); 
+    node2Waypoint[nodeId][1] = floorCenter[1] + miny + y / ydim * (maxy - miny); 
+    node2Waypoint[nodeId][2] = floorCenter[2] + z;
+
+    std::cout << "waypoint = (" << node2Waypoint[nodeId][0] << ","
+              << node2Waypoint[nodeId][1] << ","
+              << node2Waypoint[nodeId][2] << ")\n";
+
+    //set current position of node target
+    simxFloat currPos[3];
+    simxGetObjectPosition(clientId,node2Targets[nodeId],sim_handle_parent,currPos,
+                          simx_opmode_oneshot_wait);
+    node2TargetPos[nodeId].resize(3);
+    for(int i = 0;i < 3;++i) node2TargetPos[nodeId][i] = currPos[i];
+
+    std::cout << "target = (" << node2TargetPos[nodeId][0] << ","
+              << node2TargetPos[nodeId][1] << ","
+              << node2TargetPos[nodeId][2] << ")\n";
+  }
+
+  if(!nodeAtTarget(nodeId)) {
+    std::cout << "node not yet at target ...\n";
+    return 1;
+  }
+
+  std::cout << "node already at target ...\n";
+
+  if(targetAtWaypoint(nodeId)) {
+    std::cout << "target at waypoint ... done ...\n";
+    //clear the waypoint and target positions and return 0
+    node2Waypoint.erase(nodeId);
+    node2TargetPos.erase(nodeId);
+    return 0;
+  }
+
+  std::cout << "target not at waypoint ...\n";
+
+  //move target closer to the waypoint and return 1
+  simxFloat currPos[3];
+  for(int i = 0;i < 3;++i) {
+    if(node2TargetPos[nodeId][i] < node2Waypoint[nodeId][i] - TARGET_INCR)
+      currPos[i] = node2TargetPos[nodeId][i] + TARGET_INCR;
+    else if(node2TargetPos[nodeId][i] > node2Waypoint[nodeId][i] + TARGET_INCR)
+      currPos[i] = node2TargetPos[nodeId][i] - TARGET_INCR;
+    else
+      currPos[i] = node2Waypoint[nodeId][i];
+    node2TargetPos[nodeId][i] = currPos[i];
+  }
+  simxSetObjectPosition(clientId,node2Targets[nodeId],sim_handle_parent,currPos,
+                        simx_opmode_oneshot_wait);
+  std::cout << "new target = (" << node2TargetPos[nodeId][0] << ","
+            << node2TargetPos[nodeId][1] << ","
+            << node2TargetPos[nodeId][2] << ")\n";
+
+
+  return 1;
+}
+
 /*********************************************************************/
 //start simulatiom
 /*********************************************************************/

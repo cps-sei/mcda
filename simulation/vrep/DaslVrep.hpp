@@ -1,6 +1,9 @@
 #ifndef __DASL_VREP_HPP__
 #define __DASL_VREP_HPP__
 
+#include <map>
+#include <vector>
+
 extern "C" {
 #include "extApi.h"
 }
@@ -26,12 +29,22 @@ private:
   //map from nodes created to their target objects
   std::map<simxInt,simxInt> node2Targets;
 
-  //map from nodes to target locations
+  //map from nodes to waypoint locations
   typedef std::map<simxInt,std::vector<simxFloat> > TargetMap;
-  TargetMap targetMap;
+  TargetMap node2Waypoint;
+
+  //map from nodes to the position of their targets
+  TargetMap node2TargetPos;
 
   //default constructor is private
   DaslVrep() {}
+
+  //return true if the argument node is close enough to its target
+  bool nodeAtTarget(simxInt nodeId);
+
+  //return true if the argument node's target is close enought to its
+  //waypoint
+  bool targetAtWaypoint(simxInt nodeId);
 
 public:
   //constructors
@@ -44,6 +57,7 @@ public:
   simxInt getNumObjects();
   simxInt getPingTime();
   simxInt placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
+  simxInt moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
   simxInt startSim();
   simxInt pauseSim();
   simxInt stopSim();
