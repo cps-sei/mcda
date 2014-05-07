@@ -39,6 +39,8 @@ int main(int argc,char **argv)
     dv.startSim();
     while(dv.moveNodeTo(node1,0,10,1));
     while(dv.moveNodeTo(node1,10,10,1));
+    while(dv.moveNodeTo(node1,10,0,1));
+    while(dv.moveNodeTo(node1,0,0,1));
 
     dv.stopSim();
     dv.destroyNode(node1);
