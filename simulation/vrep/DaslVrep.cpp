@@ -9,7 +9,7 @@
 #define DIST_TOL 0.1
 
 //increment by which the target is shifted
-#define TARGET_INCR 0.5
+#define TARGET_INCR 0.25
 
 /*********************************************************************/
 //constructor
@@ -170,8 +170,8 @@ bool DaslVrep::nodeAtTarget(simxInt nodeId)
 
   //check if the current position is within tolerance of target
   for(int i = 0;i < 3;++i) {
-    std::cout << "node[" << i << "] = " << currPos[i]
-              << "\t\ttarget[" << i << "] = " << node2TargetPos[nodeId][i] << '\n';
+    //std::cout << "node[" << i << "] = " << currPos[i]
+    //<< "\t\ttarget[" << i << "] = " << node2TargetPos[nodeId][i] << '\n';
     if(fabsf(currPos[i] - node2TargetPos[nodeId][i]) > DIST_TOL) return false;
   }
 
