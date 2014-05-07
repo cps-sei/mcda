@@ -14,8 +14,8 @@
 /*********************************************************************/
 //constructor
 /*********************************************************************/
-DaslVrep::DaslVrep(simxInt _xdim,simxInt _ydim) 
-  : clientId(-1),xdim(_xdim),ydim(_ydim) {}
+DaslVrep::DaslVrep(simxInt _xdim,simxInt _ydim)
+  : clientId(-1),xdim(_xdim),ydim(_ydim),debug(false) {}
 
 /*********************************************************************/
 //connect to the simulator
@@ -29,23 +29,23 @@ simxInt DaslVrep::connect(simxChar *ipAddr,simxInt port)
   //get the floor object
   simxInt floor;
   simxGetObjectHandle(clientId,FLOOR,&floor,simx_opmode_oneshot_wait);
-  //std::cout << "floor handle = " << floor << '\n';
+  if(debug) std::cout << "floor handle = " << floor << '\n';
 
   //get the floor center coordinate
   simxGetObjectPosition(clientId,floor,sim_handle_parent,floorCenter,simx_opmode_oneshot_wait);
 
-  //std::cout << "floor coordinates are : (" << floorCenter[0] << "," 
-  //<< floorCenter[1] << "," << floorCenter[2] << ")\n";
+  if(debug) std::cout << "floor coordinates are : (" << floorCenter[0] << "," 
+                      << floorCenter[1] << "," << floorCenter[2] << ")\n";
 
   simxGetObjectFloatParameter(clientId,floor,15,&minx,simx_opmode_oneshot_wait);
-  //std::cout << "floor min x = " << minx << '\n';
+  if(debug) std::cout << "floor min x = " << minx << '\n';
   simxGetObjectFloatParameter(clientId,floor,18,&maxx,simx_opmode_oneshot_wait);
-  //std::cout << "floor max x = " << maxx << '\n';
+  if(debug) std::cout << "floor max x = " << maxx << '\n';
 
   simxGetObjectFloatParameter(clientId,floor,16,&miny,simx_opmode_oneshot_wait);
-  //std::cout << "floor min y = " << miny << '\n';
+  if(debug) std::cout << "floor min y = " << miny << '\n';
   simxGetObjectFloatParameter(clientId,floor,19,&maxy,simx_opmode_oneshot_wait);
-  //std::cout << "floor max y = " << maxy << '\n';
+  if(debug) std::cout << "floor max y = " << maxy << '\n';
 
   return clientId;
 }
@@ -59,6 +59,11 @@ void DaslVrep::disconnect()
 }
 
 /*********************************************************************/
+//set the debug flag
+/*********************************************************************/
+void DaslVrep::setDebug(const bool d) { debug = d; }
+
+/*********************************************************************/
 //create a node and return its handle. return -1 on failure.
 /*********************************************************************/
 simxInt DaslVrep::createNode()
@@ -67,7 +72,7 @@ simxInt DaslVrep::createNode()
   if(simxLoadModel(clientId,MODEL,0,&nodeId,simx_opmode_oneshot_wait) != simx_error_noerror)
     return -1;
 
-  std::cout << "newly created node id = " << nodeId << '\n';
+  if(debug) std::cout << "newly created node id = " << nodeId << '\n';
 
   //update the node2Targets maps
 
@@ -77,8 +82,8 @@ simxInt DaslVrep::createNode()
   simxGetObjectGroupData(clientId,sim_object_dummy_type,2,&handlesCount,&handles,
                          &parentsCount,&parents,NULL,NULL,NULL,NULL,simx_opmode_oneshot_wait);
 
-  std::cout << "dummy objects obtained = " << handlesCount << '\n';
-  std::cout << "parent objects obtained = " << parentsCount << '\n';
+  if(debug) std::cout << "dummy objects obtained = " << handlesCount << '\n';
+  if(debug) std::cout << "parent objects obtained = " << parentsCount << '\n';
 
   simxInt nodeBase = -1;
   for(simxInt i = 0;i < handlesCount;++i) {
@@ -87,12 +92,12 @@ simxInt DaslVrep::createNode()
       break;
     }
   }
-  std::cout << "node base handle = " << nodeBase << '\n';
+  if(debug) std::cout << "node base handle = " << nodeBase << '\n';
 
   //find the target sub-object of the base sub-object
   simxInt nodeTarget = -1;
   simxGetObjectChild(clientId,nodeBase,0,&nodeTarget,simx_opmode_oneshot_wait);
-  std::cout << "node target handle = " << nodeTarget << '\n';
+  if(debug) std::cout << "node target handle = " << nodeTarget << '\n';
 
   node2Targets[nodeId] = nodeTarget;
 
@@ -147,7 +152,7 @@ simxInt DaslVrep::getPingTime()
 /*********************************************************************/
 simxInt DaslVrep::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
 {
-  //std::cout << "placing handle " << nodeId << " at (" << x << "," << y << "," << z << ")\n";
+  if(debug) std::cout << "placing handle " << nodeId << " at (" << x << "," << y << "," << z << ")\n";
 
   //compute object coordinates
   simxFloat objCoord[3];
@@ -170,8 +175,8 @@ bool DaslVrep::nodeAtTarget(simxInt nodeId)
 
   //check if the current position is within tolerance of target
   for(int i = 0;i < 3;++i) {
-    //std::cout << "node[" << i << "] = " << currPos[i]
-    //<< "\t\ttarget[" << i << "] = " << node2TargetPos[nodeId][i] << '\n';
+    if(debug) std::cout << "node[" << i << "] = " << currPos[i]
+                        << "\t\ttarget[" << i << "] = " << node2TargetPos[nodeId][i] << '\n';
     if(fabsf(currPos[i] - node2TargetPos[nodeId][i]) > DIST_TOL) return false;
   }
 
@@ -208,9 +213,9 @@ simxInt DaslVrep::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
     node2Waypoint[nodeId][1] = floorCenter[1] + miny + y / ydim * (maxy - miny); 
     node2Waypoint[nodeId][2] = floorCenter[2] + z;
 
-    //std::cout << "waypoint = (" << node2Waypoint[nodeId][0] << ","
-    //<< node2Waypoint[nodeId][1] << ","
-    //<< node2Waypoint[nodeId][2] << ")\n";
+    if(debug) std::cout << "waypoint = (" << node2Waypoint[nodeId][0] << ","
+                        << node2Waypoint[nodeId][1] << ","
+                        << node2Waypoint[nodeId][2] << ")\n";
 
     //set current position of node target
     simxFloat currPos[3];
@@ -219,27 +224,27 @@ simxInt DaslVrep::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
     node2TargetPos[nodeId].resize(3);
     for(int i = 0;i < 3;++i) node2TargetPos[nodeId][i] = currPos[i];
 
-    //std::cout << "target = (" << node2TargetPos[nodeId][0] << ","
-    //<< node2TargetPos[nodeId][1] << ","
-    //<< node2TargetPos[nodeId][2] << ")\n";
+    if(debug) std::cout << "target = (" << node2TargetPos[nodeId][0] << ","
+                        << node2TargetPos[nodeId][1] << ","
+                        << node2TargetPos[nodeId][2] << ")\n";
   }
 
   if(!nodeAtTarget(nodeId)) {
-    //std::cout << "node not yet at target ...\n";
+    if(debug) std::cout << "node not yet at target ...\n";
     return 1;
   }
 
-  //std::cout << "node already at target ...\n";
+  if(debug) std::cout << "node already at target ...\n";
 
   if(targetAtWaypoint(nodeId)) {
-    //std::cout << "target at waypoint ... done ...\n";
+    if(debug) std::cout << "target at waypoint ... done ...\n";
     //clear the waypoint and target positions and return 0
     node2Waypoint.erase(nodeId);
     node2TargetPos.erase(nodeId);
     return 0;
   }
 
-  //std::cout << "target not at waypoint ...\n";
+  if(debug) std::cout << "target not at waypoint ...\n";
 
   //move target closer to the waypoint and return 1
   simxFloat currPos[3];
@@ -255,9 +260,9 @@ simxInt DaslVrep::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
   simxSetObjectPosition(clientId,node2Targets[nodeId],sim_handle_parent,currPos,
                         simx_opmode_oneshot_wait);
 
-  //std::cout << "new target = (" << node2TargetPos[nodeId][0] << ","
-  //<< node2TargetPos[nodeId][1] << ","
-  //<< node2TargetPos[nodeId][2] << ")\n";
+  if(debug) std::cout << "new target = (" << node2TargetPos[nodeId][0] << ","
+                      << node2TargetPos[nodeId][1] << ","
+                      << node2TargetPos[nodeId][2] << ")\n";
 
   return 1;
 }

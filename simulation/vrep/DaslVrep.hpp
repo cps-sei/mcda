@@ -36,6 +36,9 @@ private:
   //map from nodes to the position of their targets
   TargetMap node2TargetPos;
 
+  //debug flag
+  bool debug;
+
   //default constructor is private
   DaslVrep() {}
 
@@ -52,6 +55,7 @@ public:
 
   simxInt connect(simxChar *ipAddr,simxInt port);
   void disconnect();
+  void setDebug(const bool d);
   simxInt createNode();
   simxInt destroyNode(const simxInt nodeId);
   simxInt getNumObjects();
