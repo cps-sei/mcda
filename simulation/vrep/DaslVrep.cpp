@@ -147,7 +147,7 @@ simxInt DaslVrep::getPingTime()
 /*********************************************************************/
 simxInt DaslVrep::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
 {
-  std::cout << "placing handle " << nodeId << " at (" << x << "," << y << "," << z << ")\n";
+  //std::cout << "placing handle " << nodeId << " at (" << x << "," << y << "," << z << ")\n";
 
   //compute object coordinates
   simxFloat objCoord[3];
