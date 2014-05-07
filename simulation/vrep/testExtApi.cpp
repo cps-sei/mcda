@@ -33,20 +33,22 @@ int main(int argc,char **argv)
     std::cout << "scene now has " << dv.getNumObjects() << " objects\n";
     dv.placeNodeAt(node1,0,0,1);
 
-    dv.startSim(); sleep(5); dv.pauseSim(); sleep(5);
-    dv.startSim(); sleep(5); dv.stopSim();
+    //dv.startSim(); sleep(5); dv.pauseSim(); sleep(5);
+    //dv.startSim(); sleep(5); dv.stopSim();
 
-    //while(dv.moveNodeTo(node1,0,1,1)) sleep(1);
+    dv.startSim();
+    while(dv.moveNodeTo(node1,0,10,1));
+    while(dv.moveNodeTo(node1,10,10,1));
 
+    dv.stopSim();
     dv.destroyNode(node1);
   } else {
     simxInt node1 = dv.createNode();
     std::cout << "created robot 1\n";
     std::cout << "scene now has " << dv.getNumObjects() << " objects\n";
-    dv.placeNodeAt(node1,1,0,1);
+    dv.placeNodeAt(node1,10,10,1);
 
-    sleep(2);
-    dv.destroyNode(node1);
+    //dv.destroyNode(node1);
   }
 
   dv.disconnect();
