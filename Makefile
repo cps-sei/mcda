@@ -2,6 +2,7 @@ ACE_LIB=$(ACE_ROOT)/lib/libACE.so
 MADARA_LIB=$(MADARA_ROOT)/lib/libMADARA.so
 
 all : daslc
+	make -C simulation/vrep
 
 daslc : $(ACE_LIB) $(MADARA_LIB)
 	make -C tools/daig/src/daslc
