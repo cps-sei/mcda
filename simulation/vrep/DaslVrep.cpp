@@ -6,7 +6,7 @@
 #define FLOOR "20mX20m_floor#"
 
 //distance tolerance when determining if a node has reached a location.
-#define DIST_TOL 0.1
+#define DIST_TOL 0.2
 
 //increment by which the target is shifted
 #define TARGET_INCR 0.25
