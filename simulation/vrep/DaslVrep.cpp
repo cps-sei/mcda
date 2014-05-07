@@ -56,9 +56,40 @@ void DaslVrep::disconnect()
 /*********************************************************************/
 simxInt DaslVrep::createNode()
 {
-  simxInt result;
-  return (simxLoadModel(clientId,MODEL,0,&result,
-                        simx_opmode_oneshot_wait) == simx_error_noerror) ? result : -1;
+  simxInt nodeId = -1;
+  if(simxLoadModel(clientId,MODEL,0,&nodeId,simx_opmode_oneshot_wait) != simx_error_noerror)
+    return -1;
+
+  std::cout << "newly created node id = " << nodeId << '\n';
+
+  //update the node2Targets maps
+
+  //find the dummy base sub-object
+  simxInt handlesCount = 0,*handles = NULL;
+  simxInt parentsCount = 0,*parents = NULL;
+  simxGetObjectGroupData(clientId,sim_object_dummy_type,2,&handlesCount,&handles,
+                         &parentsCount,&parents,NULL,NULL,NULL,NULL,simx_opmode_oneshot_wait);
+
+  std::cout << "dummy objects obtained = " << handlesCount << '\n';
+  std::cout << "parent objects obtained = " << parentsCount << '\n';
+
+  simxInt nodeBase = -1;
+  for(simxInt i = 0;i < handlesCount;++i) {
+    if(parents[i] == nodeId) {
+      nodeBase = handles[i];
+      break;
+    }
+  }
+  std::cout << "node base handle = " << nodeBase << '\n';
+
+  //find the target sub-object of the base sub-object
+  simxInt nodeTarget = -1;
+  simxGetObjectChild(clientId,nodeBase,0,&nodeTarget,simx_opmode_oneshot_wait);
+  std::cout << "node target handle = " << nodeTarget << '\n';
+
+  node2Targets[nodeId] = nodeTarget;
+
+  return nodeId;
 }
 
 /*********************************************************************/
