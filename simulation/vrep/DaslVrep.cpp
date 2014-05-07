@@ -208,9 +208,9 @@ simxInt DaslVrep::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
     node2Waypoint[nodeId][1] = floorCenter[1] + miny + y / ydim * (maxy - miny); 
     node2Waypoint[nodeId][2] = floorCenter[2] + z;
 
-    std::cout << "waypoint = (" << node2Waypoint[nodeId][0] << ","
-              << node2Waypoint[nodeId][1] << ","
-              << node2Waypoint[nodeId][2] << ")\n";
+    //std::cout << "waypoint = (" << node2Waypoint[nodeId][0] << ","
+    //<< node2Waypoint[nodeId][1] << ","
+    //<< node2Waypoint[nodeId][2] << ")\n";
 
     //set current position of node target
     simxFloat currPos[3];
@@ -219,27 +219,27 @@ simxInt DaslVrep::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
     node2TargetPos[nodeId].resize(3);
     for(int i = 0;i < 3;++i) node2TargetPos[nodeId][i] = currPos[i];
 
-    std::cout << "target = (" << node2TargetPos[nodeId][0] << ","
-              << node2TargetPos[nodeId][1] << ","
-              << node2TargetPos[nodeId][2] << ")\n";
+    //std::cout << "target = (" << node2TargetPos[nodeId][0] << ","
+    //<< node2TargetPos[nodeId][1] << ","
+    //<< node2TargetPos[nodeId][2] << ")\n";
   }
 
   if(!nodeAtTarget(nodeId)) {
-    std::cout << "node not yet at target ...\n";
+    //std::cout << "node not yet at target ...\n";
     return 1;
   }
 
-  std::cout << "node already at target ...\n";
+  //std::cout << "node already at target ...\n";
 
   if(targetAtWaypoint(nodeId)) {
-    std::cout << "target at waypoint ... done ...\n";
+    //std::cout << "target at waypoint ... done ...\n";
     //clear the waypoint and target positions and return 0
     node2Waypoint.erase(nodeId);
     node2TargetPos.erase(nodeId);
     return 0;
   }
 
-  std::cout << "target not at waypoint ...\n";
+  //std::cout << "target not at waypoint ...\n";
 
   //move target closer to the waypoint and return 1
   simxFloat currPos[3];
@@ -254,10 +254,10 @@ simxInt DaslVrep::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
   }
   simxSetObjectPosition(clientId,node2Targets[nodeId],sim_handle_parent,currPos,
                         simx_opmode_oneshot_wait);
-  std::cout << "new target = (" << node2TargetPos[nodeId][0] << ","
-            << node2TargetPos[nodeId][1] << ","
-            << node2TargetPos[nodeId][2] << ")\n";
 
+  //std::cout << "new target = (" << node2TargetPos[nodeId][0] << ","
+  //<< node2TargetPos[nodeId][1] << ","
+  //<< node2TargetPos[nodeId][2] << ")\n";
 
   return 1;
 }
