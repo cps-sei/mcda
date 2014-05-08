@@ -103,7 +103,8 @@ int main (int argc, char **argv)
     }
   }
   
-  // right now, we're just using a realize flag to indicate madara generation
+  // right now, we're just using a realize flag to indicate madara
+  // generation
   if (do_madara)
   {
     //fill in the processes with nodes nodes
