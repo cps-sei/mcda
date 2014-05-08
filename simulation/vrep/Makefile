@@ -1,4 +1,4 @@
-VREP=$(VREP_MCDA_HOME)
+VREP=$(VREP_MCDA_ROOT)
 CXXFLAGS=-I$(VREP)/programming/remoteApi -I$(VREP)/programming/include -DNON_MATLAB_PARSING -DMAX_EXT_API_CONNECTIONS=255 -D__linux
 
 all : testExtApi
