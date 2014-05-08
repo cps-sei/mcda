@@ -86,6 +86,7 @@ daig::madara::Sync_Builder::build_header_includes ()
   buffer_ << "#include <sstream>\n";
   buffer_ << "#include <assert.h>\n";
   buffer_ << "\n";
+  if (do_vrep_) buffer_ << "#include \"DaslVrep.hpp\"\n";
   buffer_ << "#include \"madara/knowledge_engine/Knowledge_Base.h\"\n";
   buffer_ << "#include \"madara/knowledge_engine/containers/Integer_Vector.h\"\n";
   buffer_ << "#include \"madara/knowledge_engine/containers/Vector_N.h\"\n";
@@ -108,6 +109,27 @@ daig::madara::Sync_Builder::build_common_global_variables ()
   buffer_ << "const std::string default_multicast (\"239.255.0.1:4150\");\n";
   buffer_ << "Madara::Transport::QoS_Transport_Settings settings;\n";
   buffer_ << "\n";
+  
+  if (do_vrep_)
+  {
+    buffer_ << "//vrep IP address and port\n";
+    buffer_ << "std::string vrep_host (\"\");\n";
+    buffer_ << "int vrep_port (-1);\n";
+    buffer_ << '\n';
+    buffer_ << "//the DaslVrep interface object\n";
+    buffer_ << "DaslVrep vrep_interface;\n";
+    buffer_ << '\n';
+    buffer_ << "//the node handle for vrep\n";
+    buffer_ << "simxInt vrep_node_id = -1;\n";
+    buffer_ << '\n';
+    buffer_ << "//the VREP MOVE_TO() function\n";
+    buffer_ << "int VREP_MOVE_TO(unsigned char x,unsigned char y)\n";
+    buffer_ << "{\n";
+    buffer_ << "  return vrep_interface.moveNodeTo(vrep_node_id,x,y,1);\n";
+    buffer_ << "}\n";
+    buffer_ << '\n';
+  }
+
   buffer_ << "// Containers for commonly used variables\n";
   buffer_ << "containers::Integer_Array barrier;\n";
   buffer_ << "containers::Integer id;\n";
@@ -422,6 +444,30 @@ daig::madara::Sync_Builder::build_parse_args ()
     }
   }
 
+  if (do_vrep_)
+  {
+    buffer_ << "\n    // Providing init for VREP variables";
+    buffer_ << "\n    else if (arg1 == \"-vh\" || arg1 == \"--vrep-host\")";
+    buffer_ << "\n    {";
+    buffer_ << "\n      if (i + 1 < argc)";
+    buffer_ << "\n      {";
+    buffer_ << "\n        vrep_host = argv[i + 1];";
+    buffer_ << "\n      }";
+    buffer_ << "\n";
+    buffer_ << "\n      ++i;";
+    buffer_ << "\n    }";
+    buffer_ << "\n    else if (arg1 == \"-vp\" || arg1 == \"--vrep-port\")";
+    buffer_ << "\n    {";
+    buffer_ << "\n      if (i + 1 < argc)";
+    buffer_ << "\n      {";
+    buffer_ << "\n        std::stringstream buffer (argv[i + 1]);";
+    buffer_ << "\n        buffer >> vrep_port;";
+    buffer_ << "\n      }";
+    buffer_ << "\n";
+    buffer_ << "\n      ++i;";
+    buffer_ << "\n    }\n";
+  }
+
   buffer_ << "    else\n";
   buffer_ << "    {\n";
   buffer_ << "      MADARA_DEBUG (MADARA_LOG_EMERGENCY, (LM_DEBUG, \n";
@@ -437,6 +483,12 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "        \" [-u|--udp ip:port]       the udp ips to send to (first is self to bind to)\\n\"\\\n";
 
   buffer_ << variable_help.str ();
+
+  if (do_vrep_)
+  {
+    buffer_ << "        \" [-vh|--vrep-host] sets the IP address of VREP\\n\"\\\n";
+    buffer_ << "        \" [-vp|--vrep-port] sets the IP port of VREP\\n\"\\\n";
+  }
 
   buffer_ << "        , argv[0]));\n";
   buffer_ << "      exit (0);\n";
@@ -719,9 +771,25 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  barrier_send_list [knowledge.expand_statement (";
   buffer_ << "\"mbarrier.{.id}\")] = true;\n\n";
   
-  buffer_ << "  // Building the barrier string for this node\n";
-  buffer_ << "  std::stringstream barrier_string, barrier_sync;\n";
+  if (do_vrep_)
+  {
+    buffer_ << "  // Building the barrier string for this node. NOTE: VREP_BARRIER ADDED\n";
+    buffer_ << "  std::stringstream barrier_string, barrier_sync, vrep_barrier;\n";
+  }
+  else
+  {
+    buffer_ << "  // Building the barrier string for this node\n";
+    buffer_ << "  std::stringstream barrier_string, barrier_sync;\n";
+  }
+
   buffer_ << "  bool started = false;\n\n";
+
+  if (do_vrep_)
+  {
+    buffer_ << "  // Create VREP_BARRIER string\n";
+    buffer_ << "  vrep_barrier << \"vrep.ready.{.id} = 1 ;> (\";\n\n";
+  }
+
   buffer_ << "  barrier_string << \"REMODIFY_GLOBALS () ;> \";\n";
   buffer_ << "  barrier_sync << \"mbarrier.\";\n";
   buffer_ << "  barrier_sync << settings.id;\n";
@@ -733,7 +801,15 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    if (started)\n";
   buffer_ << "    {\n";
   buffer_ << "      barrier_string << \" && \";\n";
+  if (do_vrep_) buffer_ << "      vrep_barrier << \" && \";\n";
   buffer_ << "    }\n\n";
+
+  if (do_vrep_)
+  {
+    buffer_ << "    vrep_barrier << \"vrep.barrier.\";\n";
+    buffer_ << "    vrep_barrier << i;\n\n";
+  }
+
   buffer_ << "    barrier_string << \"mbarrier.\";\n";
   buffer_ << "    barrier_string << i;\n";
   buffer_ << "    barrier_string << \" >= mbarrier.\";\n";
@@ -750,7 +826,15 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    if (started)\n";
   buffer_ << "    {\n";
   buffer_ << "      barrier_string << \" && \";\n";
+  if (do_vrep_) buffer_ << "      vrep_barrier << \" && \";\n";
   buffer_ << "    }\n\n";
+
+  if (do_vrep_)
+  {
+    buffer_ << "    vrep_barrier << \"vrep.ready.\";\n";
+    buffer_ << "    vrep_barrier << i;\n\n";
+  }
+
   buffer_ << "    barrier_string << \"mbarrier.\";\n";
   buffer_ << "    barrier_string << i;\n";
   buffer_ << "    barrier_string << \" >= mbarrier.\";\n";
@@ -761,7 +845,9 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    if (!started)\n";
   buffer_ << "      started = true;\n";
   buffer_ << "  }\n\n";
-  buffer_ << "  barrier_sync << \")\";\n\n";
+  buffer_ << "  barrier_sync << \")\";\n";
+  if (do_vrep_) buffer_ << "  vrep_barrier << \")\";\n";
+  buffer_ << '\n';
 
   buffer_ << "  // Compile frequently used expressions\n";
   buffer_ << "  engine::Compiled_Expression round_logic = knowledge.compile (\n";
@@ -769,8 +855,36 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  engine::Compiled_Expression barrier_logic = \n";
   buffer_ << "    knowledge.compile (barrier_string.str ());\n";
   buffer_ << "  engine::Compiled_Expression barrier_sync_logic = \n";
-  buffer_ << "    knowledge.compile (barrier_sync.str ());\n\n";
-
+  buffer_ << "    knowledge.compile (barrier_sync.str ());\n";
+  if (do_vrep_)
+  {
+    buffer_ << "  engine::Compiled_Expression vrep_barrier_logic =\n";
+    buffer_ << "    knowledge.compile (vrep_barrier.str ());\n\n";
+    buffer_ << "  // SETUP VREP HERE\n";
+    buffer_ << '\n';
+    buffer_ << "  // create the DV object\n";
+    buffer_ << "  vrep_interface = DaslVrep(X,Y);\n";
+    buffer_ << "  vrep_interface.setDebug(true);\n";
+    buffer_ << '\n';
+    buffer_ << "  // connect to VREP\n";
+    buffer_ << "  vrep_interface.connect((char*)vrep_host.c_str (), vrep_port);\n";
+    buffer_ << '\n';
+    buffer_ << "  // create this node\n";
+    buffer_ << "  vrep_node_id = vrep_interface.createNode ();\n";
+    buffer_ << '\n';
+    buffer_ << "  // place this node\n";
+    buffer_ << "  vrep_interface.placeNodeAt(vrep_node_id, var_init_x, var_init_y, 1);\n";
+    buffer_ << '\n';
+    buffer_ << "  // Barrier for all processes before running the simulation\n";
+    buffer_ << "  knowledge.wait (vrep_barrier_logic, wait_settings);\n";
+    buffer_ << '\n';
+    buffer_ << "  if (settings.id == 0)\n";
+    buffer_ << "  {\n";
+    buffer_ << "    std::cout << \"Starting VREP simulator on id 0.\\n\";\n";
+    buffer_ << "    vrep_interface.startSim ();\n";
+    buffer_ << "  }\n";
+  }
+  buffer_ << '\n';
 
   buffer_ << "  while (1)\n";
   buffer_ << "  {\n";
