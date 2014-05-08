@@ -806,7 +806,7 @@ daig::madara::Sync_Builder::build_main_function ()
 
   if (do_vrep_)
   {
-    buffer_ << "    vrep_barrier << \"vrep.barrier.\";\n";
+    buffer_ << "    vrep_barrier << \"vrep.ready.\";\n";
     buffer_ << "    vrep_barrier << i;\n\n";
   }
 
