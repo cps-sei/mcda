@@ -719,7 +719,7 @@ daig::madara::Sync_Builder::build_function (
   
   buffer_ << "\n";
 
-  Function_Visitor visitor (function, node, builder_, buffer_);
+  Function_Visitor visitor (function, node, builder_, buffer_, do_vrep_);
 
   //transform the body of safety
   BOOST_FOREACH(const Stmt & statement, function.body)

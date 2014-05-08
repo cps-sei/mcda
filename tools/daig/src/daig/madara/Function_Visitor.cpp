@@ -50,10 +50,10 @@
 
 daig::madara::Function_Visitor::Function_Visitor (
   Function & function, const Node & node,
-  DaigBuilder & builder, std::stringstream & buffer)
+  DaigBuilder & builder, std::stringstream & buffer, bool do_vrep)
   : function_ (function), node_ (node),
-    builder_ (builder), buffer_ (buffer), indentation_ (2),
-    privatize_ (false), assignment_ (0)
+    builder_ (builder), buffer_ (buffer), do_vrep_(do_vrep),
+    indentation_ (2), privatize_ (false), assignment_ (0)
 {
 
 }
@@ -178,7 +178,10 @@ daig::madara::Function_Visitor::enterCall (CallExpr & expression)
 void
 daig::madara::Function_Visitor::exitCall (CallExpr & expression)
 {
-  buffer_ << expression.func->toString ();
+  std::string func_name = expression.func->toString ();
+  if (do_vrep_ && func_name == "MOVE_TO") func_name = "VREP_MOVE_TO";
+
+  buffer_ << func_name;
   buffer_ << " (";
 
   bool started = false;
@@ -738,6 +741,8 @@ daig::madara::Function_Visitor::exitCall (CallStmt & statement)
   if (data)
   {
     std::string func_name = data->func->toString ();
+
+    if (do_vrep_ && func_name == "MOVE_TO") func_name = "VREP_MOVE_TO";
 
     daig::Functions & externs = builder_.program.externalFuncs;
 

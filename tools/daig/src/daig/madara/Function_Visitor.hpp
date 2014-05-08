@@ -70,7 +70,8 @@ namespace daig
        * @param  buffer    the buffer being used to create the program text
        **/
       Function_Visitor (Function & function, const Node & node,
-                        DaigBuilder & builder, std::stringstream & buffer);
+                        DaigBuilder & builder, std::stringstream & buffer,
+                        bool do_vrep);
       
     /**
      * Returns whether or not to visit the Integer's subfields first.
@@ -391,6 +392,9 @@ namespace daig
 
       /// character buffer for holding results of build
       std::stringstream & buffer_;
+
+      ///whether we are generating code for VREP
+      bool do_vrep_;
 
       /// space indentation
       size_t indentation_;
