@@ -1,22 +1,42 @@
 #!/bin/bash
 
 INIT_PORT="19905"
-declare -a NODEARGS
+
+function usage {
+    echo "Usage : $0 <node-num> <out-dir> <node-exec> <node-1-args> ... <node-N-args>"
+    echo "        where N = node-num"
+}
 
 #get the number of nodes
 NODENUM=$1
-echo $NODENUM
+#echo $NODENUM
+
+if [ "$#" != $(expr $NODENUM + 3) ]; then
+    usage
+    exit 1
+fi
+
+#get the output directory
 shift 1
+OUTDIR="$1"
+#echo $OUTDIR
+shift 1
+
+#create the output directory and get its realpath
+rm -fr $OUTDIR; mkdir $OUTDIR
+OUTDIR=$(realpath $OUTDIR)
 
 #get the node executable
 NODECMD="$1"
-echo $NODECMD
+#echo $NODECMD
 shift 1
 
+
 #get the node arguments
+declare -a NODEARGS
 for i in `seq 1 $NODENUM`; do
     NODEARGS[${i}]="$1"
-    echo ${NODEARGS[${i}]}
+    #echo ${NODEARGS[${i}]}
     shift 1
 done
 
@@ -36,10 +56,15 @@ for i in `seq 1 $NODENUM`; do
     PORT=$(expr $PORT + 1)
 done
 
-cat $RAC
+#cat $RAC
+
+#save the VREP system/settings.dat
+SDF=$VREP_MCDA_ROOT/system/settings.dat
+cp $SDF $SDF.saved.mcda-vrep
 
 #start vrep
-(cd $VREP_MCDA_ROOT ; ./vrep.sh $MCDA_ROOT/simulation/vrep/mcda.ttt&)
+echo "starting VREP .. output is in $OUTDIR/vrep.out ..."
+(cd $VREP_MCDA_ROOT ; ./vrep.sh $MCDA_ROOT/simulation/vrep/mcda.ttt &> $OUTDIR/vrep.out &)
 sleep 10
 
 #restore old VREP remoteApiConnections.txt file
@@ -48,6 +73,19 @@ mv $RAC.saved.mcda-vrep $RAC
 #start the nodes
 PORT=$INIT_PORT
 for i in `seq 1 $NODENUM`; do
-    ($NODECMD ${NODEARGS[${i}]} --vrep-host 127.0.0.1 --vrep-port $PORT&)
+    echo "starting node $i .. output is in $OUTDIR/node-$i.out"
+    ($NODECMD ${NODEARGS[${i}]} --vrep-host 127.0.0.1 --vrep-port $PORT &> $OUTDIR/node-$i.out &)
     PORT=$(expr $PORT + 1)
 done
+
+printf "press enter terminate the simulation ..."
+read X
+
+#kill nodes and VREP
+killall $NODECMD vrep vrep.sh
+
+#restore the VREP system/settings.dat
+cp $SDF.saved.mcda-vrep $SDF
+
+#all done
+exit 0
