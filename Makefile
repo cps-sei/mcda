@@ -28,3 +28,4 @@ $(MADARA_LIB) :
 
 clean :
 	make -C tools/daig/src/daslc clean
+	make -C simulation/vrep clean
