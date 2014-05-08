@@ -122,8 +122,8 @@ daig::madara::Sync_Builder::build_common_global_variables ()
     buffer_ << "//the node handle for vrep\n";
     buffer_ << "simxInt vrep_node_id = -1;\n";
     buffer_ << '\n';
-    buffer_ << "//the VREP MOVE_TO() function\n";
-    buffer_ << "int VREP_MOVE_TO(unsigned char x,unsigned char y)\n";
+    buffer_ << "//the VREP MOVE_TO () function\n";
+    buffer_ << "int VREP_MOVE_TO (unsigned char x,unsigned char y)\n";
     buffer_ << "{\n";
     buffer_ << "  return vrep_interface.moveNodeTo(vrep_node_id,x,y,1);\n";
     buffer_ << "}\n";
