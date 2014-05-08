@@ -872,8 +872,9 @@ daig::madara::Sync_Builder::build_main_function ()
     buffer_ << "  // create this node\n";
     buffer_ << "  vrep_node_id = vrep_interface.createNode ();\n";
     buffer_ << '\n';
-    buffer_ << "  // place this node\n";
+    buffer_ << "  // place this node and sleep for a second\n";
     buffer_ << "  vrep_interface.placeNodeAt(vrep_node_id, var_init_x, var_init_y, 1);\n";
+    buffer_ << "  Madara::Utility::sleep(1);\n";
     buffer_ << '\n';
     buffer_ << "  // Barrier for all processes before running the simulation\n";
     buffer_ << "  knowledge.wait (vrep_barrier_logic, wait_settings);\n";
