@@ -62,6 +62,7 @@
 std::string file_name, out_file;
 std::string madara_target ("GNU_CPP");
 bool do_print = false, do_madara = false, do_seq = false;
+bool do_vrep = false;
 bool debug = false, seq_sem = false, seq_dbl = false;
 bool seq_no_array = false, init_globals = false;
 size_t nodes = 0;
@@ -256,6 +257,10 @@ void parse_options (int argc, char **argv)
       }
       ++i;
     }
+    else if (arg1 == "-vr" || arg1 == "--vrep")
+    {
+      do_vrep = true;
+    }
     else if (arg1 == "-s" || arg1 == "--seq")
     {
       do_seq = true;
@@ -344,6 +349,7 @@ void usage (char *cmd)
   std::cerr << "  -m|--madara              generate C++/MADARA code to run\n";
   std::cerr << "  -t|--target|--platform p specify a target platform\n";
   std::cerr << "        Available platforms: WIN_CPP, GNU_CPP (default)\n";
+  std::cerr << "  -vr|--vrep               generate code that targets VREP\n";
   std::cerr << "  -s|--seq                 generate sequentialized code to verify\n";
   std::cerr << "  -r|--rounds rounds       number of verification rounds\n";
   std::cerr << "  --seq-dbl                use double buffering during verification\n";
