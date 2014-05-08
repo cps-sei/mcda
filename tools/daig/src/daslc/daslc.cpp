@@ -115,7 +115,7 @@ int main (int argc, char **argv)
       program.processes.push_back (daig::Process (nodeName, i));
 
     // create a madara builder instance of the daig builder parse
-    daig::madara::Sync_Builder madara_builder (builder, madara_target);
+    daig::madara::Sync_Builder madara_builder (builder, madara_target, do_vrep);
     madara_builder.build ();
 
     //print the generated code

@@ -65,7 +65,7 @@ namespace daig
        * Constructor
        * @param  builder   the source for building a program
        **/
-      Sync_Builder (DaigBuilder & builder,const std::string &target);
+      Sync_Builder (DaigBuilder & builder,const std::string &target,const bool do_vrep);
 
       /**
        * Builds the underlying character stream that can then be printed
@@ -211,6 +211,9 @@ namespace daig
 
       ///the target to build against
       std::string target_;
+
+      ///whether to generate VREP code
+      bool do_vrep_;
 
       /// character buffer for holding results of build
       std::stringstream buffer_;

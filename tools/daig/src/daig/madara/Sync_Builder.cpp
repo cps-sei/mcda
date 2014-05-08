@@ -47,8 +47,9 @@
 #include "Function_Visitor.hpp"
 
 daig::madara::Sync_Builder::Sync_Builder (daig::DaigBuilder & builder,
-                                          const std::string &target)
-  : builder_ (builder), target_(target)
+                                          const std::string &target,
+                                          const bool do_vrep)
+  : builder_ (builder), target_(target), do_vrep_(do_vrep)
 {
 
 }
