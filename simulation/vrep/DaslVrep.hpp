@@ -9,7 +9,8 @@ extern "C" {
 }
 
 /*********************************************************************/
-//the main class to interact with the VREP simulator
+//the main class to interact with the VREP simulator. this is an
+//abstract base class. it must be extended for each type of model.
 /*********************************************************************/
 class DaslVrep
 {
@@ -46,6 +47,9 @@ private:
   //waypoint
   bool targetAtWaypoint(simxInt nodeId);
 
+protected:
+  simxInt createNode(const std::string &modelFile);
+
 public:
   //constructors
   DaslVrep() {}
@@ -54,7 +58,7 @@ public:
   simxInt connect(simxChar *ipAddr,simxInt port);
   void disconnect();
   void setDebug(const bool d);
-  simxInt createNode();
+  virtual simxInt createNode() = 0;
   simxInt destroyNode(const simxInt nodeId);
   simxInt getNumObjects();
   simxInt getPingTime();
@@ -63,6 +67,17 @@ public:
   simxInt startSim();
   simxInt pauseSim();
   simxInt stopSim();
+};
+
+/*********************************************************************/
+//the subclass of DaslVrep corresponding to a quadrirotor model.
+/*********************************************************************/
+class QuadriRotor : public DaslVrep
+{
+public:
+  QuadriRotor() {}
+  QuadriRotor(simxInt _xdim,simxInt _ydim) : DaslVrep(_xdim,_ydim) {}
+  simxInt createNode();
 };
 
 #endif //__DASL_VREP_HPP__

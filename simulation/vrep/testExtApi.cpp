@@ -14,7 +14,8 @@ int main(int argc,char **argv)
   simxInt port = atoi(argv[1]);
 
   std::cout << "opening connection to VREP\n";
-  DaslVrep dv(10,10);
+  QuadriRotor the_dv(10,10);
+  DaslVrep &dv = the_dv;
 
   if(dv.connect((simxChar*)"127.0.0.1",port) == -1) {
     std::cerr << "ERROR: could not connect to VREP ...\n";

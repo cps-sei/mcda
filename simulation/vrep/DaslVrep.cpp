@@ -66,11 +66,8 @@ void DaslVrep::setDebug(const bool d) { debug = d; }
 /*********************************************************************/
 //create a node and return its handle. return -1 on failure.
 /*********************************************************************/
-simxInt DaslVrep::createNode()
+simxInt DaslVrep::createNode(const std::string &modelFile)
 {
-  std::string modelFile(getenv("VREP_MCDA_ROOT"));
-  modelFile += "/models/robots/mobile/Quadricopter.ttm";
-
   simxInt nodeId = -1;
   if(simxLoadModel(clientId,modelFile.c_str(),0,&nodeId,simx_opmode_oneshot_wait) != simx_error_noerror)
     return -1;
@@ -292,6 +289,16 @@ simxInt DaslVrep::pauseSim()
 simxInt DaslVrep::stopSim()
 {
   return simxStopSimulation(clientId,simx_opmode_oneshot_wait);
+}
+
+/*********************************************************************/
+//create a node and return its handle. return -1 on failure.
+/*********************************************************************/
+simxInt QuadriRotor::createNode()
+{
+  std::string modelFile(getenv("VREP_MCDA_ROOT"));
+  modelFile += "/models/robots/mobile/Quadricopter.ttm";
+  return DaslVrep::createNode(modelFile);
 }
 
 /*********************************************************************/
