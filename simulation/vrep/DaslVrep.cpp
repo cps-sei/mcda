@@ -311,5 +311,36 @@ simxInt QuadriRotor::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat
 }
 
 /*********************************************************************/
+//create a quadcopter and return its handle. return -1 on
+//failure. uses the base class's method.
+/*********************************************************************/
+simxInt VrepAnt::createNode()
+{
+  std::string modelFile(getenv("VREP_MCDA_ROOT"));
+  modelFile += "/models/robots/mobile/ant hexapod.ttm";
+  return DaslVrep::createNode(modelFile);
+}
+
+/*********************************************************************/
+//place quadcopter at position. uses the base class's method.
+/*********************************************************************/
+simxInt VrepAnt::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
+{
+  //set Z to 0 since the ant cannot fly
+  return DaslVrep::placeNodeAt(nodeId,x,y,0);
+}
+
+/*********************************************************************/
+//move a quadcopter to specified coordinate -- return 0 if reached
+//destination, -1 if there is an error, and 1 otherwise. an
+//application should call this method repeatedly until it returns
+//0. there should be some delay between successive calls.
+/*********************************************************************/
+simxInt VrepAnt::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
+{
+  return 1;
+}
+
+/*********************************************************************/
 //end of file
 /*********************************************************************/

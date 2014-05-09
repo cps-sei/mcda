@@ -82,6 +82,19 @@ public:
   simxInt moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
 };
 
+/*********************************************************************/
+//the subclass of DaslVrep corresponding to an ant model.
+/*********************************************************************/
+class VrepAnt : public DaslVrep
+{
+public:
+  VrepAnt() {}
+  VrepAnt(simxInt _xdim,simxInt _ydim) : DaslVrep(_xdim,_ydim) {}
+  simxInt createNode();
+  simxInt placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
+  simxInt moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
+};
+
 #endif //__DASL_VREP_HPP__
 
 /*********************************************************************/

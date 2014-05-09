@@ -14,7 +14,7 @@ int main(int argc,char **argv)
   simxInt port = atoi(argv[1]);
 
   std::cout << "opening connection to VREP\n";
-  QuadriRotor the_dv(10,10);
+  VrepAnt the_dv(10,10);
   DaslVrep &dv = the_dv;
 
   if(dv.connect((simxChar*)"127.0.0.1",port) == -1) {
@@ -32,7 +32,7 @@ int main(int argc,char **argv)
     simxInt node1 = dv.createNode();
     std::cout << "created robot 1\n";
     std::cout << "scene now has " << dv.getNumObjects() << " objects\n";
-    dv.placeNodeAt(node1,0,0,1);
+    dv.placeNodeAt(node1,1,1,1);
 
     //dv.startSim(); sleep(5); dv.pauseSim(); sleep(5);
     //dv.startSim(); sleep(5); dv.stopSim();
