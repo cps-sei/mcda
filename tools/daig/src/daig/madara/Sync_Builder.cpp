@@ -117,7 +117,7 @@ daig::madara::Sync_Builder::build_common_global_variables ()
     buffer_ << "int vrep_port (-1);\n";
     buffer_ << '\n';
     buffer_ << "//the DaslVrep interface object\n";
-    buffer_ << "DaslVrep vrep_interface;\n";
+    buffer_ << "DaslVrep *vrep_interface = NULL;\n";
     buffer_ << '\n';
     buffer_ << "//the node handle for vrep\n";
     buffer_ << "simxInt vrep_node_id = -1;\n";
@@ -125,7 +125,7 @@ daig::madara::Sync_Builder::build_common_global_variables ()
     buffer_ << "//the VREP MOVE_TO () function\n";
     buffer_ << "int VREP_MOVE_TO (unsigned char x,unsigned char y)\n";
     buffer_ << "{\n";
-    buffer_ << "  return vrep_interface.moveNodeTo(vrep_node_id,x,y,1);\n";
+    buffer_ << "  return vrep_interface->moveNodeTo(vrep_node_id,x,y,1);\n";
     buffer_ << "}\n";
     buffer_ << '\n';
   }
@@ -863,17 +863,18 @@ daig::madara::Sync_Builder::build_main_function ()
     buffer_ << "  // SETUP VREP HERE\n";
     buffer_ << '\n';
     buffer_ << "  // create the DV object\n";
-    buffer_ << "  vrep_interface = DaslVrep(X,Y);\n";
-    buffer_ << "  vrep_interface.setDebug(true);\n";
+    buffer_ << "  QuadriRotor quadri_rotor(X,Y);\n";
+    buffer_ << "  vrep_interface = &quadri_rotor;\n";
+    buffer_ << "  vrep_interface->setDebug(true);\n";
     buffer_ << '\n';
     buffer_ << "  // connect to VREP\n";
-    buffer_ << "  vrep_interface.connect((char*)vrep_host.c_str (), vrep_port);\n";
+    buffer_ << "  vrep_interface->connect((char*)vrep_host.c_str (), vrep_port);\n";
     buffer_ << '\n';
     buffer_ << "  // create this node\n";
-    buffer_ << "  vrep_node_id = vrep_interface.createNode ();\n";
+    buffer_ << "  vrep_node_id = vrep_interface->createNode ();\n";
     buffer_ << '\n';
     buffer_ << "  // place this node and sleep for a second\n";
-    buffer_ << "  vrep_interface.placeNodeAt(vrep_node_id, var_init_x, var_init_y, 1);\n";
+    buffer_ << "  vrep_interface->placeNodeAt(vrep_node_id, var_init_x, var_init_y, 1);\n";
     buffer_ << "  Madara::Utility::sleep(1);\n";
     buffer_ << '\n';
     buffer_ << "  // Barrier for all processes before running the simulation\n";
@@ -882,7 +883,7 @@ daig::madara::Sync_Builder::build_main_function ()
     buffer_ << "  if (settings.id == 0)\n";
     buffer_ << "  {\n";
     buffer_ << "    std::cout << \"Starting VREP simulator on id 0.\\n\";\n";
-    buffer_ << "    vrep_interface.startSim ();\n";
+    buffer_ << "    vrep_interface->startSim ();\n";
     buffer_ << "  }\n";
   }
   buffer_ << '\n';
