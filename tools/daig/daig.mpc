@@ -2,8 +2,8 @@ project (daslc) : using_madara, using_ace, using_boost, using_daig {
   exeout = bin
   exename = daslc
   
-  prebuild += bison -d -osrc\daslc\daig-parser.cpp src\daslc\daig-parser.yy
-  prebuild += flex -osrc\daslc\daig-scanner.cpp src\daslc\daig-scanner.ll
+  prebuild += bison -d -osrc/daslc/daig-parser.cpp src/daslc/daig-parser.yy
+  prebuild += flex -osrc/daslc/daig-scanner.cpp src/daslc/daig-scanner.ll
 
   includes += src
   
