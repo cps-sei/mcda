@@ -1,8 +1,8 @@
 #include <iostream>
+#include <stdlib.h>
 #include <math.h>
 #include "DaslVrep.hpp"
 
-#define MODEL "/home/chaki/stuff/vrep/V-REP_PRO_EDU_V3_1_0_64_Linux/models/robots/mobile/Quadricopter.ttm"
 #define FLOOR "20mX20m_floor#"
 
 //distance tolerance when determining if a node has reached a location.
@@ -68,8 +68,11 @@ void DaslVrep::setDebug(const bool d) { debug = d; }
 /*********************************************************************/
 simxInt DaslVrep::createNode()
 {
+  std::string modelFile(getenv("VREP_MCDA_ROOT"));
+  modelFile += "/models/robots/mobile/Quadricopter.ttm";
+
   simxInt nodeId = -1;
-  if(simxLoadModel(clientId,MODEL,0,&nodeId,simx_opmode_oneshot_wait) != simx_error_noerror)
+  if(simxLoadModel(clientId,modelFile.c_str(),0,&nodeId,simx_opmode_oneshot_wait) != simx_error_noerror)
     return -1;
 
   if(debug) std::cout << "newly created node id = " << nodeId << '\n';
