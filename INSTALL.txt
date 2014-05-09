@@ -60,7 +60,10 @@ LINUX INSTALLATION
 
   Install necessary software:
 
-  $ sudo apt-get install git subversion build-essential perl
+  $ sudo apt-get install git subversion build-essential perl flex bison libboost-all-dev
+
+  Download and unpack VREP from: 
+    http://www.coppeliarobotics.com/downloads.html
 
   Download MCDA with Git:
     git clone https://code.google.com/p/mcda mcda  
@@ -72,15 +75,16 @@ LINUX INSTALLATION
 
   The following shows an example configuration, potentially in .bashrc
   or .profile, assuming that MCDA is checked out into the user's home
-  directory.
+  directory, and VREP when unpacked created directory $HOME/vrep:
 
   $ export MCDA_ROOT=$HOME/mcda
-  $ export PATH=$MCDA_ROOT/tools/daig/bin:$PATH
-  $ export LD_LIBRARY_PATH=$MCDA_ROOT/tools/daig/lib:$LD_LIBRARY_PATH
+  $ export PATH=$MCDA_ROOT/tools/daig/src/daslc:$PATH
+  $ export PATH=$MCDA_ROOT/simulation/vrep:$PATH
   $ export ACE_ROOT=$MCDA_ROOT/madara/ace/ACE_wrappers
   $ export MADARA_ROOT=$MCDA_ROOT/madara/madara
   $ export LD_LIBRARY_PATH=$ACE_ROOT/lib:$MADARA_ROOT/lib:$LD_LIBRARY_PATH
   $ export PATH=$ACE_ROOT/bin:$MADARA_ROOT/bin:$PATH
+  $ export VREP_MCDA_ROOT=$HOME/vrep
 
 3. BUILDING MCDA
 
