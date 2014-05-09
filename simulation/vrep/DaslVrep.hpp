@@ -14,7 +14,7 @@ extern "C" {
 /*********************************************************************/
 class DaslVrep
 {
-private:
+protected:
   //the client id
   simxInt clientId;
 
@@ -47,7 +47,7 @@ private:
   //waypoint
   bool targetAtWaypoint(simxInt nodeId);
 
-protected:
+  //create node given a model file
   simxInt createNode(const std::string &modelFile);
 
 public:
@@ -62,8 +62,8 @@ public:
   simxInt destroyNode(const simxInt nodeId);
   simxInt getNumObjects();
   simxInt getPingTime();
-  simxInt placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
-  simxInt moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
+  virtual simxInt placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
+  virtual simxInt moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z) = 0;
   simxInt startSim();
   simxInt pauseSim();
   simxInt stopSim();
@@ -78,6 +78,8 @@ public:
   QuadriRotor() {}
   QuadriRotor(simxInt _xdim,simxInt _ydim) : DaslVrep(_xdim,_ydim) {}
   simxInt createNode();
+  simxInt placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
+  simxInt moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
 };
 
 #endif //__DASL_VREP_HPP__

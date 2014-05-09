@@ -196,12 +196,55 @@ bool DaslVrep::targetAtWaypoint(simxInt nodeId)
 }
 
 /*********************************************************************/
-//move a node to specified coordinate -- return 0 if reached
+//start simulatiom
+/*********************************************************************/
+simxInt DaslVrep::startSim()
+{
+  return simxStartSimulation(clientId,simx_opmode_oneshot_wait);
+}
+
+/*********************************************************************/
+//pause simulatiom
+/*********************************************************************/
+simxInt DaslVrep::pauseSim()
+{
+  return simxPauseSimulation(clientId,simx_opmode_oneshot_wait);
+}
+
+/*********************************************************************/
+//stop simulatiom
+/*********************************************************************/
+simxInt DaslVrep::stopSim()
+{
+  return simxStopSimulation(clientId,simx_opmode_oneshot_wait);
+}
+
+/*********************************************************************/
+//create a quadcopter and return its handle. return -1 on
+//failure. uses the base class's method.
+/*********************************************************************/
+simxInt QuadriRotor::createNode()
+{
+  std::string modelFile(getenv("VREP_MCDA_ROOT"));
+  modelFile += "/models/robots/mobile/Quadricopter.ttm";
+  return DaslVrep::createNode(modelFile);
+}
+
+/*********************************************************************/
+//place quadcopter at position. uses the base class's method.
+/*********************************************************************/
+simxInt QuadriRotor::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
+{
+  return DaslVrep::placeNodeAt(nodeId,x,y,z);
+}
+
+/*********************************************************************/
+//move a quadcopter to specified coordinate -- return 0 if reached
 //destination, -1 if there is an error, and 1 otherwise. an
 //application should call this method repeatedly until it returns
 //0. there should be some delay between successive calls.
 /*********************************************************************/
-simxInt DaslVrep::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
+simxInt QuadriRotor::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
 {
   //if the waypoint has not been set, set it and move the waypoint
   TargetMap::iterator it = node2Waypoint.find(nodeId);
@@ -265,40 +308,6 @@ simxInt DaslVrep::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
                       << node2TargetPos[nodeId][2] << ")\n";
 
   return 1;
-}
-
-/*********************************************************************/
-//start simulatiom
-/*********************************************************************/
-simxInt DaslVrep::startSim()
-{
-  return simxStartSimulation(clientId,simx_opmode_oneshot_wait);
-}
-
-/*********************************************************************/
-//pause simulatiom
-/*********************************************************************/
-simxInt DaslVrep::pauseSim()
-{
-  return simxPauseSimulation(clientId,simx_opmode_oneshot_wait);
-}
-
-/*********************************************************************/
-//stop simulatiom
-/*********************************************************************/
-simxInt DaslVrep::stopSim()
-{
-  return simxStopSimulation(clientId,simx_opmode_oneshot_wait);
-}
-
-/*********************************************************************/
-//create a node and return its handle. return -1 on failure.
-/*********************************************************************/
-simxInt QuadriRotor::createNode()
-{
-  std::string modelFile(getenv("VREP_MCDA_ROOT"));
-  modelFile += "/models/robots/mobile/Quadricopter.ttm";
-  return DaslVrep::createNode(modelFile);
 }
 
 /*********************************************************************/
