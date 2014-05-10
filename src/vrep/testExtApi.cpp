@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <iostream>
+#include "madara/utility/Utility.h"
 
 #include "DaslVrep.hpp"
 
@@ -26,7 +27,7 @@ int main(int argc,char **argv)
 
   std::cout << "ping time is " << dv.getPingTime() << " ms\n";
 
-  sleep(2);
+  Madara::Utility::sleep(2);
 
   if(port == 19900) {
     simxInt node1 = dv.createNode();

@@ -1,10 +1,12 @@
-project (daslc) : using_madara, using_ace, using_boost, using_daig {
-  exeout = bin
-  exename = daslc
+project (mcda) : using_madara, using_ace, using_boost, using_vrep {
+  libout = $(MCDA_ROOT)/lib
+  sharedname = mcda
   
   prebuild += bison -d -osrc/daslc/daig-parser.cpp src/daslc/daig-parser.yy
   prebuild += flex -osrc/daslc/daig-scanner.cpp src/daslc/daig-scanner.ll
 
+  dynamicflags += MCDA_BUILD_DLL
+  
   includes += src
   
   specific(prop:microsoft) {
@@ -15,26 +17,63 @@ project (daslc) : using_madara, using_ace, using_boost, using_daig {
   Documentation_Files {
     README.txt
     VERSION.txt
-    ../../examples/*.mcda
+  }
+  
+  Build_Files {
+    default.features
+    mcda.mpc
+    mcda.mwc
+    using_ace.mpb
+    using_boost.mpb
+    using_madara.mpb
+    using_vrep.mpb
+  }
+
+  Header_Files {
+  }
+
+  Source_Files {
+  }
+}
+
+project (daslc) : using_madara, using_ace, using_boost, using_mcda {
+  exeout = bin
+  exename = daslc
+  
+  specific(prop:microsoft) {
+    includes += $(GNUWIN32_ROOT)/include
+    DisableSpecificWarnings += 4065 4273
+  }
+
+  Documentation_Files {
+    README.txt
+    VERSION.txt
+    examples/*.mcda
     src/daslc/daig-parser.yy
     src/daslc/daig-scanner.ll
   }
   
   Build_Files {
-    daig.mpc
+    default.features
+    mcda.mpc
+    mcda.mwc
+    using_ace.mpb
+    using_boost.mpb
+    using_madara.mpb
+    using_mcda.mpb
+    using_vrep.mpb
   }
 
   Header_Files {
+    src/daslc
     src/daig
     src/daig/madara
-    src/daslc
-    src/daslc/daig-parser.hpp
   }
 
   Source_Files {
     src/daig
-    src/daslc
     src/daig/madara
+    src/daslc
     src/daslc/daig-scanner.cpp
     src/daslc/daig-parser.cpp
   }

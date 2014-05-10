@@ -2,16 +2,16 @@ project (daig_docs) : ../doxygen_help_gen, build_files {
 
   requires += docs
 
-  prebuild = perl $(MADARA_ROOT)/docs/get_version.pl
+  prebuild = perl $(MCDA_ROOT)/docs/get_version.pl
 
   custom_only = 1
   
   Build_Files {
-    daig_docs.mpc
+    mcda_docs.mpc
     ../doxygen_help_gen.mpb
   }
 
   DoxygenTypeSupport_Files {
-    Doxyfile_daig.dxy >> daig
+    Doxyfile_mcda.dxy >> mcda
   }
 }

@@ -62,6 +62,7 @@
 #include "Node.h"
 #include "Visitor.h"
 
+
 namespace daig
 {
   //a process is a node name and a node id

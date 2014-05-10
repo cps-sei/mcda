@@ -3,6 +3,7 @@
 
 #include <map>
 #include <vector>
+#include "daig/MCDA_Export.h"
 
 extern "C" {
 #include "extApi.h"
@@ -12,7 +13,7 @@ extern "C" {
 //the main class to interact with the VREP simulator. this is an
 //abstract base class. it must be extended for each type of model.
 /*********************************************************************/
-class DaslVrep
+class MCDA_Export DaslVrep
 {
 protected:
   //the client id
@@ -72,7 +73,7 @@ public:
 /*********************************************************************/
 //the subclass of DaslVrep corresponding to a quadrirotor model.
 /*********************************************************************/
-class QuadriRotor : public DaslVrep
+class MCDA_Export QuadriRotor : public DaslVrep
 {
 public:
   QuadriRotor() {}
@@ -85,7 +86,7 @@ public:
 /*********************************************************************/
 //the subclass of DaslVrep corresponding to an ant model.
 /*********************************************************************/
-class VrepAnt : public DaslVrep
+class MCDA_Export VrepAnt : public DaslVrep
 {
 public:
   VrepAnt() {}

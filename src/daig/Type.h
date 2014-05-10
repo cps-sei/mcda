@@ -59,6 +59,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/foreach.hpp>
 
+
 namespace daig
 {
   //forward declaration

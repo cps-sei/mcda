@@ -1,3 +1,6 @@
 project {
-  includes += $(MCDA_ROOT)/tools/daig/src
+  after += mcda
+  includes += $(MCDA_ROOT)/src
+  libpaths += $(MCDA_ROOT)/lib
+  libs += mcda
 }
