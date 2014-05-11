@@ -1,10 +1,13 @@
 VREP=$(VREP_MCDA_ROOT)
-CXXFLAGS=-I$(VREP)/programming/remoteApi -I$(VREP)/programming/include -DNON_MATLAB_PARSING -DMAX_EXT_API_CONNECTIONS=255 -D__linux
+CXXFLAGS=-I../../madara/madara/include -I../../madara/ace/ACE_wrappers \
+-I.. -I$(VREP)/programming/remoteApi -I$(VREP)/programming/include \
+-DNON_MATLAB_PARSING -DMAX_EXT_API_CONNECTIONS=255 -D__linux
+LIB=../../madara/madara/libMADARA.so
 
 all : testExtApi
 
 testExtApi : testExtApi.o libDaslVrep.a 
-	g++ $(CXXFLAGS) -o $@ $^ -lpthread
+	g++ $(CXXFLAGS) -o $@ $^ $(LIB) -lpthread
 
 testExtApi.o : testExtApi.cpp
 	g++ $(CXXFLAGS) -c -o $@ $<
