@@ -86,7 +86,7 @@ daig::madara::Sync_Builder::build_header_includes ()
   buffer_ << "#include <sstream>\n";
   buffer_ << "#include <assert.h>\n";
   buffer_ << "\n";
-  if (do_vrep_) buffer_ << "#include \"DaslVrep.hpp\"\n";
+  if (do_vrep_) buffer_ << "#include \"vrep/DaslVrep.hpp\"\n";
   buffer_ << "#include \"madara/knowledge_engine/Knowledge_Base.h\"\n";
   buffer_ << "#include \"madara/knowledge_engine/containers/Integer_Vector.h\"\n";
   buffer_ << "#include \"madara/knowledge_engine/containers/Vector_N.h\"\n";
