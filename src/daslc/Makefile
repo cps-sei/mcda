@@ -6,9 +6,8 @@ SyncSeq.cpp SyncSem.cpp SyncSeqDbl.cpp ArrayElim.cpp \
 ../daig/CProgram.cpp ../daig/Visitor.cpp \
 ../daig/madara/Sync_Builder.cpp ../daig/madara/Function_Visitor.cpp
 OBJ=$(patsubst %.cpp,%.o,$(SRC))
-INC=-I../../madara/ace/ACE_wrappers \
--I../../madara/madara/include -I..
-LIB=../../madara/madara/libMADARA.so
+INC=-I$(ACE_ROOT) -I$(MADARA_ROOT)/include -I..
+LIB=$(MADARA_ROOT)/libMADARA.so
 CXX=g++
 
 all : daslc

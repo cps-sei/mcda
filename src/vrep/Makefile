@@ -1,8 +1,8 @@
 VREP=$(VREP_MCDA_ROOT)
-CXXFLAGS=-I../../madara/madara/include -I../../madara/ace/ACE_wrappers \
+CXXFLAGS=-I$(MADARA_ROOT)/include -I$(ACE_ROOT) \
 -I.. -I$(VREP)/programming/remoteApi -I$(VREP)/programming/include \
 -DNON_MATLAB_PARSING -DMAX_EXT_API_CONNECTIONS=255 -D__linux
-LIB=../../madara/madara/libMADARA.so
+LIB=$(MADARA_ROOT)/libMADARA.so
 
 all : testExtApi
 
