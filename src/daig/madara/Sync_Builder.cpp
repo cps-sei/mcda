@@ -115,6 +115,8 @@ daig::madara::Sync_Builder::build_common_global_variables ()
     buffer_ << "//vrep IP address and port\n";
     buffer_ << "std::string vrep_host (\"\");\n";
     buffer_ << "int vrep_port (-1);\n";
+    buffer_ << "//vrep model: 1 = quad, 2 = ant\n";
+    buffer_ << "int vrep_model (1);\n";
     buffer_ << '\n';
     buffer_ << "//the DaslVrep interface object\n";
     buffer_ << "DaslVrep *vrep_interface = NULL;\n";
@@ -447,6 +449,14 @@ daig::madara::Sync_Builder::build_parse_args ()
   if (do_vrep_)
   {
     buffer_ << "\n    // Providing init for VREP variables";
+    buffer_ << "\n    else if (arg1 == \"-vq\" || arg1 == \"--vrep-quad\")";
+    buffer_ << "\n    {";
+    buffer_ << "\n       vrep_model = 1;";
+    buffer_ << "\n    }";
+    buffer_ << "\n    else if (arg1 == \"-va\" || arg1 == \"--vrep-ant\")";
+    buffer_ << "\n    {";
+    buffer_ << "\n       vrep_model = 2;";
+    buffer_ << "\n    }";
     buffer_ << "\n    else if (arg1 == \"-vh\" || arg1 == \"--vrep-host\")";
     buffer_ << "\n    {";
     buffer_ << "\n      if (i + 1 < argc)";
@@ -486,6 +496,8 @@ daig::madara::Sync_Builder::build_parse_args ()
 
   if (do_vrep_)
   {
+    buffer_ << "        \" [-vq|--vrep-quad] use Quadricopter model in VREP (default)\\n\"\\\n";
+    buffer_ << "        \" [-va|--vrep-ant] use Ant model in VREP\\n\"\\\n";
     buffer_ << "        \" [-vh|--vrep-host] sets the IP address of VREP\\n\"\\\n";
     buffer_ << "        \" [-vp|--vrep-port] sets the IP port of VREP\\n\"\\\n";
   }
@@ -863,8 +875,11 @@ daig::madara::Sync_Builder::build_main_function ()
     buffer_ << "  // SETUP VREP HERE\n";
     buffer_ << '\n';
     buffer_ << "  // create the DV object\n";
-    buffer_ << "  QuadriRotor quadri_rotor(X,Y);\n";
-    buffer_ << "  vrep_interface = &quadri_rotor;\n";
+    buffer_ << "  switch(vrep_model)\n";
+    buffer_ << "  {\n";
+    buffer_ << "    case 2: vrep_interface = new TrackerAnt(X,Y); break;\n";
+    buffer_ << "    case 1: default: vrep_interface = new QuadriRotor(X,Y);\n";
+    buffer_ << "  }\n";
     buffer_ << "  vrep_interface->setDebug(true);\n";
     buffer_ << '\n';
     buffer_ << "  // connect to VREP\n";
@@ -910,6 +925,10 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n";
 
   buffer_ << "  }\n\n";
+  if (do_vrep_)
+  {
+    buffer_ << "  delete vrep_interface;\n\n";
+  }
   buffer_ << "  return 0;\n";
   buffer_ << "}\n";
 }

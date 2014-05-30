@@ -76,30 +76,8 @@ simxInt DaslVrep::createNode(const std::string &modelFile)
 
   //update the node2Targets maps
 
-  //find the dummy base sub-object
-  simxInt handlesCount = 0,*handles = NULL;
-  simxInt parentsCount = 0,*parents = NULL;
-  simxGetObjectGroupData(clientId,sim_object_dummy_type,2,&handlesCount,&handles,
-                         &parentsCount,&parents,NULL,NULL,NULL,NULL,simx_opmode_oneshot_wait);
 
-  if(debug) std::cout << "dummy objects obtained = " << handlesCount << '\n';
-  if(debug) std::cout << "parent objects obtained = " << parentsCount << '\n';
-
-  simxInt nodeBase = -1;
-  for(simxInt i = 0;i < handlesCount;++i) {
-    if(parents[i] == nodeId) {
-      nodeBase = handles[i];
-      break;
-    }
-  }
-  if(debug) std::cout << "node base handle = " << nodeBase << '\n';
-
-  //find the target sub-object of the base sub-object
-  simxInt nodeTarget = -1;
-  simxGetObjectChild(clientId,nodeBase,0,&nodeTarget,simx_opmode_oneshot_wait);
-  if(debug) std::cout << "node target handle = " << nodeTarget << '\n';
-
-  node2Targets[nodeId] = nodeTarget;
+  node2Targets[nodeId] = getTargetHandle(nodeId);
 
   return nodeId;
 }
@@ -230,6 +208,34 @@ simxInt QuadriRotor::createNode()
   return DaslVrep::createNode(modelFile);
 }
 
+simxInt QuadriRotor::getTargetHandle(simxInt nodeId)
+{
+  //find the dummy base sub-object
+  simxInt handlesCount = 0,*handles = NULL;
+  simxInt parentsCount = 0,*parents = NULL;
+  simxGetObjectGroupData(clientId,sim_object_dummy_type,2,&handlesCount,&handles,
+                         &parentsCount,&parents,NULL,NULL,NULL,NULL,simx_opmode_oneshot_wait);
+
+  if(debug) std::cout << "dummy objects obtained = " << handlesCount << '\n';
+  if(debug) std::cout << "parent objects obtained = " << parentsCount << '\n';
+
+  simxInt nodeBase = -1;
+  for(simxInt i = 0;i < handlesCount;++i) {
+    if(parents[i] == nodeId) {
+      nodeBase = handles[i];
+      break;
+    }
+  }
+  if(debug) std::cout << "node base handle = " << nodeBase << '\n';
+
+  //find the target sub-object of the base sub-object
+  simxInt nodeTarget = -1;
+  simxGetObjectChild(clientId,nodeBase,0,&nodeTarget,simx_opmode_oneshot_wait);
+  if(debug) std::cout << "node target handle = " << nodeTarget << '\n';
+
+  return nodeTarget;
+}
+
 /*********************************************************************/
 //place quadcopter at position. uses the base class's method.
 /*********************************************************************/
@@ -314,20 +320,29 @@ simxInt QuadriRotor::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat
 //create a quadcopter and return its handle. return -1 on
 //failure. uses the base class's method.
 /*********************************************************************/
-simxInt VrepAnt::createNode()
+simxInt TrackerAnt::createNode()
 {
-  std::string modelFile(getenv("VREP_MCDA_ROOT"));
-  modelFile += "/models/robots/mobile/ant hexapod.ttm";
+  std::string modelFile(getenv("MCDA_ROOT"));
+  modelFile += "/src/vrep/tracker_ant.ttm";
   return DaslVrep::createNode(modelFile);
+}
+
+simxInt TrackerAnt::getTargetHandle(simxInt nodeId)
+{
+  simxInt nodeTarget = -1;
+  simxGetObjectChild(clientId,nodeId,0,&nodeTarget,simx_opmode_oneshot_wait);
+  if(debug) std::cout << "node target handle = " << nodeTarget << '\n';
+
+  return nodeTarget;
 }
 
 /*********************************************************************/
 //place quadcopter at position. uses the base class's method.
 /*********************************************************************/
-simxInt VrepAnt::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
+simxInt TrackerAnt::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
 {
   //set Z to 0 since the ant cannot fly
-  return DaslVrep::placeNodeAt(nodeId,x,y,0);
+  return DaslVrep::placeNodeAt(nodeId,x,y,antZ);
 }
 
 /*********************************************************************/
@@ -336,8 +351,69 @@ simxInt VrepAnt::placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
 //application should call this method repeatedly until it returns
 //0. there should be some delay between successive calls.
 /*********************************************************************/
-simxInt VrepAnt::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
+simxInt TrackerAnt::moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z)
 {
+  //if the waypoint has not been set, set it and move the waypoint
+  TargetMap::iterator it = node2Waypoint.find(nodeId);
+
+  if(it == node2Waypoint.end()) {
+    //set waypoint of node
+    node2Waypoint[nodeId].resize(3);
+    node2Waypoint[nodeId][0] = floorCenter[0] + minx + x / xdim * (maxx - minx); 
+    node2Waypoint[nodeId][1] = floorCenter[1] + miny + y / ydim * (maxy - miny); 
+    node2Waypoint[nodeId][2] = floorCenter[2] + antZ;
+
+    if(debug) std::cout << "waypoint = (" << node2Waypoint[nodeId][0] << ","
+                        << node2Waypoint[nodeId][1] << ","
+                        << node2Waypoint[nodeId][2] << ")\n";
+
+    //set current position of node target
+    simxFloat currPos[3];
+    simxGetObjectPosition(clientId,node2Targets[nodeId],sim_handle_parent,currPos,
+                          simx_opmode_oneshot_wait);
+    node2TargetPos[nodeId].resize(3);
+    for(int i = 0;i < 3;++i) node2TargetPos[nodeId][i] = currPos[i];
+
+    if(debug) std::cout << "target = (" << node2TargetPos[nodeId][0] << ","
+                        << node2TargetPos[nodeId][1] << ","
+                        << node2TargetPos[nodeId][2] << ")\n";
+  }
+
+  if(!nodeAtTarget(nodeId)) {
+    if(debug) std::cout << "node not yet at target ...\n";
+    return 1;
+  }
+
+  if(debug) std::cout << "node already at target ...\n";
+
+  if(targetAtWaypoint(nodeId)) {
+    if(debug) std::cout << "target at waypoint ... done ...\n";
+    //clear the waypoint and target positions and return 0
+    node2Waypoint.erase(nodeId);
+    node2TargetPos.erase(nodeId);
+    return 0;
+  }
+
+  if(debug) std::cout << "target not at waypoint ...\n";
+
+  //move target closer to the waypoint and return 1
+  simxFloat currPos[3];
+  for(int i = 0;i < 3;++i) {
+    if(node2TargetPos[nodeId][i] < node2Waypoint[nodeId][i] - TARGET_INCR)
+      currPos[i] = node2TargetPos[nodeId][i] + TARGET_INCR;
+    else if(node2TargetPos[nodeId][i] > node2Waypoint[nodeId][i] + TARGET_INCR)
+      currPos[i] = node2TargetPos[nodeId][i] - TARGET_INCR;
+    else
+      currPos[i] = node2Waypoint[nodeId][i];
+    node2TargetPos[nodeId][i] = currPos[i];
+  }
+  simxSetObjectPosition(clientId,node2Targets[nodeId],sim_handle_parent,currPos,
+                        simx_opmode_oneshot_wait);
+
+  if(debug) std::cout << "new target = (" << node2TargetPos[nodeId][0] << ","
+                      << node2TargetPos[nodeId][1] << ","
+                      << node2TargetPos[nodeId][2] << ")\n";
+
   return 1;
 }
 

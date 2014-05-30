@@ -65,6 +65,7 @@ public:
   simxInt getPingTime();
   virtual simxInt placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
   virtual simxInt moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z) = 0;
+  virtual simxInt getTargetHandle(simxInt nodeId) = 0;
   simxInt startSim();
   simxInt pauseSim();
   simxInt stopSim();
@@ -79,6 +80,7 @@ public:
   QuadriRotor() {}
   QuadriRotor(simxInt _xdim,simxInt _ydim) : DaslVrep(_xdim,_ydim) {}
   simxInt createNode();
+  simxInt getTargetHandle(simxInt nodeId);
   simxInt placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
   simxInt moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
 };
@@ -86,12 +88,15 @@ public:
 /*********************************************************************/
 //the subclass of DaslVrep corresponding to an ant model.
 /*********************************************************************/
-class MCDA_Export VrepAnt : public DaslVrep
+class MCDA_Export TrackerAnt : public DaslVrep
 {
+private:
+  const static double antZ = 0.0468;
 public:
-  VrepAnt() {}
-  VrepAnt(simxInt _xdim,simxInt _ydim) : DaslVrep(_xdim,_ydim) {}
+  TrackerAnt() {}
+  TrackerAnt(simxInt _xdim,simxInt _ydim) : DaslVrep(_xdim,_ydim) {}
   simxInt createNode();
+  simxInt getTargetHandle(simxInt nodeId);
   simxInt placeNodeAt(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
   simxInt moveNodeTo(simxInt nodeId,simxFloat x,simxFloat y,simxFloat z);
 };
