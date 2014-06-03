@@ -927,7 +927,7 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << '\n';
   buffer_ << "    // first barrier for new data from previous round\n";
   buffer_ << "    wait_settings.max_wait_time = max_barrier_time;\n";
-  buffer_ << "    if (knowledge.wait (barrier_logic, wait_settings) == 0)\n";
+  buffer_ << "    if (knowledge.wait (barrier_logic, wait_settings).to_integer () == 0)\n";
   buffer_ << "    {\n";
   buffer_ << "      // Handle barrier timeout\n";
   buffer_ << "    }\n";
@@ -944,7 +944,7 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    // second barrier for waiting on others to finish round\n";
   buffer_ << "    wait_settings.max_wait_time = max_barrier_time;\n";
   buffer_ << "    // Increment barrier and only send barrier update\n";
-  buffer_ << "    if (knowledge.wait (barrier_logic, wait_settings) == 0)\n";
+  buffer_ << "    if (knowledge.wait (barrier_logic, wait_settings).to_integer () == 0)\n";
   buffer_ << "    {\n";
   buffer_ << "      // Handle barrier timeout\n";
   buffer_ << "    }\n";
