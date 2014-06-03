@@ -45,6 +45,7 @@
  **/
 
 #include <stdio.h>
+#include <iostream>
 #include "DaigBuilder.hpp"
 
 /*********************************************************************/

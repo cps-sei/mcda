@@ -11,6 +11,9 @@
 //increment by which the target is shifted
 #define TARGET_INCR 0.25
 
+
+const double TrackerAnt::antZ = 0.0468;
+
 /*********************************************************************/
 //constructor
 /*********************************************************************/

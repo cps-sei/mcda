@@ -136,6 +136,7 @@ daig::madara::Sync_Builder::build_common_global_variables ()
   buffer_ << "containers::Integer_Array barrier;\n";
   buffer_ << "containers::Integer id;\n";
   buffer_ << "containers::Integer num_processes;\n";
+  buffer_ << "double max_barrier_time (-1);\n";
   buffer_ << "engine::Knowledge_Update_Settings private_update (true);\n";
   buffer_ << "\n";
   buffer_ << "// number of participating processes\n";
@@ -370,6 +371,16 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "        \n";
   buffer_ << "      ++i;\n";
   buffer_ << "    }\n";
+  buffer_ << "    else if (arg1 == \"-mb\" || arg1 == \"--max-barrier-time\")\n";
+  buffer_ << "    {\n";
+  buffer_ << "      if (i + 1 < argc)\n";
+  buffer_ << "      {\n";
+  buffer_ << "        std::stringstream buffer (argv[i + 1]);\n";
+  buffer_ << "        buffer >> max_barrier_time;\n";
+  buffer_ << "      }\n";
+  buffer_ << "      \n";
+  buffer_ << "      ++i;\n";
+  buffer_ << "    }\n";
   buffer_ << "    else if (arg1 == \"-d\" || arg1 == \"--domain\")\n";
   buffer_ << "    {\n";
   buffer_ << "      if (i + 1 < argc)\n";
@@ -488,6 +499,7 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "        \" [-i|--id id]             the id of this agent (should be non-negative)\\n\"\\\n";
   buffer_ << "        \" [-l|--level level]       the logger level (0+, higher is higher detail)\\n\"\\\n";
   buffer_ << "        \" [-m|--multicast ip:port] the multicast ip to send and listen to\\n\"\\\n";
+  buffer_ << "        \" [-mb|--max-barrier-time time] time in seconds to barrier for other processes\\n\"\\\n";
   buffer_ << "        \" [-o|--host hostname]     the hostname of this process (def:localhost)\\n\"\\\n";
   buffer_ << "        \" [-r|--reduced]           use the reduced message header\\n\"\\\n";
   buffer_ << "        \" [-u|--udp ip:port]       the udp ips to send to (first is self to bind to)\\n\"\\\n";
@@ -764,7 +776,7 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  settings.queue_length = 100000;\n\n";
 
   buffer_ << "  Madara::Knowledge_Engine::Wait_Settings wait_settings;\n";
-  buffer_ << "  wait_settings.max_wait_time = 10;\n";
+  buffer_ << "  wait_settings.max_wait_time = max_barrier_time;\n";
   buffer_ << "  wait_settings.poll_frequency = .1;\n";
 
   buffer_ << "  // create the knowledge base with the transport settings\n";
@@ -892,6 +904,8 @@ daig::madara::Sync_Builder::build_main_function ()
     buffer_ << "  vrep_interface->placeNodeAt(vrep_node_id, var_init_x, var_init_y, 1);\n";
     buffer_ << "  Madara::Utility::sleep(1);\n";
     buffer_ << '\n';
+    buffer_ << "  wait_settings.max_wait_time = max_barrier_time;\n";
+    buffer_ << '\n';
     buffer_ << "  // Barrier for all processes before running the simulation\n";
     buffer_ << "  knowledge.wait (vrep_barrier_logic, wait_settings);\n";
     buffer_ << '\n';
@@ -910,6 +924,9 @@ daig::madara::Sync_Builder::build_main_function ()
 
   buffer_ << "    // remodify our globals and send all updates\n";
   buffer_ << "    wait_settings.send_list.clear ();\n";
+  buffer_ << '\n';
+  buffer_ << "    wait_settings.max_wait_time = max_barrier_time;\n";
+  buffer_ << '\n';
   buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n\n";
 
   buffer_ << "    // Send only barrier information\n";
@@ -921,6 +938,8 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    // Execute main user logic\n";
   buffer_ << "    knowledge.evaluate (round_logic, wait_settings);\n\n";
   
+  buffer_ << "    wait_settings.max_wait_time = max_barrier_time;\n";
+  buffer_ << '\n';
   buffer_ << "    // Increment barrier and only send barrier update\n";
   buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n";
 

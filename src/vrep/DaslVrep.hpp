@@ -91,7 +91,7 @@ public:
 class MCDA_Export TrackerAnt : public DaslVrep
 {
 private:
-  const static double antZ = 0.0468;
+  const static double antZ;
 public:
   TrackerAnt() {}
   TrackerAnt(simxInt _xdim,simxInt _ydim) : DaslVrep(_xdim,_ydim) {}
