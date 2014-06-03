@@ -925,9 +925,12 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    // remodify our globals and send all updates\n";
   buffer_ << "    wait_settings.send_list.clear ();\n";
   buffer_ << '\n';
+  buffer_ << "    // first barrier for new data from previous round\n";
   buffer_ << "    wait_settings.max_wait_time = max_barrier_time;\n";
-  buffer_ << '\n';
-  buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n\n";
+  buffer_ << "    if (knowledge.wait (barrier_logic, wait_settings) == 0)\n";
+  buffer_ << "    {\n";
+  buffer_ << "      // Handle barrier timeout\n";
+  buffer_ << "    }\n";
 
   buffer_ << "    // Send only barrier information\n";
   buffer_ << "    wait_settings.send_list = barrier_send_list;\n\n";
@@ -938,10 +941,13 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    // Execute main user logic\n";
   buffer_ << "    knowledge.evaluate (round_logic, wait_settings);\n\n";
   
+  buffer_ << "    // second barrier for waiting on others to finish round\n";
   buffer_ << "    wait_settings.max_wait_time = max_barrier_time;\n";
-  buffer_ << '\n';
   buffer_ << "    // Increment barrier and only send barrier update\n";
-  buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n";
+  buffer_ << "    if (knowledge.wait (barrier_logic, wait_settings) == 0)\n";
+  buffer_ << "    {\n";
+  buffer_ << "      // Handle barrier timeout\n";
+  buffer_ << "    }\n";
 
   buffer_ << "  }\n\n";
   if (do_vrep_)
