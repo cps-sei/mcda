@@ -41,11 +41,36 @@ void print_state(int n,int id,int incs)
   }
   printf("\n");
 }
+
+Madara::Knowledge_Record
+location_drop_policy (Madara::Knowledge_Map & records,
+  const Madara::Transport::Transport_Context & context,
+  Madara::Knowledge_Engine::Variables & vars)
+{
+  Madara::Knowledge_Record result;
+  // location-based packet drop policy
+
+  // discard incoming packets
+  records.clear();
+
+  return result;
+}
+
+void pre_round_barrier_timeout(void)
+{
+  // Handle pre round barrier timeout
+}
+
+void post_round_barrier_timeout(void)
+{
+  // Handle post round barrier timeout
+}
+
 %%}
 
-ON_PRE_ROUND_BARRIER_TIMEOUT(foo);
-ON_POST_ROUND_BARRIER_TIMEOUT(bar);
-ON_RECEIVE_FILTER(baz);
+ON_PRE_ROUND_BARRIER_TIMEOUT(pre_round_barrier_timeout);
+ON_POST_ROUND_BARRIER_TIMEOUT(post_round_barrier_timeout);
+ON_RECEIVE_FILTER(location_drop_policy);
 
 CONST OUTSIDE = 0;
 CONST TRYING = 1; 

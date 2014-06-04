@@ -102,9 +102,10 @@ namespace daig
     typedef std::map<std::string,std::string> TargetType;
     TargetType targets;
 
-    ///call backs
-    typedef std::map<std::string,std::string> CallBacks;
-    CallBacks callbacks;
+    /// callbacks : a map from callback types to callback names
+    /// callback types are "on_pre_round_barrier_timeout", "on_post_round_barrier_timeout", and "on_receive_filter"
+    typedef std::map<std::string,std::string> Callbacks;
+    Callbacks callbacks;
 
     //constant definitions
     typedef std::map<std::string,std::string> ConstDef;
@@ -139,26 +140,32 @@ namespace daig
     ///add a function
     void addFunction(const Function &f) { funcs[f.name] = f; }
 
-    ///add a call back
-    void addCallBack(const std::string &callback_type, const std::string &callback_name)
+    ///add a callback
+    void addCallback(const std::string &callback_type, const std::string &callback_name)
     {
-        if (!callbacks.insert(CallBacks::value_type(callback_type, callback_name)).second) {
-            std::cerr << "Callback " << callback_type << " already exists\n";
-            assert(0);
-        }
-        std::cout << "Callback " << callback_type << ":" << callback_name << " added\n";
+      if (!callbacks.insert(Callbacks::value_type(callback_type, callback_name)).second) {
+        std::cerr << "Callback of type " << callback_type << " already exists.\n";
+        assert(0);
+      }
+      std::cout << "Callback " << callback_type << ":" << callback_name << " added.\n";
     }
 
-    ///get a call back
-    const std::string & getCallBack(const std::string &callback_type)
+    ///check if callback exists
+    bool callbackExists(const std::string &callback_type)
     {
-        CallBacks::const_iterator it = callbacks.find(callback_type);
-        if (it == callbacks.end())
-        {
-            std::cerr << "Callback not found for " << callback_type << '\n';
-            assert(0);
-        }
-        return it->second;
+      return callbacks.find(callback_type) != callbacks.end();
+    }
+
+    ///get a callback
+    const std::string & getCallback(const std::string &callback_type)
+    {
+      Callbacks::const_iterator it = callbacks.find(callback_type);
+      if (it == callbacks.end())
+      {
+        std::cerr << "Callback of type " << callback_type << " not found.\n";
+        assert(0);
+      }
+      return it->second;
     }
 
     ///return true if the argument is the name of an external function

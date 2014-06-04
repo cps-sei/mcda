@@ -71,7 +71,7 @@ std::string thunk;
 %token <token> TLBRACKET TRBRACKET TCOMMA TDOT
 %token <token> TPLUS TMINUS TMUL TDIV TMOD
 %token <token> TBWNOT TBWAND TBWOR TBWXOR TBWLSH TBWRSH
-%token <token> TPRE_TIMEOUT TPOST_TIMEOUT TRECEIVE_FILTER
+%token <token> TON_PRE_TIMEOUT TON_POST_TIMEOUT TON_RECV_FILTER
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -144,16 +144,16 @@ target_id_list : TIDENTIFIER {
 ;
 
 callback_list : {}
-| callback_list TPRE_TIMEOUT TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
-  builder->program.addCallBack("pre_timeout", *$4);
+| callback_list TON_PRE_TIMEOUT TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
+  builder->program.addCallback("on_pre_round_barrier_timeout", *$4);
   delete $4;
 }
-| callback_list TPOST_TIMEOUT TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
-  builder->program.addCallBack("post_timeout", *$4);
+| callback_list TON_POST_TIMEOUT TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
+  builder->program.addCallback("on_post_round_barrier_timeout", *$4);
   delete $4;
 }
-| callback_list TRECEIVE_FILTER TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
-  builder->program.addCallBack("receive_filter", *$4);
+| callback_list TON_RECV_FILTER TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
+  builder->program.addCallback("on_receive_filter", *$4);
   delete $4;
 }
 ;
