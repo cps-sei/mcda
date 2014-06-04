@@ -69,9 +69,9 @@ daig::madara::Sync_Builder::build ()
   // build the header includes
   build_header_includes ();
   build_common_global_variables ();
+  build_program_variables ();
   build_target_thunk ();
   build_external_functions ();
-  build_program_variables ();
   build_parse_args ();
   build_functions_declarations ();
   build_functions ();
@@ -760,6 +760,8 @@ daig::madara::Sync_Builder::build_function (
 void
 daig::madara::Sync_Builder::build_main_function ()
 {
+  Program::Callbacks & callbacks = builder_.program.callbacks;
+
   buffer_ << "int main (int argc, char ** argv)\n";
   buffer_ << "{\n";
   buffer_ << "  settings.type = Madara::Transport::MULTICAST;\n";
@@ -774,6 +776,12 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  }\n\n";
   
   buffer_ << "  settings.queue_length = 100000;\n\n";
+
+  if (builder_.program.callbackExists("on_receive_filter"))
+  {
+    std::string callback = builder_.program.getCallback("on_receive_filter");
+    buffer_ << "  settings.add_receive_filter(" << callback << ");\n";
+  }
 
   buffer_ << "  Madara::Knowledge_Engine::Wait_Settings wait_settings;\n";
   buffer_ << "  wait_settings.max_wait_time = max_barrier_time;\n";
@@ -930,6 +938,13 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    if (knowledge.wait (barrier_logic, wait_settings).to_integer () == 0)\n";
   buffer_ << "    {\n";
   buffer_ << "      // Handle barrier timeout\n";
+
+  if (builder_.program.callbackExists("on_pre_round_barrier_timeout"))
+  {
+    std::string callback = builder_.program.getCallback("on_pre_round_barrier_timeout");
+    buffer_ << "      " << callback << "();\n";
+  }
+
   buffer_ << "    }\n";
 
   buffer_ << "    // Send only barrier information\n";
@@ -947,6 +962,13 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    if (knowledge.wait (barrier_logic, wait_settings).to_integer () == 0)\n";
   buffer_ << "    {\n";
   buffer_ << "      // Handle barrier timeout\n";
+
+  if (builder_.program.callbackExists("on_post_round_barrier_timeout"))
+  {
+    std::string callback = builder_.program.getCallback("on_post_round_barrier_timeout");
+    buffer_ << "      " << callback << "();\n";
+  }
+
   buffer_ << "    }\n";
 
   buffer_ << "  }\n\n";
