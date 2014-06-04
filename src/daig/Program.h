@@ -102,6 +102,10 @@ namespace daig
     typedef std::map<std::string,std::string> TargetType;
     TargetType targets;
 
+    ///call backs
+    typedef std::map<std::string,std::string> CallBacks;
+    CallBacks callbacks;
+
     //constant definitions
     typedef std::map<std::string,std::string> ConstDef;
     ConstDef constDef;
@@ -134,6 +138,28 @@ namespace daig
 
     ///add a function
     void addFunction(const Function &f) { funcs[f.name] = f; }
+
+    ///add a call back
+    void addCallBack(const std::string &callback_type, const std::string &callback_name)
+    {
+        if (!callbacks.insert(CallBacks::value_type(callback_type, callback_name)).second) {
+            std::cerr << "Callback " << callback_type << " already exists\n";
+            assert(0);
+        }
+        std::cout << "Callback " << callback_type << ":" << callback_name << " added\n";
+    }
+
+    ///get a call back
+    const std::string & getCallBack(const std::string &callback_type)
+    {
+        CallBacks::const_iterator it = callbacks.find(callback_type);
+        if (it == callbacks.end())
+        {
+            std::cerr << "Callback not found for " << callback_type << '\n';
+            assert(0);
+        }
+        return it->second;
+    }
 
     ///return true if the argument is the name of an external function
     bool isExternalFunction(const std::string &fn) const 

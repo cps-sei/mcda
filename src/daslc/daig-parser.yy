@@ -71,6 +71,7 @@ std::string thunk;
 %token <token> TLBRACKET TRBRACKET TCOMMA TDOT
 %token <token> TPLUS TMINUS TMUL TDIV TMOD
 %token <token> TBWNOT TBWAND TBWOR TBWXOR TBWLSH TBWRSH
+%token <token> TPRE_TIMEOUT TPOST_TIMEOUT TRECEIVE_FILTER
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -113,7 +114,7 @@ std::string thunk;
 %start program
 
 %%
-program : moc target_list const_list extern_fn_list node prog_def init_def safety_def {};
+program : moc target_list callback_list const_list extern_fn_list node prog_def init_def safety_def {};
 
 moc : 
   TMOCSYNC TSEMICOLON { builder->program.moc.set_type("SYNC"); }
@@ -139,6 +140,21 @@ target_id_list : TIDENTIFIER {
 | target_id_list TCOMMA TIDENTIFIER {
   $$ = $1;
   $$->push_back(*$3); delete $3;
+}
+;
+
+callback_list : {}
+| callback_list TPRE_TIMEOUT TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
+  builder->program.addCallBack("pre_timeout", *$4);
+  delete $4;
+}
+| callback_list TPOST_TIMEOUT TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
+  builder->program.addCallBack("post_timeout", *$4);
+  delete $4;
+}
+| callback_list TRECEIVE_FILTER TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
+  builder->program.addCallBack("receive_filter", *$4);
+  delete $4;
 }
 ;
 
