@@ -205,6 +205,8 @@ namespace daig
        * @param  os  the stream to print to
        **/
       void print (std::ostream & os);
+
+
     private:
       
       /// the result of the DASL parsing function
@@ -218,6 +220,24 @@ namespace daig
 
       /// character buffer for holding results of build
       std::stringstream buffer_;
+
+      /**
+       * Begins daig namespace
+       */
+      void open_daig_namespace (void);
+
+      /**
+       * Ends daig namespace
+       */
+      void close_daig_namespace (void);
+
+      /**
+       * Splits target_str into 2 blocks of code;
+       * first block contains lines starting with #include;
+       * second block contains lines not starting with #include
+       */
+      std::pair<std::string, std::string>
+      split_include_and_non_include_blocks (const std::string target_str);
     };
   } // namespace madara
 } //namespace daig

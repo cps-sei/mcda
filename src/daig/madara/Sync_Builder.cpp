@@ -45,6 +45,8 @@
  **/
 #include "Sync_Builder.hpp"
 #include "Function_Visitor.hpp"
+#include <boost/algorithm/string.hpp>
+#include <vector>
 
 daig::madara::Sync_Builder::Sync_Builder (daig::DaigBuilder & builder,
                                           const std::string &target,
@@ -68,13 +70,16 @@ daig::madara::Sync_Builder::build ()
 
   // build the header includes
   build_header_includes ();
+  // open daig namespace after including libraries
+  build_target_thunk ();
   build_common_global_variables ();
   build_program_variables ();
-  build_target_thunk ();
   build_external_functions ();
   build_parse_args ();
   build_functions_declarations ();
   build_functions ();
+  // close daig namespace
+  close_daig_namespace ();
   build_main_function ();
 }
 
@@ -157,8 +162,51 @@ daig::madara::Sync_Builder::build_target_thunk ()
   // if there was any such target, print it
   if (it != builder_.program.targets.end ())
   {
-    buffer_ << it->second << '\n';
+    std::pair<std::string, std::string> blocks = split_include_and_non_include_blocks (it->second);
+    buffer_ << blocks.first << '\n';
+    // open daig namespace after including libraries
+    open_daig_namespace ();
+    buffer_ << blocks.second << '\n';
   }
+}
+
+std::pair<std::string, std::string>
+daig::madara::Sync_Builder::split_include_and_non_include_blocks (const std::string target_str)
+{
+  std::vector<std::string> all_lines;
+  std::vector<std::string> include_lines;
+  std::vector<std::string> non_include_lines;
+
+  boost::split(all_lines, target_str, boost::is_any_of ("\n"));
+  for (std::vector<std::string>::iterator it = all_lines.begin (); it != all_lines.end (); ++it)
+  {
+    std::string line = *it;
+    if (line.find ("#include") == 0)
+    {
+      include_lines.push_back (line);
+    }
+    else
+    {
+      non_include_lines.push_back (line);
+    }
+  }
+
+  // all lines starting with #include
+  std::string include_str ("");
+  for (std::vector<std::string>::iterator it = include_lines.begin (); it != include_lines.end (); ++it)
+  {
+    include_str += *it + "\n";
+  }
+
+  // all lines not starting with #include
+  std::string non_include_str ("");
+  for (std::vector<std::string>::iterator it = non_include_lines.begin (); it != non_include_lines.end (); ++it)
+  {
+    non_include_str += *it + "\n";
+  }
+
+  std::pair<std::string, std::string> blocks (include_str, non_include_str);
+  return blocks;
 }
 
 void
@@ -760,10 +808,9 @@ daig::madara::Sync_Builder::build_function (
 void
 daig::madara::Sync_Builder::build_main_function ()
 {
-  Program::Callbacks & callbacks = builder_.program.callbacks;
-
   buffer_ << "int main (int argc, char ** argv)\n";
   buffer_ << "{\n";
+  buffer_ << "  using namespace daig;\n";
   buffer_ << "  settings.type = Madara::Transport::MULTICAST;\n";
   buffer_ << "\n";
   buffer_ << "  // handle any command line arguments\n";
@@ -1036,4 +1083,19 @@ void
 daig::madara::Sync_Builder::print (std::ostream & os)
 {
   os << buffer_.str ();
+}
+
+void
+daig::madara::Sync_Builder::open_daig_namespace ()
+{
+  buffer_ << "// begin daig namespace\n";
+  buffer_ << "namespace daig\n";
+  buffer_ << "{\n";
+}
+
+void
+daig::madara::Sync_Builder::close_daig_namespace ()
+{
+  buffer_ << "} // end daig namespace\n";
+  buffer_ << "\n";
 }
