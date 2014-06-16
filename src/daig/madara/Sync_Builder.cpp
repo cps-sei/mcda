@@ -70,10 +70,12 @@ daig::madara::Sync_Builder::build ()
 
   // build the header includes
   build_header_includes ();
-  // open daig namespace after including libraries
-  build_target_thunk ();
   build_common_global_variables ();
   build_program_variables ();
+
+  // open daig namespace after including libraries
+  build_target_thunk ();
+
   build_external_functions ();
   build_parse_args ();
   build_functions_declarations ();
@@ -113,6 +115,16 @@ daig::madara::Sync_Builder::build_common_global_variables ()
   buffer_ << "std::string host (\"\");\n";
   buffer_ << "const std::string default_multicast (\"239.255.0.1:4150\");\n";
   buffer_ << "Madara::Transport::QoS_Transport_Settings settings;\n";
+  buffer_ << "\n";
+
+  buffer_ << "// Packet drop simulation options\n";
+  buffer_ << "enum drop_policy_t { NONE, DISTANCE_DROP };\n";
+  buffer_ << "drop_policy_t drop_policy = NONE;\n";
+  buffer_ << "\n";
+
+  buffer_ << "// Barrier timeout handling options\n";
+  buffer_ << "enum barrier_timeout_handler_t { NOOP, IGNORE_TIMED_OUT_NODES };\n";
+  buffer_ << "barrier_timeout_handler_t barrier_timeout_handler = NOOP;\n";
   buffer_ << "\n";
   
   if (do_vrep_)
@@ -470,6 +482,14 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "      \n";
   buffer_ << "      ++i;\n";
   buffer_ << "    }\n";
+  buffer_ << "    else if (arg1 == \"--distance-drop\")\n";
+  buffer_ << "    {\n";
+  buffer_ << "      drop_policy = DISTANCE_DROP;\n";
+  buffer_ << "    }\n";
+  buffer_ << "    else if (arg1 == \"--ignore-timed-out-nodes\")\n";
+  buffer_ << "    {\n";
+  buffer_ << "      barrier_timeout_handler = IGNORE_TIMED_OUT_NODES;\n";
+  buffer_ << "    }\n";
   buffer_ << "    else if (arg1 == \"-f\" || arg1 == \"--logfile\")\n";
   buffer_ << "    {\n";
   buffer_ << "      if (i + 1 < argc)\n";
@@ -824,21 +844,38 @@ daig::madara::Sync_Builder::build_main_function ()
   
   buffer_ << "  settings.queue_length = 100000;\n\n";
 
-  if (builder_.program.callbackExists("on_receive_filter"))
-  {
-    std::string callback = builder_.program.getCallback("on_receive_filter");
-    buffer_ << "  settings.add_receive_filter(" << callback << ");\n";
-  }
+  // TODO: allow options of callbacks for receive_filter
+  assert (builder_.program.callbackExists("on_receive_filter"));
+  std::string drop_policy_callback = builder_.program.getCallback("on_receive_filter");
+
+  buffer_ << "  if (drop_policy == DISTANCE_DROP)\n";
+  buffer_ << "  {\n";
+  buffer_ << "    // Simulate packet drop\n";
+  buffer_ << "    settings.add_receive_filter (" << drop_policy_callback << ");\n";
+  buffer_ << "  }\n\n";
 
   buffer_ << "  Madara::Knowledge_Engine::Wait_Settings wait_settings;\n";
   buffer_ << "  wait_settings.max_wait_time = max_barrier_time;\n";
-  buffer_ << "  wait_settings.poll_frequency = .1;\n";
+  buffer_ << "  wait_settings.poll_frequency = .1;\n\n";
 
   buffer_ << "  // create the knowledge base with the transport settings\n";
   buffer_ << "  Madara::Knowledge_Engine::Knowledge_Base knowledge (host, settings);\n\n";
   
   build_program_variables_bindings ();
   build_main_define_functions ();
+
+  // TODO: allow options of barrier timout handlers
+  assert (builder_.program.callbackExists("on_pre_round_barrier_timeout"));
+  assert (builder_.program.callbackExists("on_post_round_barrier_timeout"));
+  std::string pre_round_timeout_callback = builder_.program.getCallback("on_pre_round_barrier_timeout");
+  std::string post_round_timeout_callback = builder_.program.getCallback("on_post_round_barrier_timeout");
+
+  buffer_ << "  if (barrier_timeout_handler == IGNORE_TIMED_OUT_NODES)\n";
+  buffer_ << "  {\n";
+  buffer_ << "    // Add barrier timeout handler\n";
+  buffer_ << "    knowledge.define_function (\"" << pre_round_timeout_callback << "\", " << pre_round_timeout_callback << ");\n";
+  buffer_ << "    knowledge.define_function (\"" << post_round_timeout_callback << "\", " << post_round_timeout_callback << ");\n";
+  buffer_ << "  }\n\n";
   
   // set the values for id and processes
   buffer_ << "  id = Integer (settings.id);\n";
@@ -981,18 +1018,12 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    wait_settings.send_list.clear ();\n";
   buffer_ << '\n';
   buffer_ << "    // first barrier for new data from previous round\n";
-  buffer_ << "    wait_settings.max_wait_time = max_barrier_time;\n";
-  buffer_ << "    if (knowledge.wait (barrier_logic, wait_settings).to_integer () == 0)\n";
+  buffer_ << "    int wait_result = knowledge.wait (barrier_logic, wait_settings).to_integer ();\n";
+  buffer_ << "    if (wait_result == 0 && barrier_timeout_handler != NOOP)\n";
   buffer_ << "    {\n";
-  buffer_ << "      // Handle barrier timeout\n";
-
-  if (builder_.program.callbackExists("on_pre_round_barrier_timeout"))
-  {
-    std::string callback = builder_.program.getCallback("on_pre_round_barrier_timeout");
-    buffer_ << "      " << callback << "();\n";
-  }
-
-  buffer_ << "    }\n";
+  buffer_ << "      // Execute barrier timeout handler\n";
+  buffer_ << "      knowledge.evaluate (\"" << pre_round_timeout_callback << " ()\");\n";
+  buffer_ << "    }\n\n";
 
   buffer_ << "    // Send only barrier information\n";
   buffer_ << "    wait_settings.send_list = barrier_send_list;\n\n";
@@ -1004,19 +1035,13 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    knowledge.evaluate (round_logic, wait_settings);\n\n";
   
   buffer_ << "    // second barrier for waiting on others to finish round\n";
-  buffer_ << "    wait_settings.max_wait_time = max_barrier_time;\n";
   buffer_ << "    // Increment barrier and only send barrier update\n";
-  buffer_ << "    if (knowledge.wait (barrier_logic, wait_settings).to_integer () == 0)\n";
+  buffer_ << "    wait_result = knowledge.wait (barrier_logic, wait_settings).to_integer ();\n";
+  buffer_ << "    if (wait_result == 0 && barrier_timeout_handler != NOOP)\n";
   buffer_ << "    {\n";
-  buffer_ << "      // Handle barrier timeout\n";
-
-  if (builder_.program.callbackExists("on_post_round_barrier_timeout"))
-  {
-    std::string callback = builder_.program.getCallback("on_post_round_barrier_timeout");
-    buffer_ << "      " << callback << "();\n";
-  }
-
-  buffer_ << "    }\n";
+  buffer_ << "      // Execute barrier timeout handler\n";
+  buffer_ << "      knowledge.evaluate (\"" << post_round_timeout_callback << " ()\");\n";
+  buffer_ << "    }\n\n";
 
   buffer_ << "  }\n\n";
   if (do_vrep_)

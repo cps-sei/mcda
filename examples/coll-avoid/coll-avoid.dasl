@@ -5,7 +5,7 @@ TARGET GNU_CPP,WIN_CPP %%{
 #define GNU_WIN
 #include <stdlib.h>
 #include <math.h>
-#include "boost/lexical_cast.hpp"
+#include <unistd.h>
 #include "madara/utility/Utility.h"
 
 int MOVE_TO(unsigned char x,unsigned char y)
@@ -19,7 +19,7 @@ int my_sleep (int seconds)
   return 0;
 }
 
-int u_round = 0;
+int round = 0;
 int xi,yi;
 
 void print_line(int _X)
@@ -31,13 +31,13 @@ void print_line(int _X)
 
 void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf)
 {
-  if(u_round == 0) {
+  if(round == 0) {
     xi = x; yi = y;
   }
 
   for(int i = 0;i < 150;++i) printf("\n");
   
-  printf("round = %d : id = %d\n", ++u_round, id);
+  printf("round = %d : id = %d\n", ++round, id);
   printf("_X = %d _Y = %d\n",_X,_Y);
   print_line(_X);
   for(int i = 0;i < _Y;++i) {
@@ -53,59 +53,66 @@ void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf)
   }
 }
 
-#define NEIGHBOR_RADIUS 3
+const int NEIGHBOR_RADIUS = 5;
 
 Madara::Knowledge_Record
-location_drop_policy (Madara::Knowledge_Map & records,
-  const Madara::Transport::Transport_Context & context,
-  Madara::Knowledge_Engine::Variables & vars)
+distance_drop_policy (Madara::Knowledge_Map & records,
+                      const Madara::Transport::Transport_Context & context,
+                      Madara::Knowledge_Engine::Variables & vars)
 {
-  Madara::Knowledge_Record result;
+  Madara::Knowledge_Record result; // unused
 
-  Madara::Knowledge_Record x_rec = vars.get(".x");
-  Madara::Knowledge_Record y_rec = vars.get(".y");
-  // TODO: check that variables exist
-  int x = (int) x_rec.to_integer();
-  int y = (int) y_rec.to_integer();
+  // Get coordinates of this node
+  Integer my_x = vars.get(".x").to_integer();
+  Integer my_y = vars.get(".y").to_integer();
 
-  // hacky solution: use the last 2 characters of originator as sender's id
-  const std::string & originator = context.get_originator();
-  const std::string sender_id_str = originator.substr(originator.length() - 2, 2);
-  int sender_id = boost::lexical_cast<int>(sender_id_str);
+  // Get coordinates of sender node
+  Integer sender_x, sender_y;
+  for (Madara::Knowledge_Map::iterator it = records.begin(); it != records.end(); ++it)
+  {
+    const std::string var_name = it->first;
+    if (Madara::Utility::begins_with(var_name, "curr_pos.0."))
+    {
+      sender_x = it->second.to_integer();
+    }
+    else if (Madara::Utility::begins_with(var_name, "curr_pos.1."))
+    {
+      sender_y = it->second.to_integer();
+    }
+  }
+  int dx = (int) (my_x - sender_x);
+  int dy = (int) (my_y - sender_y);
+  double dr = sqrt(dx * dx + dy * dy);
 
-  Madara::Knowledge_Record curr_pos_rec = vars.get("curr_pos");
-  Madara::Knowledge_Record sender_x_rec = curr_pos_rec.retrieve_index(0).retrieve_index(sender_id);
-  Madara::Knowledge_Record sender_y_rec = curr_pos_rec.retrieve_index(1).retrieve_index(sender_id);
-  int sender_x = (int) sender_x_rec.to_integer();
-  int sender_y = (int) sender_y_rec.to_integer();
-
-  int dx = x - sender_x;
-  int dy = y - sender_y;
-  double d = sqrt(dx * dx + dy * dy);
-
-  if (d > NEIGHBOR_RADIUS) {
-    // discard incoming packets
+  if (dr > NEIGHBOR_RADIUS) {
+    // Discard incoming packets
+    std::cout << "Discard incomimng packets" << std::endl;
     records.clear();
   }
 
-  return result;
+  return result; // empty record
 }
 
-void pre_round_barrier_timeout(void)
+Madara::Knowledge_Record
+handle_pre_round_barrier_timeout (Madara::Knowledge_Engine::Function_Arguments & args,
+                        Madara::Knowledge_Engine::Variables & vars)
 {
-  // Handle pre round barrier timeout
+  Madara::Knowledge_Record result; // unused
+  return result; // empty record
 }
 
-void post_round_barrier_timeout(void)
+Madara::Knowledge_Record
+handle_post_round_barrier_timeout (Madara::Knowledge_Engine::Function_Arguments & args,
+                        Madara::Knowledge_Engine::Variables & vars)
 {
-  // Handle post round barrier timeout
+  Madara::Knowledge_Record result; // unused
+  return result; // empty record
 }
-
 %%}
 
-ON_PRE_ROUND_BARRIER_TIMEOUT(pre_round_barrier_timeout);
-ON_POST_ROUND_BARRIER_TIMEOUT(post_round_barrier_timeout);
-ON_RECEIVE_FILTER(location_drop_policy);
+ON_PRE_ROUND_BARRIER_TIMEOUT(handle_pre_round_barrier_timeout);
+ON_POST_ROUND_BARRIER_TIMEOUT(handle_post_round_barrier_timeout);
+ON_RECEIVE_FILTER(distance_drop_policy);
 
 //number of X and Y coordinates
 CONST X = 10;
@@ -153,9 +160,6 @@ NODE uav (id)
     //my_sleep(1);
     if(state == INITS) {
       lock[x][y][id] = 1;
-      // set initial global coordinates
-      curr_pos[0][id] = x;
-      curr_pos[0][id] = y;
       state = NEXT;
     } if(state == NEXT) {
       //compute next point on route
@@ -177,11 +181,11 @@ NODE uav (id)
       if(MOVE_TO(xp,yp)) return;
       lock[x][y][id] = 0; 
       x = xp; y = yp;
-      // update global coordinates
-      curr_pos[0][id] = x;
-      curr_pos[1][id] = y;
       state = NEXT;
     }
+    // Update current position
+    curr_pos[0][id] = x;
+    curr_pos[1][id] = y;
   }
 }
 
