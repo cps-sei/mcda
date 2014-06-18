@@ -191,6 +191,11 @@ namespace daig
       void build_function (const daig::Node & node, daig::Function & function);
       
       /**
+       * Builds add and remove id filters for message passing
+       **/
+      void build_id_filters (void);
+      
+      /**
        * Builds the main logic loop for execution of ROUND
        **/
       void build_main_logic (void);

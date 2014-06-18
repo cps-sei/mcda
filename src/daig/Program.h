@@ -61,6 +61,7 @@
 #include "Function.h"
 #include "Node.h"
 #include "Visitor.h"
+#include <iostream>
 
 
 namespace daig
@@ -84,6 +85,16 @@ namespace daig
   {
   public:
     /**
+     * Default constructor
+     **/
+    Program ();
+    
+    /**
+     * Destructor
+     **/
+    ~Program ();
+
+    /**
      * Prints variable information
      * @param  indent  spaces to indent printout
      **/
@@ -97,6 +108,16 @@ namespace daig
      * Model of computation for the program
      **/
     Model_Of_Computation moc;
+
+    /**
+     * If true, track sender locations with x, y, z globals
+     **/
+    bool trackLocations;
+    
+    /**
+     * If true, send heartbeats
+     **/
+    bool sendHeartbeats;
 
     ///target thunks
     typedef std::map<std::string,std::string> TargetType;
@@ -147,7 +168,6 @@ namespace daig
         std::cerr << "Callback of type " << callback_type << " already exists.\n";
         assert(0);
       }
-      std::cout << "Callback " << callback_type << ":" << callback_name << " added.\n";
     }
 
     ///check if callback exists

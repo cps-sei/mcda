@@ -28,7 +28,7 @@
  *      University for the operation of the Software Engineering Institute, a
  *      federally funded research and development center. Any opinions,
  *      findings and conclusions or recommendations expressed in this material
- *      are those of the author(s) and do not necessarily reflect the views of
+ *      are those of the author (s) and do not necessarily reflect the views of
  *      the United States Department of Defense.
  * 
  *      NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING
@@ -51,7 +51,7 @@
 daig::madara::Sync_Builder::Sync_Builder (daig::DaigBuilder & builder,
                                           const std::string &target,
                                           const bool do_vrep)
-  : builder_ (builder), target_(target), do_vrep_(do_vrep)
+  : builder_ (builder), target_ (target), do_vrep_ (do_vrep)
 {
 
 }
@@ -72,6 +72,7 @@ daig::madara::Sync_Builder::build ()
   build_header_includes ();
   build_common_global_variables ();
   build_program_variables ();
+  build_id_filters ();
 
   // open daig namespace after including libraries
   build_target_thunk ();
@@ -144,7 +145,7 @@ daig::madara::Sync_Builder::build_common_global_variables ()
     buffer_ << "//the VREP MOVE_TO () function\n";
     buffer_ << "int VREP_MOVE_TO (unsigned char x,unsigned char y)\n";
     buffer_ << "{\n";
-    buffer_ << "  return vrep_interface->moveNodeTo(vrep_node_id,x,y,1);\n";
+    buffer_ << "  return vrep_interface->moveNodeTo (vrep_node_id,x,y,1);\n";
     buffer_ << "}\n";
     buffer_ << '\n';
   }
@@ -163,7 +164,7 @@ daig::madara::Sync_Builder::build_common_global_variables ()
 }
 
 void
-daig::madara::Sync_Builder::build_target_thunk ()
+daig::madara::Sync_Builder::build_target_thunk (void)
 {
   buffer_ << "// target (" << target_ << ") specific thunk\n";
 
@@ -182,6 +183,35 @@ daig::madara::Sync_Builder::build_target_thunk ()
   }
 }
 
+void daig::madara::Sync_Builder::build_id_filters (void)
+{
+  if (builder_.program.callbackExists ("on_receive_filter"))
+  {
+    buffer_ << "// Add the id to the outgoing records\n";
+    buffer_ << "Madara::Knowledge_Record\n";
+    buffer_ << "add_id (Madara::Knowledge_Map & outgoing_records,\n";
+    buffer_ << "  const Madara::Transport::Transport_Context & context,\n";
+    buffer_ << "  Madara::Knowledge_Engine::Variables & vars)\n";
+    buffer_ << "{\n";
+    buffer_ << "  Madara::Knowledge_Record result;\n";
+    buffer_ << "  outgoing_records[\"id\"] = vars.get (\".id\");\n";
+    buffer_ << "  return result;\n";
+    buffer_ << "}\n\n";
+  
+    buffer_ << "// Strip the id from incoming records\n";
+    buffer_ << "Madara::Knowledge_Record\n";
+    buffer_ << "remove_id (Madara::Knowledge_Map & incoming_records,\n";
+    buffer_ << "  const Madara::Transport::Transport_Context & context,\n";
+    buffer_ << "  Madara::Knowledge_Engine::Variables & vars)\n";
+    buffer_ << "{\n";
+    buffer_ << "  Madara::Knowledge_Record result;\n";
+    buffer_ << "  // erase the id before the context tries to apply it locally\n";
+    buffer_ << "  incoming_records.erase (\"id\");\n";
+    buffer_ << "  return result;\n";
+    buffer_ << "}\n\n";
+  }
+}
+
 std::pair<std::string, std::string>
 daig::madara::Sync_Builder::split_include_and_non_include_blocks (const std::string target_str)
 {
@@ -189,7 +219,7 @@ daig::madara::Sync_Builder::split_include_and_non_include_blocks (const std::str
   std::vector<std::string> include_lines;
   std::vector<std::string> non_include_lines;
 
-  boost::split(all_lines, target_str, boost::is_any_of ("\n"));
+  boost::split (all_lines, target_str, boost::is_any_of ("\n"));
   for (std::vector<std::string>::iterator it = all_lines.begin (); it != all_lines.end (); ++it)
   {
     std::string line = *it;
@@ -650,7 +680,7 @@ daig::madara::Sync_Builder::build_refresh_modify_globals ()
 {
   buffer_ << "Madara::Knowledge_Record\n";
   buffer_ << "REMODIFY_GLOBALS ";
-  buffer_ << "(engine::Function_Arguments &,\n";
+  buffer_ << " (engine::Function_Arguments &,\n";
   buffer_ << "  engine::Variables & vars)\n";
   buffer_ << "{\n";
   
@@ -723,7 +753,7 @@ daig::madara::Sync_Builder::build_external_function (
 {
   buffer_ << "Integer ";
   buffer_ << function.name << " ";
-  buffer_ << "(";
+  buffer_ << " (";
 
   bool started = false;
   BOOST_FOREACH (const Variables::value_type & variable, function.params)
@@ -785,7 +815,7 @@ daig::madara::Sync_Builder::build_function_declaration (
 
   buffer_ << "Madara::Knowledge_Record\n";
   buffer_ << function.name << " ";
-  buffer_ << "(engine::Function_Arguments & args, engine::Variables & vars);\n";
+  buffer_ << " (engine::Function_Arguments & args, engine::Variables & vars);\n";
 }
 
 void
@@ -797,7 +827,7 @@ daig::madara::Sync_Builder::build_function (
 
   buffer_ << "Madara::Knowledge_Record\n";
   buffer_ << node.name << "_" << function.name << " ";
-  buffer_ << "(engine::Function_Arguments & args, engine::Variables & vars)\n";
+  buffer_ << " (engine::Function_Arguments & args, engine::Variables & vars)\n";
   buffer_ << "{\n";
   buffer_ << "  // Declare local variables\n";
   
@@ -814,7 +844,7 @@ daig::madara::Sync_Builder::build_function (
   Function_Visitor visitor (function, node, builder_, buffer_, do_vrep_);
 
   //transform the body of safety
-  BOOST_FOREACH(const Stmt & statement, function.body)
+  BOOST_FOREACH (const Stmt & statement, function.body)
   {
     visitor.visit (statement);
   }
@@ -844,15 +874,17 @@ daig::madara::Sync_Builder::build_main_function ()
   
   buffer_ << "  settings.queue_length = 100000;\n\n";
 
-  // TODO: allow options of callbacks for receive_filter
-  assert (builder_.program.callbackExists("on_receive_filter"));
-  std::string drop_policy_callback = builder_.program.getCallback("on_receive_filter");
-
-  buffer_ << "  if (drop_policy == DISTANCE_DROP)\n";
-  buffer_ << "  {\n";
-  buffer_ << "    // Simulate packet drop\n";
-  buffer_ << "    settings.add_receive_filter (" << drop_policy_callback << ");\n";
-  buffer_ << "  }\n\n";
+  if (builder_.program.callbackExists ("on_receive_filter"))
+  {
+    buffer_ << "  // add user-defined receive filter\n";
+    buffer_ << "  settings.add_send_filter (add_id);\n";
+    std::string drop_policy_callback =
+      builder_.program.getCallback ("on_receive_filter");
+    buffer_ << "  settings.add_receive_filter (" <<
+      drop_policy_callback << ");\n";
+    
+    buffer_ << "  settings.add_receive_filter (remove_id);\n\n";
+  }
 
   buffer_ << "  Madara::Knowledge_Engine::Wait_Settings wait_settings;\n";
   buffer_ << "  wait_settings.max_wait_time = max_barrier_time;\n";
@@ -865,16 +897,30 @@ daig::madara::Sync_Builder::build_main_function ()
   build_main_define_functions ();
 
   // TODO: allow options of barrier timout handlers
-  assert (builder_.program.callbackExists("on_pre_round_barrier_timeout"));
-  assert (builder_.program.callbackExists("on_post_round_barrier_timeout"));
-  std::string pre_round_timeout_callback = builder_.program.getCallback("on_pre_round_barrier_timeout");
-  std::string post_round_timeout_callback = builder_.program.getCallback("on_post_round_barrier_timeout");
 
   buffer_ << "  if (barrier_timeout_handler == IGNORE_TIMED_OUT_NODES)\n";
   buffer_ << "  {\n";
   buffer_ << "    // Add barrier timeout handler\n";
-  buffer_ << "    knowledge.define_function (\"" << pre_round_timeout_callback << "\", " << pre_round_timeout_callback << ");\n";
-  buffer_ << "    knowledge.define_function (\"" << post_round_timeout_callback << "\", " << post_round_timeout_callback << ");\n";
+  
+  std::string pre_round_timeout_callback;
+  std::string post_round_timeout_callback;
+
+  if (builder_.program.callbackExists ("on_pre_round_barrier_timeout"))
+  {
+    pre_round_timeout_callback = builder_.program.getCallback (
+      "on_pre_round_barrier_timeout");
+    buffer_ << "    knowledge.define_function (\"" <<
+      pre_round_timeout_callback << "\", " << pre_round_timeout_callback
+      << ");\n";
+  }
+  if (builder_.program.callbackExists ("on_post_round_barrier_timeout"))
+  {
+    post_round_timeout_callback = builder_.program.getCallback (
+    "on_post_round_barrier_timeout");
+    buffer_ << "    knowledge.define_function (\"" <<
+      post_round_timeout_callback << "\", " << post_round_timeout_callback
+      << ");\n";
+  }
   buffer_ << "  }\n\n";
   
   // set the values for id and processes
@@ -979,22 +1025,22 @@ daig::madara::Sync_Builder::build_main_function ()
     buffer_ << "  // SETUP VREP HERE\n";
     buffer_ << '\n';
     buffer_ << "  // create the DV object\n";
-    buffer_ << "  switch(vrep_model)\n";
+    buffer_ << "  switch (vrep_model)\n";
     buffer_ << "  {\n";
-    buffer_ << "    case 2: vrep_interface = new TrackerAnt(X,Y); break;\n";
-    buffer_ << "    case 1: default: vrep_interface = new QuadriRotor(X,Y);\n";
+    buffer_ << "    case 2: vrep_interface = new TrackerAnt (X,Y); break;\n";
+    buffer_ << "    case 1: default: vrep_interface = new QuadriRotor (X,Y);\n";
     buffer_ << "  }\n";
-    buffer_ << "  vrep_interface->setDebug(true);\n";
+    buffer_ << "  vrep_interface->setDebug (true);\n";
     buffer_ << '\n';
     buffer_ << "  // connect to VREP\n";
-    buffer_ << "  vrep_interface->connect((char*)vrep_host.c_str (), vrep_port);\n";
+    buffer_ << "  vrep_interface->connect ( (char*)vrep_host.c_str (), vrep_port);\n";
     buffer_ << '\n';
     buffer_ << "  // create this node\n";
     buffer_ << "  vrep_node_id = vrep_interface->createNode ();\n";
     buffer_ << '\n';
     buffer_ << "  // place this node and sleep for a second\n";
-    buffer_ << "  vrep_interface->placeNodeAt(vrep_node_id, var_init_x, var_init_y, 1);\n";
-    buffer_ << "  Madara::Utility::sleep(1);\n";
+    buffer_ << "  vrep_interface->placeNodeAt (vrep_node_id, var_init_x, var_init_y, 1);\n";
+    buffer_ << "  Madara::Utility::sleep (1);\n";
     buffer_ << '\n';
     buffer_ << "  wait_settings.max_wait_time = max_barrier_time;\n";
     buffer_ << '\n';
@@ -1018,11 +1064,16 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    wait_settings.send_list.clear ();\n";
   buffer_ << '\n';
   buffer_ << "    // first barrier for new data from previous round\n";
-  buffer_ << "    int wait_result = knowledge.wait (barrier_logic, wait_settings).to_integer ();\n";
+  buffer_ << "    Integer wait_result = knowledge.wait (barrier_logic, wait_settings).to_integer ();\n";
   buffer_ << "    if (wait_result == 0 && barrier_timeout_handler != NOOP)\n";
   buffer_ << "    {\n";
-  buffer_ << "      // Execute barrier timeout handler\n";
-  buffer_ << "      knowledge.evaluate (\"" << pre_round_timeout_callback << " ()\");\n";
+
+  if (pre_round_timeout_callback != "")
+  {
+    buffer_ << "      // Execute barrier timeout handler\n";
+    buffer_ << "      knowledge.evaluate (\"" << pre_round_timeout_callback << " ()\");\n";
+  }
+
   buffer_ << "    }\n\n";
 
   buffer_ << "    // Send only barrier information\n";
@@ -1039,10 +1090,14 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    wait_result = knowledge.wait (barrier_logic, wait_settings).to_integer ();\n";
   buffer_ << "    if (wait_result == 0 && barrier_timeout_handler != NOOP)\n";
   buffer_ << "    {\n";
-  buffer_ << "      // Execute barrier timeout handler\n";
-  buffer_ << "      knowledge.evaluate (\"" << post_round_timeout_callback << " ()\");\n";
-  buffer_ << "    }\n\n";
 
+  if (post_round_timeout_callback != "")
+  {
+    buffer_ << "      // Execute barrier timeout handler\n";
+    buffer_ << "      knowledge.evaluate (\"" << post_round_timeout_callback << " ()\");\n";
+  }
+  
+  buffer_ << "    }\n\n";
   buffer_ << "  }\n\n";
   if (do_vrep_)
   {

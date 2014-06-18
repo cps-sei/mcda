@@ -34,8 +34,8 @@ std::string thunk;
 #define printStmt(_x) if(builder->debug) printf("STMT: %s\n",(_x)->toString().c_str())
 %}
 
-/* expect 3 shift reduce conflicts */
-%expect 3
+/* expect 5 shift reduce conflicts */
+%expect 5
 
 /* Represents the many different ways we can access our data */
 %union {
@@ -57,7 +57,7 @@ std::string thunk;
    match our tokens.l lex file. We also define the node type
    they represent.
  */
-%token <string> TIDENTIFIER TINTEGER TDOUBLE
+%token <string> TIDENTIFIER TINTEGER TDOUBLE TNAMESPACE
 %token <token> TMOCSYNC TMOCASYNC TMOCPSYNC TSEMICOLON TCONST TNODE
 %token <token> TGLOBAL TLOCAL TTARGET TTHUNK
 %token <token> TBOOL TINT TVOID TCHAR TSIGNED TUNSIGNED
@@ -72,6 +72,7 @@ std::string thunk;
 %token <token> TPLUS TMINUS TMUL TDIV TMOD
 %token <token> TBWNOT TBWAND TBWOR TBWXOR TBWLSH TBWRSH
 %token <token> TON_PRE_TIMEOUT TON_POST_TIMEOUT TON_RECV_FILTER
+%token <token> TTRACK_LOCATIONS
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -91,6 +92,7 @@ std::string thunk;
 %type <intList> dimensions
 %type <var> var
 %type <varList> var_list var_decl param_list var_decl_list
+%type <string> callback_name
 
 /* Operator precedence for ternary operators */
 %left TQUEST TCOLON
@@ -114,7 +116,12 @@ std::string thunk;
 %start program
 
 %%
-program : moc target_list callback_list const_list extern_fn_list node prog_def init_def safety_def {};
+program :
+  moc target_list callback_list const_list extern_fn_list node prog_def init_def safety_def {}
+| moc TTRACK_LOCATIONS target_list callback_list const_list extern_fn_list node prog_def init_def safety_def {
+  builder->program.trackLocations=true;
+}
+;
 
 moc : 
   TMOCSYNC TSEMICOLON { builder->program.moc.set_type("SYNC"); }
@@ -143,16 +150,20 @@ target_id_list : TIDENTIFIER {
 }
 ;
 
+callback_name : TIDENTIFIER { $$ = $1; }
+| TNAMESPACE { $$ = $1; }
+;
+
 callback_list : {}
-| callback_list TON_PRE_TIMEOUT TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
+| callback_list TON_PRE_TIMEOUT TLPAREN callback_name TRPAREN TSEMICOLON {
   builder->program.addCallback("on_pre_round_barrier_timeout", *$4);
   delete $4;
 }
-| callback_list TON_POST_TIMEOUT TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
+| callback_list TON_POST_TIMEOUT TLPAREN callback_name TRPAREN TSEMICOLON {
   builder->program.addCallback("on_post_round_barrier_timeout", *$4);
   delete $4;
 }
-| callback_list TON_RECV_FILTER TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
+| callback_list TON_RECV_FILTER TLPAREN callback_name TRPAREN TSEMICOLON {
   builder->program.addCallback("on_receive_filter", *$4);
   delete $4;
 }

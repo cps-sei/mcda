@@ -68,9 +68,11 @@ extern "C" int yywrap() { return 1; }
 "FORALL_OTHER"              PRINT_TOKEN; return TOKEN(TFAO);
 "FORALL_OTHER_LOWER"        PRINT_TOKEN; return TOKEN(TFAOL);
 "FORALL_OTHER_HIGHER"       PRINT_TOKEN; return TOKEN(TFAOH);
+"TRACK_LOCATIONS"           PRINT_TOKEN; return TOKEN(TTRACK_LOCATIONS);
 "ON_PRE_ROUND_BARRIER_TIMEOUT"  PRINT_TOKEN; return TOKEN(TON_PRE_TIMEOUT);
 "ON_POST_ROUND_BARRIER_TIMEOUT" PRINT_TOKEN; return TOKEN(TON_POST_TIMEOUT);
 "ON_RECEIVE_FILTER"         PRINT_TOKEN; return TOKEN(TON_RECV_FILTER);
+[a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)+  SAVE_TOKEN; return TNAMESPACE;
 [a-zA-Z_][a-zA-Z0-9_]*  {
                           /** substitute constant definitions */
                           std::map<std::string,std::string>::const_iterator it = 

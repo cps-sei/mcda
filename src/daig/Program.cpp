@@ -104,6 +104,15 @@ void daig::program::SanityChecker::exitFADNP(daig::FADNPStmt &stmt)
   delIdMap(stmt.id2);
 }
 
+daig::Program::Program ()
+: trackLocations (false), sendHeartbeats (true)
+{
+}
+
+daig::Program::~Program ()
+{
+}
+
 /*********************************************************************/
 //print the program to an output stream
 /*********************************************************************/
@@ -193,6 +202,25 @@ daig::Program::sanityCheck()
     //last dimension of global variables must be #N
     assert(*(v.second.type->dims.rbegin()) == -1 &&
            "ERROR: last dimension of global variables must be #N");
+  }
+
+  // if track locations is set, then add the x, y, z variables to declarations
+  if (trackLocations)
+  {
+    std::vector<std::string> vars;
+    vars.push_back ("x");
+    vars.push_back ("y");
+    vars.push_back ("z");
+    
+    // x, y, z are 1 dimensional arrays of length nodes.size ()
+    BOOST_FOREACH(std::string & var_name, vars) {
+      // we blow away any existing var.name and prefer our version
+      std::list <int> dims;
+      dims.push_back (nodes.size ());
+      daig::Variable var (var_name, dims);
+      var.scope = Variable::GLOBAL;
+      node.globVars[var.name] = var;
+    }
   }
 }
 
