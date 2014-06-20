@@ -1,6 +1,8 @@
 //a correct synchronous collision avoidance protocol
 MOC_SYNC;
 
+TRACK_LOCATIONS
+
 TARGET GNU_CPP,WIN_CPP %%{
 #define GNU_WIN
 #include <stdlib.h>
@@ -53,6 +55,7 @@ void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf)
   }
 }
 
+const int DROP_RADIUS = 8;
 const int NEIGHBOR_RADIUS = 5;
 
 Madara::Knowledge_Record
@@ -63,32 +66,40 @@ distance_drop_policy (Madara::Knowledge_Map & records,
   Madara::Knowledge_Record result; // unused
 
   // Get coordinates of this node
-  Integer my_x = vars.get(".x").to_integer();
-  Integer my_y = vars.get(".y").to_integer();
+  Integer my_x = x[*id];
+  Integer my_y = y[*id];
+  Integer my_z = z[*id];
 
   // Get coordinates of sender node
-  Integer sender_x, sender_y;
-  for (Madara::Knowledge_Map::iterator it = records.begin(); it != records.end(); ++it)
-  {
-    const std::string var_name = it->first;
-    if (Madara::Utility::begins_with(var_name, "curr_pos.0."))
-    {
-      sender_x = it->second.to_integer();
-    }
-    else if (Madara::Utility::begins_with(var_name, "curr_pos.1."))
-    {
-      sender_y = it->second.to_integer();
-    }
-  }
-  int dx = (int) (my_x - sender_x);
-  int dy = (int) (my_y - sender_y);
-  double dr = sqrt(dx * dx + dy * dy);
+  Integer sender_id = records["id"].to_integer();
+  Integer sender_x = x[sender_id];
+  Integer sender_y = y[sender_id];
+  Integer sender_z = z[sender_id];
 
-  if (dr > NEIGHBOR_RADIUS) {
+  Integer dx = my_x - sender_x;
+  Integer dy = my_y - sender_y;
+  Integer dz = my_z - sender_z;
+
+  double dr = sqrt(dx * dx + dy * dy + dz * dz);
+
+  if (dr > DROP_RADIUS) {
     // Discard incoming packets
-    std::cout << "Discard incomimng packets" << std::endl;
     records.clear();
   }
+
+  return result; // empty record
+}
+
+
+Madara::Knowledge_Record
+heartbeat_filter (Madara::Knowledge_Map & records,
+                      const Madara::Transport::Transport_Context & context,
+                      Madara::Knowledge_Engine::Variables & vars)
+{
+  Madara::Knowledge_Record result; // unused
+
+  Integer sender_id = records["id"].to_integer();
+  heartbeats.set (sender_id, 1);
 
   return result; // empty record
 }
@@ -109,11 +120,11 @@ handle_post_round_barrier_timeout (Madara::Knowledge_Engine::Function_Arguments 
   return result; // empty record
 }
 %%}
-
+/*
 ON_PRE_ROUND_BARRIER_TIMEOUT(handle_pre_round_barrier_timeout);
 ON_POST_ROUND_BARRIER_TIMEOUT(handle_post_round_barrier_timeout);
 ON_RECEIVE_FILTER(distance_drop_policy);
-
+*/
 //number of X and Y coordinates
 CONST X = 10;
 CONST Y = 10;
@@ -134,36 +145,32 @@ NODE uav (id)
   //shared variables -- visible across nodes. 
   //must be accessed via R() and W()
   GLOBAL _Bool lock [X][Y][#N];
-  // global coordinates to be used for packet drop policy
-  // first element is x-coordinate, second element is y-coordinate
-  GLOBAL _Bool curr_pos [2][#N];
 
   //private variables -- local to the node.
   //preserved across rounds
   LOCAL unsigned char state; //the state
-  LOCAL unsigned char x,y; //current coordinates
   LOCAL unsigned char xp,yp; //next coordinates
   LOCAL unsigned char xf,yf; //final coordinates
   
   void NEXT_XY () {
     ATOMIC {
-      xp = x; yp = y;
-      if(x < xf) xp = x + 1;
-      else if(x > xf) xp = x - 1;
-      else if(y < yf) yp = y + 1;
-      else yp = y - 1;
+      xp = x[id]; yp = y[id];
+      if(x[id] < xf) xp = x[id] + 1;
+      else if(x[id] > xf) xp = x[id] - 1;
+      else if(y[id] < yf) yp = y[id] + 1;
+      else yp = y[id] - 1;
     }
   }
 
   void ROUND () {
-    print_state(X,Y,id,x,y,xf,yf);
+    print_state(X,Y,id,x[id],y[id],xf,yf);
     //my_sleep(1);
     if(state == INITS) {
-      lock[x][y][id] = 1;
+      lock[x[id]][y[id]][id] = 1;
       state = NEXT;
     } if(state == NEXT) {
       //compute next point on route
-      if(x == xf && y == yf) return;
+      if(x[id] == xf && y[id] == yf) return;
       NEXT_XY();
       state = REQUEST;
     } else if(state == REQUEST) {
@@ -179,13 +186,10 @@ NODE uav (id)
     } else if(state == MOVE) {
       //now we have the lock on (x’,y’)
       if(MOVE_TO(xp,yp)) return;
-      lock[x][y][id] = 0; 
-      x = xp; y = yp;
+      lock[x[id]][y[id]][id] = 0;
+      x[id] = xp; y[id] = yp;
       state = NEXT;
     }
-    // Update current position
-    curr_pos[0][id] = x;
-    curr_pos[1][id] = y;
   }
 }
 

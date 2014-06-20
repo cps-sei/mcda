@@ -1084,6 +1084,12 @@ daig::madara::Sync_Builder::build_main_function ()
 
   buffer_ << "    // Execute main user logic\n";
   buffer_ << "    knowledge.evaluate (round_logic, wait_settings);\n\n";
+
+  buffer_ << "    // Reset heartbeats\n";
+  buffer_ << "    for (Integer i = 0; i < processes; i++)\n";
+  buffer_ << "    {\n";
+  buffer_ << "      heartbeats.set (i, 0);\n";
+  buffer_ << "    }\n\n";
   
   buffer_ << "    // second barrier for waiting on others to finish round\n";
   buffer_ << "    // Increment barrier and only send barrier update\n";

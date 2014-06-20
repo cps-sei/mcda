@@ -222,6 +222,15 @@ daig::Program::sanityCheck()
       node.globVars[var.name] = var;
     }
   }
+
+  if (sendHeartbeats)
+  {
+    std::list <int> dims;
+    dims.push_back (nodes.size ());
+    daig::Variable var ("heartbeats", dims);
+    var.scope = Variable::GLOBAL;
+    node.globVars[var.name] = var;
+  }
 }
 
 /*********************************************************************/
