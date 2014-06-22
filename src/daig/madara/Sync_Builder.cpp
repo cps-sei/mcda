@@ -68,15 +68,15 @@ daig::madara::Sync_Builder::build ()
     return;
   }
 
-  // build the header includes
   build_header_includes ();
+  build_target_thunk_includes ();
+  // open daig namespace after including ALL libraries
+  open_daig_namespace ();
   build_common_global_variables ();
   build_program_variables ();
   build_id_filters ();
-
-  // open daig namespace after including libraries
+  // build target thunk WITHOUT includes
   build_target_thunk ();
-
   build_external_functions ();
   build_parse_args ();
   build_functions_declarations ();
@@ -102,6 +102,13 @@ daig::madara::Sync_Builder::build_header_includes ()
   buffer_ << "#include \"madara/knowledge_engine/containers/Double.h\"\n";
   buffer_ << "#include \"madara/knowledge_engine/containers/String.h\"\n";
   buffer_ << "\n";
+}
+
+void
+daig::madara::Sync_Builder::build_target_thunk_includes ()
+{
+  const std::string include_lines = remove_include_lines_from_target_thunk ();
+  buffer_ << include_lines << '\n';
 }
 
 void
@@ -175,11 +182,7 @@ daig::madara::Sync_Builder::build_target_thunk (void)
   // if there was any such target, print it
   if (it != builder_.program.targets.end ())
   {
-    std::pair<std::string, std::string> blocks = split_include_and_non_include_blocks (it->second);
-    buffer_ << blocks.first << '\n';
-    // open daig namespace after including libraries
-    open_daig_namespace ();
-    buffer_ << blocks.second << '\n';
+    buffer_ << it->second << "\n\n";
   }
 }
 
@@ -210,6 +213,23 @@ void daig::madara::Sync_Builder::build_id_filters (void)
     buffer_ << "  return result;\n";
     buffer_ << "}\n\n";
   }
+}
+
+std::string
+daig::madara::Sync_Builder::remove_include_lines_from_target_thunk (void)
+{
+  Program::TargetType::const_iterator it =
+    builder_.program.targets.find (target_);
+
+  if (it != builder_.program.targets.end ())
+  {
+    std::pair<std::string, std::string> blocks = split_include_and_non_include_blocks (it->second);
+    builder_.program.targets[target_] = blocks.second;
+
+    return blocks.first;
+  }
+
+  return "";
 }
 
 std::pair<std::string, std::string>

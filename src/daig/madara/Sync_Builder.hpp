@@ -79,6 +79,11 @@ namespace daig
       void build_header_includes (void);
 
       /**
+       * Builds the target thunk includes
+       */
+      void build_target_thunk_includes (void);
+
+      /**
        * Builds the common global MADARA generated variables
        **/
       void build_common_global_variables (void);
@@ -235,6 +240,11 @@ namespace daig
        * Ends daig namespace
        */
       void close_daig_namespace (void);
+
+      /**
+       * Removes #include lines from target thunk and returns them
+       */
+      std::string remove_include_lines_from_target_thunk (void);
 
       /**
        * Splits target_str into 2 blocks of code;
