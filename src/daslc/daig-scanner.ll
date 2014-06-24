@@ -42,6 +42,7 @@ extern "C" int yywrap() { return 1; }
 "TARGET"                    PRINT_TOKEN; return TOKEN(TTARGET);
 "_Bool"                     PRINT_TOKEN; return TOKEN(TBOOL);
 "int"                       PRINT_TOKEN; return TOKEN(TINT);
+"double"                    PRINT_TOKEN; return TOKEN(TDOUBLE_TYPE);
 "void"                      PRINT_TOKEN; return TOKEN(TVOID);
 "char"                      PRINT_TOKEN; return TOKEN(TCHAR);
 "signed"                    PRINT_TOKEN; return TOKEN(TSIGNED);

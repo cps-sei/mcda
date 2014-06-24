@@ -75,6 +75,7 @@ namespace daig
   //return various basic types
   Type voidType();
   Type intType();
+  Type doubleType();
   Type charType();
   Type ucharType();
   Type boolType();
@@ -87,7 +88,7 @@ namespace daig
   {
   public:
     int qual; //qual = 0 means no qualifier
-    int type; //the actual type -- void, char, int, bool etc.
+    int type; //the actual type -- void, char, int, double, bool etc.
     std::list<int> dims; //dimensions -- empty means non-array type
 
     //constructors

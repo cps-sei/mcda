@@ -47,6 +47,7 @@
 #include "Function_Visitor.hpp"
 #include <boost/algorithm/string.hpp>
 #include <vector>
+#include "daslc/daig-parser.hpp"
 
 daig::madara::Sync_Builder::Sync_Builder (daig::DaigBuilder & builder,
                                           const std::string &target,
@@ -97,6 +98,7 @@ daig::madara::Sync_Builder::build_header_includes ()
   if (do_vrep_) buffer_ << "#include \"vrep/DaslVrep.hpp\"\n";
   buffer_ << "#include \"madara/knowledge_engine/Knowledge_Base.h\"\n";
   buffer_ << "#include \"madara/knowledge_engine/containers/Integer_Vector.h\"\n";
+  buffer_ << "#include \"madara/knowledge_engine/containers/Double_Vector.h\"\n";
   buffer_ << "#include \"madara/knowledge_engine/containers/Vector_N.h\"\n";
   buffer_ << "#include \"madara/knowledge_engine/containers/Integer.h\"\n";
   buffer_ << "#include \"madara/knowledge_engine/containers/Double.h\"\n";
@@ -317,9 +319,25 @@ daig::madara::Sync_Builder::build_program_variable_init (
 {
   if (var.type->dims.size () <= 1)
   {
-    buffer_ << "Integer var_init_";
-    buffer_ << var.name;
-    buffer_ << " (0);\n";
+    if (var.type->type == TINT)
+    {
+      buffer_ << "Integer var_init_";
+      buffer_ << var.name;
+      buffer_ << " (0);\n";
+    }
+    else if (var.type->type == TDOUBLE_TYPE)
+    {
+      buffer_ << "double var_init_";
+      buffer_ << var.name;
+      buffer_ << " (0.0);\n";
+    }
+    else
+    {
+      // Default to integer
+      buffer_ << "Integer var_init_";
+      buffer_ << var.name;
+      buffer_ << " (0);\n";
+    }
   }
 }
 
@@ -329,22 +347,45 @@ daig::madara::Sync_Builder::build_program_variable (const Variable & var)
   // is this an array type?
   if (var.type->dims.size () == 1)
   {
-    buffer_ << "containers::Integer_Array ";
-    buffer_ << var.name;
-    buffer_ << ";\n";
+    if (var.type->type == TINT)
+    {
+      buffer_ << "containers::Integer_Array ";
+    }
+    else if (var.type->type == TDOUBLE_TYPE)
+    {
+      buffer_ << "containers::Double_Array ";
+    }
+    else
+    {
+      // Default to integer array
+      buffer_ << "containers::Integer_Array ";
+    }
   }
+  // multi-dimensional array type?
   else if (var.type->dims.size () > 1)
   {
     buffer_ << "containers::Array_N ";
-    buffer_ << var.name;
-    buffer_ << ";\n";
   }
+  // non-array type
   else
   {
-    buffer_ << "containers::Integer ";
-    buffer_ << var.name;
-    buffer_ << ";\n";
+    if (var.type->type == TINT)
+    {
+      buffer_ << "containers::Integer ";
+    }
+    else if (var.type->type == TDOUBLE_TYPE)
+    {
+      buffer_ << "containers::Double ";
+    }
+    else
+    {
+      // Default to integer
+      buffer_ << "containers::Integer ";
+    }
   }
+  buffer_ << var.name;
+  buffer_ << ";\n";
+
   build_program_variable_init (var);
   buffer_ << "\n";
 }

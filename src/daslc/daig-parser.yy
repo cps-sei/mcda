@@ -60,7 +60,7 @@ std::string thunk;
 %token <string> TIDENTIFIER TINTEGER TDOUBLE TNAMESPACE
 %token <token> TMOCSYNC TMOCASYNC TMOCPSYNC TSEMICOLON TCONST TNODE
 %token <token> TGLOBAL TLOCAL TTARGET TTHUNK
-%token <token> TBOOL TINT TVOID TCHAR TSIGNED TUNSIGNED
+%token <token> TBOOL TINT TDOUBLE_TYPE TVOID TCHAR TSIGNED TUNSIGNED
 %token <token> TNODENUM TATOMIC TPRIVATE TEXTERN
 %token <token> TIF TELSE TFOR TWHILE
 %token <token> TBREAK TCONTINUE TRETURN TEXO TEXH TEXL TPROGRAM
@@ -118,7 +118,7 @@ std::string thunk;
 %%
 program :
   moc target_list callback_list const_list extern_fn_list node prog_def init_def safety_def {}
-| moc TTRACK_LOCATIONS target_list callback_list const_list extern_fn_list node prog_def init_def safety_def {
+| moc TTRACK_LOCATIONS TSEMICOLON target_list callback_list const_list extern_fn_list node prog_def init_def safety_def {
   builder->program.trackLocations=true;
 }
 ;
@@ -269,6 +269,7 @@ type : simp_type { $$ = $1; }
 
 simp_type : TBOOL { $$ = new daig::Type(daig::boolType()); }
 | TINT { $$ = new daig::Type(daig::intType()); }
+| TDOUBLE_TYPE { $$ = new daig::Type(daig::doubleType()); }
 | TVOID { $$ = new daig::Type(daig::voidType()); }
 | TCHAR { $$ = new daig::Type(daig::charType()); }
 ;
@@ -415,6 +416,10 @@ expr : lval { $$ = new daig::Expr($1); printExpr(*$$); }
 | TINTEGER { 
   $$ = new daig::Expr(new daig::IntExpr(atoi($1->c_str()))); 
   delete $1; printExpr(*$$); 
+}
+| TDOUBLE {
+  $$ = new daig::Expr(new daig::DoubleExpr(atof($1->c_str())));
+  delete $1; printExpr(*$$);
 }
 | TNODENUM { MAKE_NULL($$,$1); }
 | TMINUS expr { MAKE_UN($$,$1,$2); }

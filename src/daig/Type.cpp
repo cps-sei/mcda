@@ -56,6 +56,7 @@
 /*********************************************************************/
 daig::Type daig::voidType() { return Type(new daig::BaseType(TVOID)); }
 daig::Type daig::intType() { return Type(new daig::BaseType(TINT)); }
+daig::Type daig::doubleType() { return Type(new daig::BaseType(TDOUBLE_TYPE)); }
 daig::Type daig::charType() { return Type(new daig::BaseType(TCHAR)); }
 daig::Type daig::ucharType() { return Type(new daig::BaseType(TUNSIGNED,TCHAR)); }
 daig::Type daig::boolType() { return Type(new daig::BaseType(TBOOL)); }
@@ -74,6 +75,7 @@ std::string daig::BaseType::toString() const
   if(type == TVOID) res += "void";
   else if(type == TBOOL) res += "_Bool";
   else if(type == TINT) res += "int";
+  else if(type == TDOUBLE_TYPE) res += "double";
   else if(type == TCHAR) res += "char";
   else assert(0 && "ERROR : illegal simple type");
 

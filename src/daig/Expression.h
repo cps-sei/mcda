@@ -92,6 +92,15 @@ namespace daig
     std::string toString() const { return boost::lexical_cast<std::string>(data); }
   };
 
+  //a double expression
+  class DoubleExpr : public Expression
+  {
+  public:
+    double data;
+    DoubleExpr(double d) : data(d) {}
+    std::string toString() const { return boost::lexical_cast<std::string>(data); }
+  };
+
   //an lvalue expression
   class LvalExpr : public Expression
   {
