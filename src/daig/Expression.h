@@ -97,8 +97,14 @@ namespace daig
   {
   public:
     double data;
-    DoubleExpr(double d) : data(d) {}
-    std::string toString() const { return boost::lexical_cast<std::string>(data); }
+    // special double value, e.g., NAN
+    // use string to represent special value
+    std::string special_data;
+    bool is_special_data;
+    DoubleExpr(double d) : data(d), is_special_data(false) {}
+    DoubleExpr(std::string s) : special_data(s), is_special_data(true) {}
+    std::string toString() const { if (is_special_data) return special_data;
+                                 else return boost::lexical_cast<std::string>(data);}
   };
 
   //an lvalue expression

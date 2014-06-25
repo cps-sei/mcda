@@ -87,6 +87,18 @@ namespace daig
     virtual void exitInt(IntExpr &expr);
 
     /**
+     * Returns whether or not to visit the double's subfields first.
+     * @param  expr   the double expression
+     **/
+    virtual bool enterDouble(DoubleExpr &expr);
+
+    /**
+     * Visits a double
+     * @param  expr   the double to visit
+     **/
+    virtual void exitDouble(DoubleExpr &expr);
+
+    /**
      * Returns whether or not to visit a variable's subfields first
      * @param  expr   the variable expression
      **/

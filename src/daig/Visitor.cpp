@@ -58,6 +58,9 @@ void daig::Visitor::visit(const daig::Expr &expr)
   if(IntExpr *ex = dynamic_cast<IntExpr*>(&*expr)) {
     hostExpr = expr; enterInt(*ex);
     hostExpr = expr; exitInt(*ex);
+  } else if(DoubleExpr *ex = dynamic_cast<DoubleExpr*>(&*expr)) {
+    hostExpr = expr; enterDouble(*ex);
+    hostExpr = expr; exitDouble(*ex);
   } else if(LvalExpr *ex = dynamic_cast<LvalExpr*>(&*expr)) {
     hostExpr = expr; 
     if(enterLval(*ex)) BOOST_FOREACH(Expr &e,ex->indices) visit(e);

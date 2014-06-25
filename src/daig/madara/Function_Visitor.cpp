@@ -76,6 +76,27 @@ daig::madara::Function_Visitor::exitInt (IntExpr & expression)
 
 
 bool
+daig::madara::Function_Visitor::enterDouble (DoubleExpr & expression)
+{
+  return false;
+}
+
+
+void
+daig::madara::Function_Visitor::exitDouble (DoubleExpr & expression)
+{
+  if (expression.is_special_data)
+  {
+    buffer_ << expression.special_data;
+  }
+  else
+  {
+    buffer_ << expression.data;
+  }
+}
+
+
+bool
 daig::madara::Function_Visitor::enterLval (LvalExpr & expression)
 {
   return false;

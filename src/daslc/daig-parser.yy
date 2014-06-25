@@ -11,6 +11,7 @@
 #include "daig/Function.h"
 #include "daig/Node.h"
 #include "DaigBuilder.hpp"
+#include <math.h>
 
 extern daig::DaigBuilder *builder; /* the dag builder */
 
@@ -192,6 +193,10 @@ constant : TCONST TIDENTIFIER TEQUAL TINTEGER TSEMICOLON {
 supplied via the command line */
 | TCONST TINTEGER TEQUAL TINTEGER TSEMICOLON {
   delete $2; delete $4;
+}
+| TCONST TIDENTIFIER TEQUAL TDOUBLE TSEMICOLON {
+builder->program.constDef[*$2] = *$4;
+delete $2; delete $4;
 }
 ;
 
@@ -418,7 +423,7 @@ expr : lval { $$ = new daig::Expr($1); printExpr(*$$); }
   delete $1; printExpr(*$$); 
 }
 | TDOUBLE {
-  $$ = new daig::Expr(new daig::DoubleExpr(atof($1->c_str())));
+  if (*$1 == "NAN") $$ = new daig::Expr(new daig::DoubleExpr(*$1)); else $$ = new daig::Expr(new daig::DoubleExpr(atof($1->c_str())));
   delete $1; printExpr(*$$);
 }
 | TNODENUM { MAKE_NULL($$,$1); }
