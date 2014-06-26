@@ -74,6 +74,7 @@ std::string thunk;
 %token <token> TBWNOT TBWAND TBWOR TBWXOR TBWLSH TBWRSH
 %token <token> TON_PRE_TIMEOUT TON_POST_TIMEOUT TON_RECV_FILTER
 %token <token> TTRACK_LOCATIONS
+%token <token> TNODE_INIT
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -218,6 +219,7 @@ node_body_elem_list :
 node_body_elem :
   global_var {}
 | local_var {}
+| node_init_procedure {}
 | procedure {}
 ;
 
@@ -277,6 +279,17 @@ simp_type : TBOOL { $$ = new daig::Type(daig::boolType()); }
 | TDOUBLE_TYPE { $$ = new daig::Type(daig::doubleType()); }
 | TVOID { $$ = new daig::Type(daig::voidType()); }
 | TCHAR { $$ = new daig::Type(daig::charType()); }
+;
+
+node_init_procedure : TVOID TNODE_INIT TLPAREN TRPAREN TLBRACE var_decl_list stmt_list TRBRACE {
+  /** set scope of temporary variables */
+  BOOST_FOREACH(daig::Variable &v,*$6) v.scope = daig::Variable::TEMP;
+  /** create, add function to the node, and set node initialization function */
+  const daig::Function f = daig::Function(daig::voidType(),"NODE_INIT",daig::VarList(),*$6,*$7);
+  currNode.addFunction(f);
+  currNode.setNodeInitFunction(f);
+  delete $6; delete $7;
+}
 ;
 
 procedure : type TIDENTIFIER TLPAREN param_list TRPAREN TLBRACE var_decl_list stmt_list TRBRACE {

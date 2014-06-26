@@ -895,9 +895,25 @@ daig::madara::Sync_Builder::build_function (
   buffer_ << "  Integer result (0);\n";
   BOOST_FOREACH (Variables::value_type & variable, function.temps)
   {
-    buffer_ << "  Integer ";
-    buffer_ << variable.second.name;
-    buffer_ << ";\n";
+    if (variable.second.type->type == TINT)
+    {
+      buffer_ << "  Integer ";
+      buffer_ << variable.second.name;
+      buffer_ << ";\n";
+    }
+    else if (variable.second.type->type == TDOUBLE_TYPE)
+    {
+      buffer_ << "  double ";
+      buffer_ << variable.second.name;
+      buffer_ << ";\n";
+    }
+    else
+    {
+      // Default to integer
+      buffer_ << "  Integer ";
+      buffer_ << variable.second.name;
+      buffer_ << ";\n";
+    }
   }
   
   buffer_ << "\n";
@@ -1115,6 +1131,15 @@ daig::madara::Sync_Builder::build_main_function ()
     buffer_ << "  }\n";
   }
   buffer_ << '\n';
+
+  // For now, use the first node
+  Node & node = builder_.program.nodes.begin()->second;
+
+  if (node.node_init_func_exists)
+  {
+    buffer_ << "  // Call node initialization function\n";
+    buffer_ << "  knowledge.evaluate (\"" << node.node_init_func.name << " ()\");\n\n";
+  }
 
   buffer_ << "  while (1)\n";
   buffer_ << "  {\n";

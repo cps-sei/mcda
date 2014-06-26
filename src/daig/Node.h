@@ -90,8 +90,14 @@ namespace daig
      **/
     Functions funcs;
 
+    /**
+     * Node initialization function -- none by default
+     */
+    Function node_init_func;
+    bool node_init_func_exists;
+
     ///constructors
-    Node() {}
+    Node () { node_init_func_exists = false; }
 
     ///clear the node -- reset it to an empty node
     void clear()
@@ -123,6 +129,13 @@ namespace daig
 
     ///add a function
     void addFunction(const Function &f) { funcs[f.name] = f; }
+
+    ///set the node initialization function
+    void setNodeInitFunction(const Function &f)
+    {
+      node_init_func = f;
+      node_init_func_exists = true;
+    }
 
     /**
      * Prints function information

@@ -74,6 +74,7 @@ extern "C" int yywrap() { return 1; }
 "ON_POST_ROUND_BARRIER_TIMEOUT" PRINT_TOKEN; return TOKEN(TON_POST_TIMEOUT);
 "ON_RECEIVE_FILTER"         PRINT_TOKEN; return TOKEN(TON_RECV_FILTER);
 "NAN"                       SAVE_TOKEN; return TDOUBLE;
+"NODE_INIT"                 PRINT_TOKEN; return TOKEN(TNODE_INIT);
 [a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)+  SAVE_TOKEN; return TNAMESPACE;
 [a-zA-Z_][a-zA-Z0-9_]*  {
                           /** substitute constant definitions */
