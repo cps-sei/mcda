@@ -74,7 +74,7 @@ std::string thunk;
 %token <token> TBWNOT TBWAND TBWOR TBWXOR TBWLSH TBWRSH
 %token <token> TON_PRE_TIMEOUT TON_POST_TIMEOUT TON_RECV_FILTER
 %token <token> TTRACK_LOCATIONS
-%token <token> TNODE_INIT
+%token <token> TNODE_INIT TPERIODIC
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -220,6 +220,7 @@ node_body_elem :
   global_var {}
 | local_var {}
 | node_init_procedure {}
+| periodic_procedure {}
 | procedure {}
 ;
 
@@ -289,6 +290,25 @@ node_init_procedure : TVOID TNODE_INIT TLPAREN TRPAREN TLBRACE var_decl_list stm
   currNode.addFunction(f);
   currNode.setNodeInitFunction(f);
   delete $6; delete $7;
+}
+;
+
+periodic_procedure : TPERIODIC TLPAREN TINTEGER TRPAREN TVOID TIDENTIFIER TLPAREN TRPAREN TLBRACE var_decl_list stmt_list TRBRACE {
+  /** declare PERIOD as function's local variable */
+  daig::Variable p = daig::Variable("PERIOD", daig::intType());
+  $10->push_back(p);
+  /** assign value to PERIOD */
+  const daig::Expr * l = new daig::Expr(new daig::LvalExpr("PERIOD"));
+  const daig::Expr * r = new daig::Expr(new daig::IntExpr(atoi($3->c_str())));
+  daig::Stmt * s = new daig::Stmt(new daig::AsgnStmt(*l, *r));
+  $11->push_front(*s);
+  /** set scope of temporary variables */
+  BOOST_FOREACH(daig::Variable &v,*$10) v.scope = daig::Variable::TEMP;
+  /** create, add function to the node, and set periodic function */
+  const daig::Function f = daig::Function(daig::voidType(),*$6,daig::VarList(),*$10,*$11);
+  currNode.addFunction(f);
+  currNode.setPeriodicFunction(f, atoi($3->c_str()));
+  delete $3; delete $6; delete $10; delete $11;
 }
 ;
 

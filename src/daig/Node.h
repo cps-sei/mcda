@@ -94,10 +94,29 @@ namespace daig
      * Node initialization function -- none by default
      */
     Function node_init_func;
+
+    /**
+     * True iff node initialization function is set
+     */
     bool node_init_func_exists;
 
+    /**
+     * Function that will be called periodically -- none by default
+     */
+    Function periodic_func;
+
+    /**
+     * True iff periodic function is set
+     */
+    bool periodic_func_exists;
+
+    /**
+     * Period of periodic function
+     */
+    int period;
+
     ///constructors
-    Node () { node_init_func_exists = false; }
+    Node() : node_init_func_exists (false), periodic_func_exists(false) {}
 
     ///clear the node -- reset it to an empty node
     void clear()
@@ -135,6 +154,14 @@ namespace daig
     {
       node_init_func = f;
       node_init_func_exists = true;
+    }
+
+    ///set the periodic function and its period
+    void setPeriodicFunction(const Function &f, int T)
+    {
+      periodic_func = f;
+      periodic_func_exists = true;
+      period = T;
     }
 
     /**
