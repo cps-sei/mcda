@@ -1135,10 +1135,10 @@ daig::madara::Sync_Builder::build_main_function ()
   // For now, use the first node
   Node & node = builder_.program.nodes.begin()->second;
 
-  if (node.node_init_func_exists)
+  if (node.node_init_func_name.empty())
   {
     buffer_ << "  // Call node initialization function\n";
-    buffer_ << "  knowledge.evaluate (\"" << node.node_init_func.name << " ()\");\n\n";
+    buffer_ << "  knowledge.evaluate (\"" << node.node_init_func_name << " ()\");\n\n";
   }
 
   buffer_ << "  while (1)\n";

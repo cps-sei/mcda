@@ -91,32 +91,17 @@ namespace daig
     Functions funcs;
 
     /**
-     * Node initialization function -- none by default
+     * Name of node initialization function -- empty by default
      */
-    Function node_init_func;
+    std::string node_init_func_name;
 
     /**
-     * True iff node initialization function is set
+     * A map of names of periodic functions to their periods
      */
-    bool node_init_func_exists;
-
-    /**
-     * Function that will be called periodically -- none by default
-     */
-    Function periodic_func;
-
-    /**
-     * True iff periodic function is set
-     */
-    bool periodic_func_exists;
-
-    /**
-     * Period of periodic function
-     */
-    int period;
+    std::map <std::string, int> periodic_func_names;
 
     ///constructors
-    Node() : node_init_func_exists (false), periodic_func_exists(false) {}
+    Node() : node_init_func_name ("") {}
 
     ///clear the node -- reset it to an empty node
     void clear()
@@ -152,16 +137,15 @@ namespace daig
     ///set the node initialization function
     void setNodeInitFunction(const Function &f)
     {
-      node_init_func = f;
-      node_init_func_exists = true;
+      addFunction(f);
+      node_init_func_name = f.name;
     }
 
-    ///set the periodic function and its period
-    void setPeriodicFunction(const Function &f, int T)
+    ///add a periodic function and its period
+    void addPeriodicFunction(const Function &f, int T)
     {
-      periodic_func = f;
-      periodic_func_exists = true;
-      period = T;
+      addFunction(f);
+      periodic_func_names[f.name] = T;
     }
 
     /**

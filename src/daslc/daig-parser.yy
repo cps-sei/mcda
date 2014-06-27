@@ -286,9 +286,8 @@ simp_type : TBOOL { $$ = new daig::Type(daig::boolType()); }
 node_init_procedure : TVOID TNODE_INIT TLPAREN TRPAREN TLBRACE var_decl_list stmt_list TRBRACE {
   /** set scope of temporary variables */
   BOOST_FOREACH(daig::Variable &v,*$6) v.scope = daig::Variable::TEMP;
-  /** create, add function to the node, and set node initialization function */
+  /** create and set node initialization function */
   boost::shared_ptr<daig::Function> f (new daig::Function(daig::voidType(),"NODE_INIT",daig::VarList(),*$6,*$7));
-  currNode.addFunction(*f);
   currNode.setNodeInitFunction(*f);
   delete $6; delete $7;
 }
@@ -305,10 +304,9 @@ periodic_procedure : TPERIODIC TLPAREN TINTEGER TRPAREN TVOID TIDENTIFIER TLPARE
   $11->push_front(*s);
   /** set scope of temporary variables */
   BOOST_FOREACH(daig::Variable &v,*$10) v.scope = daig::Variable::TEMP;
-  /** create, add function to the node, and set periodic function */
+  /** create and add periodic function to the node */
   boost::shared_ptr<daig::Function> f (new daig::Function(daig::voidType(),*$6,daig::VarList(),*$10,*$11));
-  currNode.addFunction(*f);
-  currNode.setPeriodicFunction(*f, atoi($3->c_str()));
+  currNode.addPeriodicFunction(*f, atoi($3->c_str()));
   delete $3; delete $6; delete $10; delete $11;
 }
 ;
