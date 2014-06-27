@@ -1144,7 +1144,17 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  while (1)\n";
   buffer_ << "  {\n";
   
-  buffer_ << "    knowledge.evaluate (\"++mbarrier.{.id}\", wait_settings);\n";
+  buffer_ << "    knowledge.evaluate (\"++mbarrier.{.id}\", wait_settings);\n\n";
+
+  buffer_ << "    // Call periodic functions, if any\n";
+  for (std::map <std::string, int>::iterator it = node.periodic_func_names.begin ();
+       it != node.periodic_func_names.end();
+       ++it)
+  {
+    buffer_ << "    knowledge.evaluate (\"(mbarrier.{.id} % " << it->second << " == 0)";
+    buffer_ << " => " << it->first << " ()\");\n";
+  }
+  buffer_ << '\n';
 
   buffer_ << "    // remodify our globals and send all updates\n";
   buffer_ << "    wait_settings.send_list.clear ();\n";
