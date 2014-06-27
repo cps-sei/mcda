@@ -161,6 +161,7 @@ daig::madara::Sync_Builder::build_common_global_variables ()
 
   buffer_ << "// Containers for commonly used variables\n";
   buffer_ << "containers::Integer_Array barrier;\n";
+  buffer_ << "containers::Integer round_count;\n";
   buffer_ << "containers::Integer id;\n";
   buffer_ << "containers::Integer num_processes;\n";
   buffer_ << "double max_barrier_time (-1);\n";
@@ -398,6 +399,7 @@ daig::madara::Sync_Builder::build_program_variables_bindings ()
   buffer_ << builder_.program.processes.size ();
   buffer_ << ");\n";
 
+  buffer_ << "  round_count.set_name (\".round\", knowledge);\n";
   buffer_ << "  id.set_name (\".id\", knowledge);\n";
   buffer_ << "  num_processes.set_name (\".processes\", knowledge);\n";
   buffer_ << "\n";
@@ -1090,7 +1092,7 @@ daig::madara::Sync_Builder::build_main_function ()
 
   buffer_ << "  // Compile frequently used expressions\n";
   buffer_ << "  engine::Compiled_Expression round_logic = knowledge.compile (\n";
-  buffer_ << "    knowledge.expand_statement (\"ROUND (); ++mbarrier.{.id}\"));\n";
+  buffer_ << "    knowledge.expand_statement (\"++.round; ROUND (); ++mbarrier.{.id}\"));\n";
   buffer_ << "  engine::Compiled_Expression barrier_logic = \n";
   buffer_ << "    knowledge.compile (barrier_string.str ());\n";
   buffer_ << "  engine::Compiled_Expression barrier_sync_logic = \n";
@@ -1151,7 +1153,7 @@ daig::madara::Sync_Builder::build_main_function ()
        it != node.periodic_func_names.end();
        ++it)
   {
-    buffer_ << "    knowledge.evaluate (\"(mbarrier.{.id} % " << it->second << " == 0)";
+    buffer_ << "    knowledge.evaluate (\"(.round % " << it->second << " == 0)";
     buffer_ << " => " << it->first << " ()\");\n";
   }
   buffer_ << '\n';
