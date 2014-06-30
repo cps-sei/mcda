@@ -298,10 +298,12 @@ periodic_procedure : TPERIODIC TLPAREN TINTEGER TRPAREN TVOID TIDENTIFIER TLPARE
   boost::shared_ptr<daig::Variable> p (new daig::Variable("PERIOD", daig::intType()));
   $10->push_back(*p);
   /** assign value to PERIOD */
-  const daig::Expr * l = new daig::Expr(new daig::LvalExpr("PERIOD"));
-  const daig::Expr * r = new daig::Expr(new daig::IntExpr(atoi($3->c_str())));
-  const daig::Stmt * s = new daig::Stmt(new daig::AsgnStmt(*l, *r));
-  $11->push_front(*s);
+  /*
+  const daig::Expr l (new daig::LvalExpr("PERIOD"));
+  const daig::Expr r (new daig::IntExpr(atoi($3->c_str())));
+  const daig::Stmt s (new daig::AsgnStmt(l, r));
+  $11->push_front(s);
+  */
   /** set scope of temporary variables */
   BOOST_FOREACH(daig::Variable &v,*$10) v.scope = daig::Variable::TEMP;
   /** create and add periodic function to the node */

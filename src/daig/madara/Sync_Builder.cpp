@@ -75,7 +75,7 @@ daig::madara::Sync_Builder::build ()
   open_daig_namespace ();
   build_common_global_variables ();
   build_program_variables ();
-  build_id_filters ();
+  build_common_filters ();
   // build target thunk WITHOUT includes
   build_target_thunk ();
   build_external_functions ();
@@ -131,11 +131,6 @@ daig::madara::Sync_Builder::build_common_global_variables ()
   buffer_ << "enum drop_policy_t { NONE, DISTANCE_DROP };\n";
   buffer_ << "drop_policy_t drop_policy = NONE;\n";
   buffer_ << "\n";
-
-  buffer_ << "// Barrier timeout handling options\n";
-  buffer_ << "enum barrier_timeout_handler_t { NOOP, IGNORE_TIMED_OUT_NODES };\n";
-  buffer_ << "barrier_timeout_handler_t barrier_timeout_handler = NOOP;\n";
-  buffer_ << "\n";
   
   if (do_vrep_)
   {
@@ -189,33 +184,44 @@ daig::madara::Sync_Builder::build_target_thunk (void)
   }
 }
 
-void daig::madara::Sync_Builder::build_id_filters (void)
+void
+daig::madara::Sync_Builder::build_common_filters (void)
 {
-  if (builder_.program.callbackExists ("on_receive_filter"))
-  {
-    buffer_ << "// Add the id to the outgoing records\n";
-    buffer_ << "Madara::Knowledge_Record\n";
-    buffer_ << "add_id (Madara::Knowledge_Map & outgoing_records,\n";
-    buffer_ << "  const Madara::Transport::Transport_Context & context,\n";
-    buffer_ << "  Madara::Knowledge_Engine::Variables & vars)\n";
-    buffer_ << "{\n";
-    buffer_ << "  Madara::Knowledge_Record result;\n";
-    buffer_ << "  outgoing_records[\"id\"] = vars.get (\".id\");\n";
-    buffer_ << "  return result;\n";
-    buffer_ << "}\n\n";
-  
-    buffer_ << "// Strip the id from incoming records\n";
-    buffer_ << "Madara::Knowledge_Record\n";
-    buffer_ << "remove_id (Madara::Knowledge_Map & incoming_records,\n";
-    buffer_ << "  const Madara::Transport::Transport_Context & context,\n";
-    buffer_ << "  Madara::Knowledge_Engine::Variables & vars)\n";
-    buffer_ << "{\n";
-    buffer_ << "  Madara::Knowledge_Record result;\n";
-    buffer_ << "  // erase the id before the context tries to apply it locally\n";
-    buffer_ << "  incoming_records.erase (\"id\");\n";
-    buffer_ << "  return result;\n";
-    buffer_ << "}\n\n";
-  }
+  buffer_ << "// Update heartbeat of a node once received packets from it\n";
+  std::stringstream heartbeat_content;
+  heartbeat_content << "  // Set heartbeat\n";
+  heartbeat_content << "  Integer sender_id = records[\"id\"].to_integer ();\n";
+  heartbeat_content << "  heartbeats.set (sender_id, 1);\n";
+  heartbeat_content << "  // Record round of receiving heartbeat\n";
+  heartbeat_content << "  last_heartbeat_round.set(sender_id, *round_count);\n";
+  build_common_filters_helper ("update_heartbeat", heartbeat_content);
+
+  buffer_ << "// Add the id to the outgoing records\n";
+  std::stringstream add_id_content;
+  add_id_content << "  records[\"id\"] = vars.get (\".id\");\n";
+  build_common_filters_helper ("add_id", add_id_content);
+
+  buffer_ << "// Strip the id from incoming records\n";
+  std::stringstream remove_id_content;
+  remove_id_content << "  // erase the id before the context tries to apply it locally\n";
+  remove_id_content << "  records.erase (\"id\");\n";
+  build_common_filters_helper ("remove_id", remove_id_content);
+}
+
+void
+daig::madara::Sync_Builder::build_common_filters_helper (
+    const std::string filter_name,
+    std::stringstream & filter_content)
+{
+  buffer_ << "Madara::Knowledge_Record\n";
+  buffer_ << filter_name << " (Madara::Knowledge_Map & records,\n";
+  buffer_ << "  const Madara::Transport::Transport_Context & context,\n";
+  buffer_ << "  Madara::Knowledge_Engine::Variables & vars)\n";
+  buffer_ << "{\n";
+  buffer_ << "  Madara::Knowledge_Record result;\n";
+  buffer_ << filter_content.str ();
+  buffer_ << "  return result;\n";
+  buffer_ << "}\n\n";
 }
 
 std::string
@@ -578,10 +584,6 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "    else if (arg1 == \"--distance-drop\")\n";
   buffer_ << "    {\n";
   buffer_ << "      drop_policy = DISTANCE_DROP;\n";
-  buffer_ << "    }\n";
-  buffer_ << "    else if (arg1 == \"--ignore-timed-out-nodes\")\n";
-  buffer_ << "    {\n";
-  buffer_ << "      barrier_timeout_handler = IGNORE_TIMED_OUT_NODES;\n";
   buffer_ << "    }\n";
   buffer_ << "    else if (arg1 == \"-f\" || arg1 == \"--logfile\")\n";
   buffer_ << "    {\n";
@@ -953,16 +955,20 @@ daig::madara::Sync_Builder::build_main_function ()
   
   buffer_ << "  settings.queue_length = 100000;\n\n";
 
+  buffer_ << "  // add commonly used filters\n";
+  buffer_ << "  settings.add_receive_filter (update_heartbeat);\n";
+  buffer_ << "  settings.add_send_filter (add_id);\n";
+  buffer_ << "  settings.add_receive_filter (remove_id);\n";
+  buffer_ << "\n";
+
   if (builder_.program.callbackExists ("on_receive_filter"))
   {
     buffer_ << "  // add user-defined receive filter\n";
-    buffer_ << "  settings.add_send_filter (add_id);\n";
-    std::string drop_policy_callback =
+    std::string usr_filter =
       builder_.program.getCallback ("on_receive_filter");
     buffer_ << "  settings.add_receive_filter (" <<
-      drop_policy_callback << ");\n";
-    
-    buffer_ << "  settings.add_receive_filter (remove_id);\n\n";
+      usr_filter << ");\n";
+    buffer_ << "\n";
   }
 
   buffer_ << "  Madara::Knowledge_Engine::Wait_Settings wait_settings;\n";
@@ -974,35 +980,10 @@ daig::madara::Sync_Builder::build_main_function ()
   
   build_program_variables_bindings ();
   build_main_define_functions ();
-
-  // TODO: allow options of barrier timout handlers
-
-  buffer_ << "  if (barrier_timeout_handler == IGNORE_TIMED_OUT_NODES)\n";
-  buffer_ << "  {\n";
-  buffer_ << "    // Add barrier timeout handler\n";
-  
-  std::string pre_round_timeout_callback;
-  std::string post_round_timeout_callback;
-
-  if (builder_.program.callbackExists ("on_pre_round_barrier_timeout"))
-  {
-    pre_round_timeout_callback = builder_.program.getCallback (
-      "on_pre_round_barrier_timeout");
-    buffer_ << "    knowledge.define_function (\"" <<
-      pre_round_timeout_callback << "\", " << pre_round_timeout_callback
-      << ");\n";
-  }
-  if (builder_.program.callbackExists ("on_post_round_barrier_timeout"))
-  {
-    post_round_timeout_callback = builder_.program.getCallback (
-    "on_post_round_barrier_timeout");
-    buffer_ << "    knowledge.define_function (\"" <<
-      post_round_timeout_callback << "\", " << post_round_timeout_callback
-      << ");\n";
-  }
-  buffer_ << "  }\n\n";
   
   // set the values for id and processes
+  buffer_ << "  // Initialize commonly used local variables\n";
+  buffer_ << "  round_count = Integer (0);\n";
   buffer_ << "  id = Integer (settings.id);\n";
   buffer_ << "  num_processes = processes;\n\n";
 
@@ -1153,7 +1134,7 @@ daig::madara::Sync_Builder::build_main_function ()
        it != node.periodic_func_names.end();
        ++it)
   {
-    buffer_ << "    knowledge.evaluate (\"(.round % " << it->second << " == 0)";
+    buffer_ << "    knowledge.evaluate (\"(.round != 0 && .round % " << it->second << " == 0)";
     buffer_ << " => " << it->first << " ()\");\n";
   }
   buffer_ << '\n';
@@ -1163,16 +1144,7 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << '\n';
   buffer_ << "    // first barrier for new data from previous round\n";
   buffer_ << "    Integer wait_result = knowledge.wait (barrier_logic, wait_settings).to_integer ();\n";
-  buffer_ << "    if (wait_result == 0 && barrier_timeout_handler != NOOP)\n";
-  buffer_ << "    {\n";
-
-  if (pre_round_timeout_callback != "")
-  {
-    buffer_ << "      // Execute barrier timeout handler\n";
-    buffer_ << "      knowledge.evaluate (\"" << pre_round_timeout_callback << " ()\");\n";
-  }
-
-  buffer_ << "    }\n\n";
+  buffer_ << "\n";
 
   buffer_ << "    // Send only barrier information\n";
   buffer_ << "    wait_settings.send_list = barrier_send_list;\n\n";
@@ -1192,17 +1164,8 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    // second barrier for waiting on others to finish round\n";
   buffer_ << "    // Increment barrier and only send barrier update\n";
   buffer_ << "    wait_result = knowledge.wait (barrier_logic, wait_settings).to_integer ();\n";
-  buffer_ << "    if (wait_result == 0 && barrier_timeout_handler != NOOP)\n";
-  buffer_ << "    {\n";
-
-  if (post_round_timeout_callback != "")
-  {
-    buffer_ << "      // Execute barrier timeout handler\n";
-    buffer_ << "      knowledge.evaluate (\"" << post_round_timeout_callback << " ()\");\n";
-  }
-  
-  buffer_ << "    }\n\n";
   buffer_ << "  }\n\n";
+
   if (do_vrep_)
   {
     buffer_ << "  delete vrep_interface;\n\n";

@@ -83,31 +83,15 @@ distance_drop_policy (Madara::Knowledge_Map & records,
 
   if (dr > DROP_RADIUS) {
     // Discard incoming packets
+    printf ("Discard incoming packets\n");
     records.clear();
   }
 
   return result; // empty record
 }
-
-Madara::Knowledge_Record
-heartbeat_filter (Madara::Knowledge_Map & records,
-                  const Madara::Transport::Transport_Context & context,
-                  Madara::Knowledge_Engine::Variables & vars)
-{
-  Madara::Knowledge_Record result; // unused
-
-  // Set heartbeat
-  Integer sender_id = records["id"].to_integer();
-  heartbeats.set(sender_id, 1);
-
-  // Record round and time of receiving heartbeat
-  last_heartbeat_round.set(sender_id, *round_count);
-
-  return result; // empty record
-}
 %%}
 
-ON_RECEIVE_FILTER(distance_drop_policy);
+//ON_RECEIVE_FILTER(distance_drop_policy);
 
 //number of X and Y coordinates
 CONST X = 10;
@@ -157,7 +141,7 @@ NODE uav (id)
     prev_z = z[id];
 
     FORALL_NODE (i) {
-      last_heartbeat_round[i] = 0;
+      last_heartbeat_round[i] = -1;
     }
   }
 
@@ -203,7 +187,7 @@ NODE uav (id)
       if (heartbeats[i] == 0) {
         // Did not hear from node i
 
-        if (last_heartbeat_round[i] == 0) {
+        if (last_heartbeat_round[i] == -1) {
           // Never heard from node i
           // Assume node i is far away
           continue;
@@ -263,6 +247,7 @@ NODE uav (id)
       NEXT_XY();
       state = REQUEST;
     } else if(state == REQUEST) {
+      /*
       // Check if (x',y') is in critical areas of timed out nodes
       if (EXISTS_OTHER(idp, heartbeats[idp] == 0)) {
         APPROX_LOC();
@@ -271,6 +256,7 @@ NODE uav (id)
           return;
         }
       }
+      */
       //request the lock but only if it is free
       if(EXISTS_LOWER(idp,lock[xp][yp][idp] != 0)) return;
       lock[xp][yp][id] = 1;

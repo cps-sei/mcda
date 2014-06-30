@@ -196,9 +196,9 @@ namespace daig
       void build_function (const daig::Node & node, daig::Function & function);
       
       /**
-       * Builds add and remove id filters for message passing
-       **/
-      void build_id_filters (void);
+       * Builds commonly used filters
+       */
+      void build_common_filters (void);
       
       /**
        * Builds the main logic loop for execution of ROUND
@@ -240,6 +240,12 @@ namespace daig
        * Ends daig namespace
        */
       void close_daig_namespace (void);
+
+      /**
+       * Helper function of build_common_filters
+       */
+      void build_common_filters_helper (const std::string filter_name,
+                                        std::stringstream & filter_content);
 
       /**
        * Removes #include lines from target thunk and returns them
