@@ -216,7 +216,7 @@ daig::Program::sanityCheck()
     BOOST_FOREACH(std::string & var_name, vars) {
       // we blow away any existing var.name and prefer our version
       std::list <int> dims;
-      dims.push_back (nodes.size ());
+      dims.push_back (processes.size ());
       daig::Variable var (var_name, dims);
       var.scope = Variable::GLOBAL;
       node.globVars[var.name] = var;
@@ -226,7 +226,7 @@ daig::Program::sanityCheck()
   if (sendHeartbeats)
   {
     std::list <int> dims;
-    dims.push_back (nodes.size ());
+    dims.push_back (processes.size ());
     daig::Variable var ("heartbeats", dims);
     var.scope = Variable::GLOBAL;
     node.globVars[var.name] = var;
