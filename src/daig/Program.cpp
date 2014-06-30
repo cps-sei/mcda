@@ -48,6 +48,7 @@
 #include <boost/foreach.hpp>
 #include "Node.h"
 #include "Program.h"
+#include "daslc/daig-parser.hpp"
 
 /*********************************************************************/
 //methods for SanityChecker
@@ -204,7 +205,8 @@ daig::Program::sanityCheck()
            "ERROR: last dimension of global variables must be #N");
   }
 
-  // if track locations is set, then add the x, y, z variables to declarations
+  // if track locations is set, then add the x, y, z variables to
+  // declarations
   if (trackLocations)
   {
     std::vector<std::string> vars;
@@ -215,9 +217,9 @@ daig::Program::sanityCheck()
     // x, y, z are 1 dimensional arrays of length nodes.size ()
     BOOST_FOREACH(std::string & var_name, vars) {
       // we blow away any existing var.name and prefer our version
-      std::list <int> dims;
-      dims.push_back (processes.size ());
-      daig::Variable var (var_name, dims);
+      daig::BaseType *t = new daig::BaseType(TINT);
+      t->dims.push_back(processes.size ());
+      daig::Variable var (var_name, daig::Type(t));
       var.scope = Variable::GLOBAL;
       node.globVars[var.name] = var;
     }
@@ -225,9 +227,9 @@ daig::Program::sanityCheck()
 
   if (sendHeartbeats)
   {
-    std::list <int> dims;
-    dims.push_back (processes.size ());
-    daig::Variable var ("heartbeats", dims);
+    daig::BaseType *t = new daig::BaseType(TINT);
+    t->dims.push_back(processes.size ());
+    daig::Variable var ("heartbeats", daig::Type(t));
     var.scope = Variable::GLOBAL;
     node.globVars[var.name] = var;
   }
