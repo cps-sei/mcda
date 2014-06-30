@@ -170,21 +170,40 @@ daig::madara::Function_Visitor::enterComp (CompExpr & expression)
 void
 daig::madara::Function_Visitor::exitComp (CompExpr & expression)
 {
+  //-- this is the only NULLARY expression
   if(expression.op == TNODENUM) {
     buffer_ << builder_.program.processes.size ();
     return;
   }
 
+  //-- unary expression
   ExprList::iterator arg = expression.args.begin ();
+  if(expression.args.size() == 1) {
+    buffer_ << "(" << expression.opToString ();
+    visit(*arg);
+    buffer_ << ")";
+    return;
+  }
 
-  if (expression.args.size () == 2)
-    visit (*arg);
+  //-- binary expression
+  if(expression.args.size() == 2) {
+    buffer_ << "(";
+    visit(*arg);
+    buffer_ << " " << expression.opToString () << " ";
+    ++arg; visit(*arg);
+    buffer_ << ")";
+    return;
+  }
 
-  buffer_ << " " << expression.opToString () << " ";
-
-  ++arg;
-
-  visit (*arg);
+  //-- trinary expression
+  buffer_ << "(";
+  visit(*arg);
+  buffer_ << " ? ";
+  ++arg; visit(*arg);
+  buffer_ << " : ";
+  ++arg; visit(*arg);
+  buffer_ << ")";
+  return;
 }
 
 
