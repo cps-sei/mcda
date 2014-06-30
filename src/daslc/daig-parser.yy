@@ -287,28 +287,29 @@ node_init_procedure : TVOID TNODE_INIT TLPAREN TRPAREN TLBRACE var_decl_list stm
   /** set scope of temporary variables */
   BOOST_FOREACH(daig::Variable &v,*$6) v.scope = daig::Variable::TEMP;
   /** create and set node initialization function */
-  boost::shared_ptr<daig::Function> f (new daig::Function(daig::voidType(),"NODE_INIT",daig::VarList(),*$6,*$7));
-  currNode.setNodeInitFunction(*f);
+  /*boost::shared_ptr<daig::Function> f (new daig::Function(daig::voidType(),"NODE_INIT",daig::VarList(),*$6,*$7));*/
+  daig::Function f = daig::Function(daig::voidType(),"NODE_INIT",daig::VarList(),*$6,*$7);
+  currNode.setNodeInitFunction(f);
   delete $6; delete $7;
 }
 ;
 
 periodic_procedure : TPERIODIC TLPAREN TINTEGER TRPAREN TVOID TIDENTIFIER TLPAREN TRPAREN TLBRACE var_decl_list stmt_list TRBRACE {
   /** declare PERIOD as function's local variable */
-  boost::shared_ptr<daig::Variable> p (new daig::Variable("PERIOD", daig::intType()));
-  $10->push_back(*p);
+  /*boost::shared_ptr<daig::Variable> p (new daig::Variable("PERIOD", daig::intType()));*/
+  daig::Variable p = daig::Variable("PERIOD", daig::intType());
+  $10->push_back(p);
   /** assign value to PERIOD */
-  /*
   const daig::Expr l (new daig::LvalExpr("PERIOD"));
   const daig::Expr r (new daig::IntExpr(atoi($3->c_str())));
   const daig::Stmt s (new daig::AsgnStmt(l, r));
   $11->push_front(s);
-  */
   /** set scope of temporary variables */
   BOOST_FOREACH(daig::Variable &v,*$10) v.scope = daig::Variable::TEMP;
   /** create and add periodic function to the node */
-  boost::shared_ptr<daig::Function> f (new daig::Function(daig::voidType(),*$6,daig::VarList(),*$10,*$11));
-  currNode.addPeriodicFunction(*f, atoi($3->c_str()));
+  /*boost::shared_ptr<daig::Function> f (new daig::Function(daig::voidType(),*$6,daig::VarList(),*$10,*$11));*/
+  daig::Function f = daig::Function(daig::voidType(),*$6,daig::VarList(),*$10,*$11);
+  currNode.addPeriodicFunction(f, atoi($3->c_str()));
   delete $3; delete $6; delete $10; delete $11;
 }
 ;
