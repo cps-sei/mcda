@@ -218,7 +218,9 @@ daig::Program::sanityCheck()
     BOOST_FOREACH(std::string & var_name, vars) {
       // we blow away any existing var.name and prefer our version
       daig::BaseType *t = new daig::BaseType(TINT);
-      t->dims.push_back(processes.size ());
+      //-- set the dimension to -1 since this will be replaced by the
+      //-- number of nodes later on
+      t->dims.push_back(-1);
       daig::Variable var (var_name, daig::Type(t));
       var.scope = Variable::GLOBAL;
       node.globVars[var.name] = var;
@@ -228,7 +230,9 @@ daig::Program::sanityCheck()
   if (sendHeartbeats)
   {
     daig::BaseType *t = new daig::BaseType(TINT);
-    t->dims.push_back(processes.size ());
+    //-- set the dimension to -1 since this will be replaced by the
+    //-- number of nodes later on
+    t->dims.push_back(-1);
     daig::Variable var ("heartbeats", daig::Type(t));
     var.scope = Variable::GLOBAL;
     node.globVars[var.name] = var;
