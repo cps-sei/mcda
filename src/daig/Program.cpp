@@ -234,8 +234,8 @@ daig::Program::sanityCheck()
     //-- number of nodes later on
     t->dims.push_back(-1);
     daig::Variable var ("heartbeats", daig::Type(t));
-    var.scope = Variable::GLOBAL;
-    node.globVars[var.name] = var;
+    var.scope = Variable::LOCAL;
+    node.locVars[var.name] = var;
   }
 }
 
