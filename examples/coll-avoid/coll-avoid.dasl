@@ -63,7 +63,7 @@ void print_node_state(int s)
 const int DROP_RADIUS = 8;
 
 Madara::Knowledge_Record
-distance_drop_policy (Madara::Knowledge_Map & records,
+distance_drop_policy (Madara::Knowledge_Map & incoming_records,
                       const Madara::Transport::Transport_Context & context,
                       Madara::Knowledge_Engine::Variables & vars)
 {
@@ -72,24 +72,20 @@ distance_drop_policy (Madara::Knowledge_Map & records,
   // Get coordinates of this node
   Integer my_x = x[*id];
   Integer my_y = y[*id];
-  Integer my_z = z[*id];
 
   // Get coordinates of sender node
-  Integer sender_id = records["id"].to_integer();
+  Integer sender_id = incoming_records["id"].to_integer();
   Integer sender_x = x[sender_id];
   Integer sender_y = y[sender_id];
-  Integer sender_z = z[sender_id];
 
   Integer dx = my_x - sender_x;
   Integer dy = my_y - sender_y;
-  Integer dz = my_z - sender_z;
 
-  double dr = sqrt(dx * dx + dy * dy + dz * dz);
+  double dr = sqrt(dx * dx + dy * dy);
 
   if (dr > DROP_RADIUS) {
     // Discard incoming packets
-    printf ("Discard incoming packets\n");
-    records.clear();
+    incoming_records.clear();
   }
 
   return result; // empty record
@@ -187,11 +183,16 @@ NODE uav (id)
         continue;
       }
 
+      // Number of rounds passed since last global updates from node i
+      dround = round_count - lgu_round;
+      if (dround <= 1) {
+        // We received updates in the previous round
+        continue;
+      }
+
       // Last known location of node i
       last_known_xi = x[i];
       last_known_yi = y[i];
-      // Number of rounds passed since last global updates from node i
-      dround = round_count - lgu_round;
 
       if (isnan(velocity_x[i])) {
         // No last known velocity
@@ -240,12 +241,14 @@ NODE uav (id)
       NEXT_XY();
       state = REQUEST;
     } else if(state == REQUEST) {
+
       // Check if (x',y') is in critical areas of timed out nodes
       CHECK_CRITICAL_AREA();
       if (in_critical_area) {
         // (x',y') in critical area, do not grab lock
         return;
       }
+
       //request the lock but only if it is free
       if(EXISTS_LOWER(idp,lock[xp][yp][idp] != 0)) return;
       lock[xp][yp][id] = 1;
