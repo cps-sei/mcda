@@ -8,6 +8,7 @@ TARGET GNU_CPP,WIN_CPP %%{
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
+#include <boost/lexical_cast.hpp>
 #include "madara/utility/Utility.h"
 
 int MOVE_TO(unsigned char x,unsigned char y)
@@ -55,17 +56,112 @@ void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf)
   }
 }
 
-void print_node_state(int s)
+void print_global_state()
 {
-  printf("Node in state %d\n", s);
+  for (int i = 0; i < 150; ++i)
+    printf("\n");
+
+  printf("round = %d : id = %d\n", ++round, (int) *id);
+  printf("_X = %d _Y = %d\n", X, Y);
+  print_line(X);
+
+  for (int i = 0; i < Y; ++i) {
+    printf("|");
+
+    for (int j = 0; j < X; ++j) {
+      bool taken = false;
+
+      for (int k = 0; k < processes; ++k) {
+        if (j == x[k] && i == y[k]) {
+          printf("%d|", k);
+          taken = true;
+          break;
+        }
+      }
+
+      if (!taken) {
+        if (j == *xf && i == *yf)
+          printf("o|");
+        else printf(" |");
+      }
+    }
+    printf("\n");
+    print_line(X);
+  }
 }
 
-const int DROP_RADIUS = 8;
+bool DO_RAND(double prob)
+{
+  return rand() < (RAND_MAX * prob);
+}
+
+const int DROP_RADIUS = 5;
 
 Madara::Knowledge_Record
-distance_drop_policy (Madara::Knowledge_Map & incoming_records,
-                      const Madara::Transport::Transport_Context & context,
-                      Madara::Knowledge_Engine::Variables & vars)
+distance_drop (Madara::Knowledge_Map & incoming_records,
+               const Madara::Transport::Transport_Context & context,
+               Madara::Knowledge_Engine::Variables & vars)
+{
+  Madara::Knowledge_Record result; // unused
+
+  printf("Incoming records:\n");
+  for (Madara::Knowledge_Map::iterator it = incoming_records.begin();
+       it != incoming_records.end();
+       ++it) {
+    std::cout << it->first << "\n";
+  }
+  /*
+  // Get coordinates of this node
+  Integer my_x = x[*id];
+  Integer my_y = y[*id];
+
+  // Get coordinates of sender node
+  Integer sender_id = incoming_records["id"].to_integer();
+  std::string sender_x_key = "x." + boost::lexical_cast<std::string>(sender_id);
+  std::string sender_y_key = "y." + boost::lexical_cast<std::string>(sender_id);
+  Madara::Knowledge_Map::iterator it = incoming_records.find(sender_x_key);
+
+  // Check if incoming records contain global updates
+  if (it != incoming_records.end()) {
+    Integer sender_x = it->second.to_integer();
+
+    // Assert that incoming records also contain barrier update
+    std::string barrier_key = "mbarrier." + boost::lexical_cast<std::string>(sender_id);
+    it = incoming_records.find(barrier_key);
+    assert (it != incoming_records.end());
+
+    // Assume that x.{id} and y.{id} are always broadcasted together
+    Integer sender_y = incoming_records[sender_y_key].to_integer();
+
+    Integer dx = my_x - sender_x;
+    Integer dy = my_y - sender_y;
+
+    double dr = sqrt(dx * dx + dy * dy);
+
+    if (dr > DROP_RADIUS) {
+      // Discard both global and barrier updates
+      incoming_records.clear();
+    } else {
+      // Record round of receiving global updates
+      last_global_updates_round.set (sender_id, *round_count);
+    }
+  }
+  */
+  return result; // empty record
+}
+
+const int LEVEL_1_RADIUS = 3;
+const int LEVEL_2_RADIUS = 5;
+const int LEVEL_3_RADIUS = 9;
+const double LEVEL_1_DROP_RATE = 0.05;
+const double LEVEL_2_DROP_RATE = 0.2;
+const double LEVEL_3_DROP_RATE = 0.5;
+const double LEVEL_4_DROP_RATE = 0.7;
+
+Madara::Knowledge_Record
+prob_distance_drop (Madara::Knowledge_Map & incoming_records,
+                    const Madara::Transport::Transport_Context & context,
+                    Madara::Knowledge_Engine::Variables & vars)
 {
   Madara::Knowledge_Record result; // unused
 
@@ -75,16 +171,23 @@ distance_drop_policy (Madara::Knowledge_Map & incoming_records,
 
   // Get coordinates of sender node
   Integer sender_id = incoming_records["id"].to_integer();
-  Integer sender_x = x[sender_id];
-  Integer sender_y = y[sender_id];
+  const std::string sender_x_key = "x." + boost::lexical_cast<std::string>(sender_id);
+  const std::string sender_y_key = "y." + boost::lexical_cast<std::string>(sender_id);
+  Integer sender_x = vars.get(sender_x_key).to_integer();
+  Integer sender_y = vars.get(sender_y_key).to_integer();
 
   Integer dx = my_x - sender_x;
   Integer dy = my_y - sender_y;
 
   double dr = sqrt(dx * dx + dy * dy);
 
-  if (dr > DROP_RADIUS) {
-    // Discard incoming packets
+  if (dr <= LEVEL_1_RADIUS && DO_RAND(LEVEL_1_DROP_RATE)) {
+    incoming_records.clear();
+  } else if (dr <= LEVEL_2_RADIUS && DO_RAND(LEVEL_2_DROP_RATE)) {
+    incoming_records.clear();
+  } else if (dr <= LEVEL_3_RADIUS && DO_RAND(LEVEL_3_DROP_RATE)) {
+    incoming_records.clear();
+  } else if (DO_RAND(LEVEL_4_DROP_RATE)) {
     incoming_records.clear();
   }
 
@@ -92,7 +195,7 @@ distance_drop_policy (Madara::Knowledge_Map & incoming_records,
 }
 %%}
 
-//ON_RECEIVE_FILTER(distance_drop_policy);
+ON_RECEIVE_FILTER(distance_drop);
 
 //number of X and Y coordinates
 CONST X = 10;
@@ -110,7 +213,7 @@ CONST CRITICAL_RADIUS = 2;
 EXTERN int MOVE_TO(unsigned char x,unsigned char y);
 EXTERN int my_sleep(int seconds);
 EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
-EXTERN void print_node_state(int s);
+EXTERN void print_global_state();
 
 NODE uav (id)
 {
@@ -228,7 +331,8 @@ NODE uav (id)
   }
 
   void ROUND () {
-    print_state(X,Y,id,x[id],y[id],xf,yf);
+    //print_state(X,Y,id,x[id],y[id],xf,yf);
+    print_global_state();
     //my_sleep(1);
     if(state == INITS) {
       lock[x[id]][y[id]][id] = 1;
@@ -241,14 +345,12 @@ NODE uav (id)
       NEXT_XY();
       state = REQUEST;
     } else if(state == REQUEST) {
-
       // Check if (x',y') is in critical areas of timed out nodes
       CHECK_CRITICAL_AREA();
       if (in_critical_area) {
         // (x',y') in critical area, do not grab lock
         return;
       }
-
       //request the lock but only if it is free
       if(EXISTS_LOWER(idp,lock[xp][yp][idp] != 0)) return;
       lock[xp][yp][id] = 1;
