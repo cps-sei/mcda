@@ -104,13 +104,6 @@ distance_drop (Madara::Knowledge_Map & incoming_records,
 {
   Madara::Knowledge_Record result; // unused
 
-  printf("Incoming records:\n");
-  for (Madara::Knowledge_Map::iterator it = incoming_records.begin();
-       it != incoming_records.end();
-       ++it) {
-    std::cout << it->first << "\n";
-  }
-  /*
   // Get coordinates of this node
   Integer my_x = x[*id];
   Integer my_y = y[*id];
@@ -124,12 +117,6 @@ distance_drop (Madara::Knowledge_Map & incoming_records,
   // Check if incoming records contain global updates
   if (it != incoming_records.end()) {
     Integer sender_x = it->second.to_integer();
-
-    // Assert that incoming records also contain barrier update
-    std::string barrier_key = "mbarrier." + boost::lexical_cast<std::string>(sender_id);
-    it = incoming_records.find(barrier_key);
-    assert (it != incoming_records.end());
-
     // Assume that x.{id} and y.{id} are always broadcasted together
     Integer sender_y = incoming_records[sender_y_key].to_integer();
 
@@ -146,7 +133,7 @@ distance_drop (Madara::Knowledge_Map & incoming_records,
       last_global_updates_round.set (sender_id, *round_count);
     }
   }
-  */
+
   return result; // empty record
 }
 
