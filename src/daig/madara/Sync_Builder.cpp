@@ -977,11 +977,10 @@ daig::madara::Sync_Builder::build_main_function ()
   
   buffer_ << "  settings.queue_length = 100000;\n\n";
 
-  buffer_ << "  // add commonly used filters\n";
-  buffer_ << "  settings.add_receive_filter (set_heartbeat);\n";
+  //buffer_ << "  // add commonly used filters\n";
+  //buffer_ << "  settings.add_receive_filter (set_heartbeat);\n";
+  buffer_ << "  // add_auxiliaries send filter\n";
   buffer_ << "  settings.add_send_filter (add_auxiliaries);\n";
-  buffer_ << "  settings.add_receive_filter (remove_auxiliaries);\n";
-  buffer_ << "\n";
 
   if (builder_.program.callbackExists ("on_receive_filter"))
   {
@@ -990,8 +989,11 @@ daig::madara::Sync_Builder::build_main_function ()
       builder_.program.getCallback ("on_receive_filter");
     buffer_ << "  settings.add_receive_filter (" <<
       usr_filter << ");\n";
-    buffer_ << "\n";
   }
+
+  buffer_ << "  // remove_auxiliaries receive filter\n";
+  buffer_ << "  settings.add_receive_filter (remove_auxiliaries);\n";
+  buffer_ << "\n";
 
   buffer_ << "  Madara::Knowledge_Engine::Wait_Settings wait_settings;\n";
   buffer_ << "  wait_settings.max_wait_time = max_barrier_time;\n";
