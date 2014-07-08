@@ -1157,6 +1157,7 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  {\n";
   
   buffer_ << "    // Pre-round barrier increment\n";
+  buffer_ << "    wait_settings.delay_sending_modifieds = true;\n";
   buffer_ << "    knowledge.evaluate (\"++mbarrier.{.id}\", wait_settings);\n\n";
 
   buffer_ << "    // Call periodic functions, if any\n";
@@ -1165,12 +1166,13 @@ daig::madara::Sync_Builder::build_main_function ()
        ++it)
   {
     buffer_ << "    knowledge.evaluate (\"(.round > 0 && .round % " << it->second << " == 0)";
-    buffer_ << " => " << it->first << " ()\");\n";
+    buffer_ << " => " << it->first << " ()\", wait_settings);\n";
   }
   buffer_ << '\n';
 
   buffer_ << "    // remodify our globals and send all updates\n";
   buffer_ << "    wait_settings.send_list.clear ();\n";
+  buffer_ << "    wait_settings.delay_sending_modifieds = false;\n";
   buffer_ << "    send_global_updates = true;\n\n";
 
   buffer_ << "    // first barrier for new data from previous round\n";
