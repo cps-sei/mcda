@@ -193,14 +193,12 @@ daig::madara::Sync_Builder::build_target_thunk (void)
 void
 daig::madara::Sync_Builder::build_common_filters (void)
 {
-  buffer_ << "// Set heartbeat of a node once received packets from it\n";
+  buffer_ << "// Set heartbeat when receive global updates from other node\n";
   std::stringstream set_heartbeat;
-  //heartbeat_content << "  // Set heartbeat\n";
-  set_heartbeat << "  Integer sender_id = records[\"id\"].to_integer ();\n";
-  //heartbeat_content << "  heartbeats.set (sender_id, 1);\n";
   set_heartbeat << "  // Record round of receiving global updates\n";
   set_heartbeat << "  if (records[\"send_global_updates\"].is_true ())\n";
   set_heartbeat << "  {\n";
+  set_heartbeat << "    Integer sender_id = records[\"id\"].to_integer ();\n";
   set_heartbeat << "    last_global_updates_round.set (sender_id, *round_count);\n";
   set_heartbeat << "  }\n";
   build_common_filters_helper ("set_heartbeat", set_heartbeat);
@@ -977,9 +975,7 @@ daig::madara::Sync_Builder::build_main_function ()
   
   buffer_ << "  settings.queue_length = 100000;\n\n";
 
-  //buffer_ << "  // add commonly used filters\n";
-  //buffer_ << "  settings.add_receive_filter (set_heartbeat);\n";
-  buffer_ << "  // add_auxiliaries send filter\n";
+  buffer_ << "  // add commonly used filters\n";
   buffer_ << "  settings.add_send_filter (add_auxiliaries);\n";
 
   if (builder_.program.callbackExists ("on_receive_filter"))
@@ -991,7 +987,7 @@ daig::madara::Sync_Builder::build_main_function ()
       usr_filter << ");\n";
   }
 
-  buffer_ << "  // remove_auxiliaries receive filter\n";
+  buffer_ << "  settings.add_receive_filter (set_heartbeat);\n";
   buffer_ << "  settings.add_receive_filter (remove_auxiliaries);\n";
   buffer_ << "\n";
 
@@ -1149,7 +1145,7 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  // Call node initialization function, if any\n";
   if (!node.node_init_func_name.empty())
   {
-    buffer_ << "  knowledge.evaluate (\"" << node.node_init_func_name << " ()\");\n";
+    buffer_ << "  knowledge.evaluate (\"" << node.node_init_func_name << " ()\", wait_settings);\n";
   }
   buffer_ << '\n';
 

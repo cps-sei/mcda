@@ -128,9 +128,11 @@ distance_drop (Madara::Knowledge_Map & incoming_records,
     if (dr > DROP_RADIUS) {
       // Discard both global and barrier updates
       incoming_records.clear();
-    } else {
-      // Record round of receiving global updates
-      last_global_updates_round.set (sender_id, *round_count);
+
+      // Since we use filter to simulate packet drop,
+      // set send_global_updates flag to false so that set_heartbeat filter
+      // will not record last global updates round
+      incoming_records["send_global_updates"] = Integer(0);
     }
   }
 
