@@ -899,7 +899,7 @@ daig::madara::Sync_Builder::build_function_declaration (
     return;
 
   buffer_ << "Madara::Knowledge_Record\n";
-  buffer_ << function.name << " ";
+  buffer_ << node.name << "_" << function.name << " ";
   buffer_ << " (engine::Function_Arguments & args, engine::Variables & vars);\n";
 }
 

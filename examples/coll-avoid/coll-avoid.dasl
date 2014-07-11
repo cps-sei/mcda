@@ -90,6 +90,33 @@ void print_global_state()
   }
 }
 
+void write_to_pipe (int fd, int result)
+{
+  FILE * stream = fdopen (fd, "w");
+  std::stringstream ss;
+  ss << result;
+  fprintf (stream, ss.str().c_str());
+  fclose (stream);
+}
+
+void exit_succ()
+{
+  if (write_fd != -1)
+  {
+    write_to_pipe(write_fd, (int) *round_count);
+  }
+  exit(EXIT_SUCCESS);
+}
+
+void exit_fail()
+{
+  if (write_fd != -1)
+  {
+    write_to_pipe(write_fd, -1);
+  }
+  exit(EXIT_FAILURE);
+}
+
 bool DO_RAND(double prob)
 {
   return rand() < (RAND_MAX * prob);
@@ -127,7 +154,23 @@ distance_drop (Madara::Knowledge_Map & incoming_records,
 
     if (dr > DROP_RADIUS) {
       // Discard both global and barrier updates
-      incoming_records.clear();
+      // incoming_records.clear();
+
+      // For collision checking
+      // Preserved variables
+      std::string true_x = "true_x." + boost::lexical_cast<std::string>(sender_id);
+      std::string true_y = "true_y." + boost::lexical_cast<std::string>(sender_id);
+      std::string finished = "finished." + boost::lexical_cast<std::string>(sender_id);
+
+      Madara::Knowledge_Map::iterator it2 = incoming_records.begin();
+      while (it2 != incoming_records.end()) {
+        std::string var = it2->first;
+        if (var == true_x || var == true_y || var == finished) {
+          it2++;
+        } else {
+          it2 = incoming_records.erase(it2);
+        }
+      }
 
       // Since we use filter to simulate packet drop,
       // set send_global_updates flag to false so that set_heartbeat filter
@@ -184,7 +227,7 @@ prob_distance_drop (Madara::Knowledge_Map & incoming_records,
 }
 %%}
 
-ON_RECEIVE_FILTER(distance_drop);
+//ON_RECEIVE_FILTER(distance_drop);
 
 //number of X and Y coordinates
 CONST X = 10;
@@ -203,6 +246,8 @@ EXTERN int MOVE_TO(unsigned char x,unsigned char y);
 EXTERN int my_sleep(int seconds);
 EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
 EXTERN void print_global_state();
+EXTERN void exit_succ();
+EXTERN void exit_fail();
 
 NODE uav (id)
 {
@@ -213,6 +258,13 @@ NODE uav (id)
   // Velocity in unit/round
   GLOBAL double velocity_x [#N];
   GLOBAL double velocity_y [#N];
+
+  // These global variables will always be up-to-date
+  // Used for collision checking
+  GLOBAL unsigned char true_x [#N];
+  GLOBAL unsigned char true_y [#N];
+
+  GLOBAL int finished [#N];
 
   //private variables -- local to the node.
   //preserved across rounds
@@ -230,6 +282,10 @@ NODE uav (id)
     velocity_y[id] = NAN;
     prev_x = x[id];
     prev_y = y[id];
+
+    true_x[id] = x[id];
+    true_y[id] = y[id];
+    finished[id] = 0;
   }
 
   @PERIODIC (10)
@@ -326,13 +382,14 @@ NODE uav (id)
     if(state == INITS) {
       lock[x[id]][y[id]][id] = 1;
       state = NEXT;
-    } if(state == NEXT) {
+    } else if(state == NEXT) {
       //compute next point on route
       if(x[id] == xf && y[id] == yf) {
-        return;
+        finished[id] = 1;
+      } else {
+        NEXT_XY();
+        state = REQUEST;
       }
-      NEXT_XY();
-      state = REQUEST;
     } else if(state == REQUEST) {
       // Check if (x',y') is in critical areas of timed out nodes
       CHECK_CRITICAL_AREA();
@@ -356,6 +413,35 @@ NODE uav (id)
       x[id] = xp; y[id] = yp;
       state = NEXT;
     }
+
+    // Use for collision checking only
+    UPDATE_TRUE_VARS();
+    CHECK_COLLISION();
+    ALL_FINISHED();
+  }
+
+  void UPDATE_TRUE_VARS () {
+    true_x[id] = x[id];
+    true_y[id] = y[id];
+  }
+
+  void CHECK_COLLISION () {
+    FORALL_DISTINCT_NODE_PAIR (id1,id2) {
+      if (true_x[id1] == true_x[id2] && true_y[id1] == true_y[id2]) {
+        // Collision
+        exit_fail();
+      }
+    }
+  }
+
+  void ALL_FINISHED () {
+    FORALL_NODE (i) {
+      if (finished[i] == 0) {
+        return;
+      }
+    }
+    // All nodes have finished
+    exit_succ();
   }
 }
 
