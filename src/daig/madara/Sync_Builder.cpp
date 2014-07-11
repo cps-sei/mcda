@@ -127,13 +127,11 @@ daig::madara::Sync_Builder::build_common_global_variables ()
   buffer_ << "Madara::Transport::QoS_Transport_Settings settings;\n";
   buffer_ << "\n";
 
-  buffer_ << "// Whether the current broadcast sends global updates\n";
-  buffer_ << "bool send_global_updates (false);\n\n";
-
-  buffer_ << "// Packet drop simulation options\n";
-  buffer_ << "enum drop_policy_t { NONE, DISTANCE_DROP };\n";
-  buffer_ << "drop_policy_t drop_policy = NONE;\n";
-  buffer_ << "\n";
+  //-- only generate this code if heartbeats are used
+  if(builder_.program.sendHeartbeats) {
+    buffer_ << "// Whether the current broadcast sends global updates\n";
+    buffer_ << "bool send_global_updates (false);\n\n";
+  }
   
   if (do_vrep_)
   {
@@ -160,9 +158,14 @@ daig::madara::Sync_Builder::build_common_global_variables ()
   buffer_ << "// Containers for commonly used variables\n";
   buffer_ << "// Global variables\n";
   buffer_ << "containers::Integer_Array barrier;\n";
-  buffer_ << "// Local variables\n";
-  buffer_ << "containers::Integer round_count;\n";
-  buffer_ << "containers::Integer_Array last_global_updates_round;\n";
+
+  //-- only generate this code if heartbeats are used
+  if(builder_.program.sendHeartbeats) {
+    buffer_ << "// Local variables\n";
+    buffer_ << "containers::Integer round_count;\n";
+    buffer_ << "containers::Integer_Array last_global_updates_round;\n";
+  }
+
   buffer_ << "containers::Integer id;\n";
   buffer_ << "containers::Integer num_processes;\n";
   buffer_ << "double max_barrier_time (-1);\n";
@@ -193,37 +196,61 @@ daig::madara::Sync_Builder::build_target_thunk (void)
 void
 daig::madara::Sync_Builder::build_common_filters (void)
 {
-  buffer_ << "// Set heartbeat when receive global updates from other node\n";
-  std::stringstream set_heartbeat;
-  set_heartbeat << "  // Record round of receiving global updates\n";
-  set_heartbeat << "  if (records[\"send_global_updates\"].is_true ())\n";
-  set_heartbeat << "  {\n";
-  set_heartbeat << "    Integer sender_id = records[\"id\"].to_integer ();\n";
-  set_heartbeat << "    last_global_updates_round.set (sender_id, *round_count);\n";
-  set_heartbeat << "  }\n";
-  build_common_filters_helper ("set_heartbeat", set_heartbeat);
+  //-- only generate this code if heartbeats are used
+  if(builder_.program.sendHeartbeats) {
+    buffer_ << "// Set heartbeat when receive global updates from other node\n";
+    std::stringstream set_heartbeat;
+    set_heartbeat << "  // Record round of receiving global updates\n";
+    set_heartbeat << "  if (records[\"send_global_updates\"].is_true ())\n";
+    set_heartbeat << "  {\n";
+    set_heartbeat << "    Integer sender_id = records[\"id\"].to_integer ();\n";
+    set_heartbeat << "    last_global_updates_round.set (sender_id, *round_count);\n";
+    set_heartbeat << "  }\n";
+    build_common_filters_helper ("set_heartbeat", set_heartbeat);
+  }
 
-  buffer_ << "// Add auxiliary variables to the outgoing records\n";
-  std::stringstream add_auxiliaries;
-  add_auxiliaries << "  // Node id\n";
-  add_auxiliaries << "  records[\"id\"] = vars.get (\".id\");\n";
-  add_auxiliaries << "  // Whether the outgoing records contain global updates\n";
-  add_auxiliaries << "  if (send_global_updates)\n";
-  add_auxiliaries << "  {\n";
-  add_auxiliaries << "    records[\"send_global_updates\"] = Integer (1);\n";
-  add_auxiliaries << "  }\n";
-  add_auxiliaries << "  else\n";
-  add_auxiliaries << "  {\n";
-  add_auxiliaries << "    records[\"send_global_updates\"] = Integer (0);\n";
-  add_auxiliaries << "  }\n";
-  build_common_filters_helper ("add_auxiliaries", add_auxiliaries);
+  //-- if either callbacks or heartbeats
+  if(!builder_.program.callbacks.empty() || builder_.program.sendHeartbeats) {
+    //-- only generate this if there are some callbacks
+    buffer_ << "// Add auxiliary variables to the outgoing records\n";
+    std::stringstream add_auxiliaries;
+    if(!builder_.program.callbacks.empty()) {
+      add_auxiliaries << "  // Node id\n";
+      add_auxiliaries << "  records[\"id\"] = vars.get (\".id\");\n";
+    }
 
-  buffer_ << "// Strip auxiliary variables from incoming records\n";
-  std::stringstream remove_auxiliaries;
-  remove_auxiliaries << "  // erase auxiliary variables before the context tries to apply it locally\n";
-  remove_auxiliaries << "  records.erase (\"id\");\n";
-  remove_auxiliaries << "  records.erase (\"send_global_updates\");\n";
-  build_common_filters_helper ("remove_auxiliaries", remove_auxiliaries);
+    //-- only generate this code if heartbeats are used
+    if(builder_.program.sendHeartbeats) {
+      add_auxiliaries << "  // Whether the outgoing records contain global updates\n";
+      add_auxiliaries << "  if (send_global_updates)\n";
+      add_auxiliaries << "  {\n";
+      add_auxiliaries << "    records[\"send_global_updates\"] = Integer (1);\n";
+      add_auxiliaries << "  }\n";
+      add_auxiliaries << "  else\n";
+      add_auxiliaries << "  {\n";
+      add_auxiliaries << "    records[\"send_global_updates\"] = Integer (0);\n";
+      add_auxiliaries << "  }\n";
+    }
+
+    build_common_filters_helper ("add_auxiliaries", add_auxiliaries);
+  }
+
+  //-- if either callbacks or heartbeats
+  if(!builder_.program.callbacks.empty() || builder_.program.sendHeartbeats) {
+    buffer_ << "// Strip auxiliary variables from incoming records\n";
+    std::stringstream remove_auxiliaries;
+    //-- only generate this if there are some callbacks
+    if(!builder_.program.callbacks.empty()) {
+      remove_auxiliaries << "  // erase auxiliary variables before the context tries to apply it locally\n";
+      remove_auxiliaries << "  records.erase (\"id\");\n";
+    }
+
+    //-- only generate this code if heartbeats are used
+    if(builder_.program.sendHeartbeats)
+      remove_auxiliaries << "  records.erase (\"send_global_updates\");\n";
+
+    build_common_filters_helper ("remove_auxiliaries", remove_auxiliaries);
+  }
 }
 
 void
@@ -423,9 +450,13 @@ daig::madara::Sync_Builder::build_program_variables_bindings ()
   buffer_ << builder_.program.processes.size ();
   buffer_ << ");\n";
 
-  buffer_ << "  round_count.set_name (\".round\", knowledge);\n";
-  buffer_ << "  last_global_updates_round.set_name (\".last_global_updates_round\", knowledge, ";
-  buffer_ << builder_.program.processes.size () << ");\n";
+  //-- only generate this code if heartbeats are used
+  if(builder_.program.sendHeartbeats) {
+    buffer_ << "  round_count.set_name (\".round\", knowledge);\n";
+    buffer_ << "  last_global_updates_round.set_name (\".last_global_updates_round\", knowledge, ";
+    buffer_ << builder_.program.processes.size () << ");\n";
+  }
+
   buffer_ << "  id.set_name (\".id\", knowledge);\n";
   buffer_ << "  num_processes.set_name (\".processes\", knowledge);\n";
   buffer_ << "\n";
@@ -601,10 +632,6 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "      \n";
   buffer_ << "      ++i;\n";
   buffer_ << "    }\n";
-  buffer_ << "    else if (arg1 == \"--distance-drop\")\n";
-  buffer_ << "    {\n";
-  buffer_ << "      drop_policy = DISTANCE_DROP;\n";
-  buffer_ << "    }\n";
   buffer_ << "    else if (arg1 == \"-f\" || arg1 == \"--logfile\")\n";
   buffer_ << "    {\n";
   buffer_ << "      if (i + 1 < argc)\n";
@@ -764,7 +791,7 @@ void
 daig::madara::Sync_Builder::build_refresh_modify_globals ()
 {
   buffer_ << "Madara::Knowledge_Record\n";
-  buffer_ << "REMODIFY_GLOBALS ";
+  buffer_ << "REMODIFY_GLOBALS";
   buffer_ << " (engine::Function_Arguments &,\n";
   buffer_ << "  engine::Variables & vars)\n";
   buffer_ << "{\n";
@@ -899,7 +926,7 @@ daig::madara::Sync_Builder::build_function_declaration (
     return;
 
   buffer_ << "Madara::Knowledge_Record\n";
-  buffer_ << node.name << "_" << function.name << " ";
+  buffer_ << node.name << "_" << function.name;
   buffer_ << " (engine::Function_Arguments & args, engine::Variables & vars);\n";
 }
 
@@ -911,7 +938,7 @@ daig::madara::Sync_Builder::build_function (
     return;
 
   buffer_ << "Madara::Knowledge_Record\n";
-  buffer_ << node.name << "_" << function.name << " ";
+  buffer_ << node.name << "_" << function.name;
   buffer_ << " (engine::Function_Arguments & args, engine::Variables & vars)\n";
   buffer_ << "{\n";
   buffer_ << "  // Declare local variables\n";
@@ -975,21 +1002,25 @@ daig::madara::Sync_Builder::build_main_function ()
   
   buffer_ << "  settings.queue_length = 100000;\n\n";
 
-  buffer_ << "  // add commonly used filters\n";
-  buffer_ << "  settings.add_send_filter (add_auxiliaries);\n";
 
-  if (builder_.program.callbackExists ("on_receive_filter"))
-  {
-    buffer_ << "  // add user-defined receive filter\n";
-    std::string usr_filter =
-      builder_.program.getCallback ("on_receive_filter");
-    buffer_ << "  settings.add_receive_filter (" <<
-      usr_filter << ");\n";
+  //-- if either callbacks or heartbeats
+  if(!builder_.program.callbacks.empty() || builder_.program.sendHeartbeats) {
+    buffer_ << "  // add commonly used filters\n";
+    buffer_ << "  settings.add_send_filter (add_auxiliaries);\n";
+
+    if (builder_.program.callbackExists ("on_receive_filter"))
+      {
+        buffer_ << "  // add user-defined receive filter\n";
+        std::string usr_filter =
+          builder_.program.getCallback ("on_receive_filter");
+        buffer_ << "  settings.add_receive_filter (" <<
+          usr_filter << ");\n";
+      }
+
+    buffer_ << "  settings.add_receive_filter (set_heartbeat);\n";
+    buffer_ << "  settings.add_receive_filter (remove_auxiliaries);\n";
+    buffer_ << "\n";
   }
-
-  buffer_ << "  settings.add_receive_filter (set_heartbeat);\n";
-  buffer_ << "  settings.add_receive_filter (remove_auxiliaries);\n";
-  buffer_ << "\n";
 
   buffer_ << "  Madara::Knowledge_Engine::Wait_Settings wait_settings;\n";
   buffer_ << "  wait_settings.max_wait_time = max_barrier_time;\n";
@@ -1002,17 +1033,18 @@ daig::madara::Sync_Builder::build_main_function ()
   build_main_define_functions ();
   
   // set the values for id and processes
-  buffer_ << "  // Initialize commonly used local variables\n";
-  buffer_ << "  round_count = Integer (0);\n";
+  buffer_ << "  // Initialize commonly used local variables\n";  
   buffer_ << "  id = Integer (settings.id);\n";
   buffer_ << "  num_processes = processes;\n";
-  buffer_ << "  for (Integer i = 0; i < processes; i++)\n";
-  buffer_ << "  {\n";
-  buffer_ << "    last_global_updates_round.set (i, -1);\n";
-  buffer_ << "  }\n\n";
+  if(builder_.program.sendHeartbeats) {
+    buffer_ << "  round_count = Integer (0);\n";
+    buffer_ << "  for (Integer i = 0; i < processes; i++)\n";
+    buffer_ << "  {\n";
+    buffer_ << "    last_global_updates_round.set (i, -1);\n";
+    buffer_ << "  }\n\n";
+  }
 
-  // build the barrier string
-  
+  // build the barrier string  
   buffer_ << "  std::map <std::string, bool>  barrier_send_list;\n";
   buffer_ << "  barrier_send_list [knowledge.expand_statement (";
   buffer_ << "\"mbarrier.{.id}\")] = true;\n\n";
@@ -1097,7 +1129,13 @@ daig::madara::Sync_Builder::build_main_function ()
 
   buffer_ << "  // Compile frequently used expressions\n";
   buffer_ << "  engine::Compiled_Expression round_logic = knowledge.compile (\n";
-  buffer_ << "    knowledge.expand_statement (\"++.round; ROUND ();\"));\n";
+
+  if(builder_.program.sendHeartbeats)
+    buffer_ << "    knowledge.expand_statement (\"++.round; ROUND (); ++mbarrier.{.id}\"));\n";
+  else
+    buffer_ << "    knowledge.expand_statement (\"ROUND (); ++mbarrier.{.id}\"));\n";
+    
+
   buffer_ << "  engine::Compiled_Expression barrier_logic = \n";
   buffer_ << "    knowledge.compile (barrier_string.str ());\n";
   buffer_ << "  engine::Compiled_Expression barrier_sync_logic = \n";
@@ -1169,14 +1207,16 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    // remodify our globals and send all updates\n";
   buffer_ << "    wait_settings.send_list.clear ();\n";
   buffer_ << "    wait_settings.delay_sending_modifieds = false;\n";
-  buffer_ << "    send_global_updates = true;\n\n";
+  if(builder_.program.sendHeartbeats)
+    buffer_ << "    send_global_updates = true;\n\n";
 
   buffer_ << "    // first barrier for new data from previous round\n";
-  buffer_ << "    Integer wait_result = knowledge.wait (barrier_logic, wait_settings).to_integer ();\n\n";
+  buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n\n";
 
   buffer_ << "    // Send only barrier information\n";
   buffer_ << "    wait_settings.send_list = barrier_send_list;\n";
-  buffer_ << "    send_global_updates = false;\n\n";
+  if(builder_.program.sendHeartbeats)
+    buffer_ << "    send_global_updates = false;\n\n";
   
   buffer_ << "    // Synchronize barrier information for late joiners\n";
   buffer_ << "    knowledge.evaluate (barrier_sync_logic, wait_settings);\n\n";
@@ -1184,12 +1224,9 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    // Execute main user logic\n";
   buffer_ << "    knowledge.evaluate (round_logic, wait_settings);\n\n";
 
-  buffer_ << "    // Post-round barrier increment\n";
-  buffer_ << "    knowledge.evaluate (\"++mbarrier.{.id}\", wait_settings);\n\n";
-  
   buffer_ << "    // second barrier for waiting on others to finish round\n";
   buffer_ << "    // Increment barrier and only send barrier update\n";
-  buffer_ << "    wait_result = knowledge.wait (barrier_logic, wait_settings).to_integer ();\n\n";
+  buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n\n";
 
   buffer_ << "  }\n\n";
 

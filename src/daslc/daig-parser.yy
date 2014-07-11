@@ -36,8 +36,8 @@ std::string thunk;
 #define printStmt(_x) if(builder->debug) printf("STMT: %s\n",(_x)->toString().c_str())
 %}
 
-/* expect 5 shift reduce conflicts */
-%expect 5
+/* expect 3 shift reduce conflicts */
+%expect 3
 
 /* Represents the many different ways we can access our data */
 %union {
@@ -74,7 +74,7 @@ std::string thunk;
 %token <token> TPLUS TMINUS TMUL TDIV TMOD
 %token <token> TBWNOT TBWAND TBWOR TBWXOR TBWLSH TBWRSH
 %token <token> TON_PRE_TIMEOUT TON_POST_TIMEOUT TON_RECV_FILTER
-%token <token> TTRACK_LOCATIONS
+%token <token> TTRACK_LOCATIONS TSEND_HEARTBEATS
 %token <token> TNODE_INIT TPERIODIC
 
 /* Define the type of node our nonterminal symbols represent.
@@ -120,10 +120,28 @@ std::string thunk;
 
 %%
 program :
-  moc target_list callback_list const_list extern_fn_list node prog_def init_def safety_def {}
-| moc TTRACK_LOCATIONS TSEMICOLON target_list callback_list const_list extern_fn_list node prog_def init_def safety_def {
-  builder->program.trackLocations=true;
+  moc target_list directive_list const_list extern_fn_list node prog_def init_def safety_def {}
+;
+
+directive_list : {}
+| directive_list TTRACK_LOCATIONS TSEMICOLON { builder->program.trackLocations = true; }
+| directive_list TSEND_HEARTBEATS TSEMICOLON { builder->program.sendHeartbeats = true; }
+| directive_list TON_PRE_TIMEOUT TLPAREN callback_name TRPAREN TSEMICOLON {
+  builder->program.addCallback("on_pre_round_barrier_timeout", *$4);
+  delete $4;
 }
+| directive_list TON_POST_TIMEOUT TLPAREN callback_name TRPAREN TSEMICOLON {
+  builder->program.addCallback("on_post_round_barrier_timeout", *$4);
+  delete $4;
+}
+| directive_list TON_RECV_FILTER TLPAREN callback_name TRPAREN TSEMICOLON {
+  builder->program.addCallback("on_receive_filter", *$4);
+  delete $4;
+}
+;
+
+callback_name : TIDENTIFIER { $$ = $1; }
+| TNAMESPACE { $$ = $1; }
 ;
 
 moc : 
@@ -150,25 +168,6 @@ target_id_list : TIDENTIFIER {
 | target_id_list TCOMMA TIDENTIFIER {
   $$ = $1;
   $$->push_back(*$3); delete $3;
-}
-;
-
-callback_name : TIDENTIFIER { $$ = $1; }
-| TNAMESPACE { $$ = $1; }
-;
-
-callback_list : {}
-| callback_list TON_PRE_TIMEOUT TLPAREN callback_name TRPAREN TSEMICOLON {
-  builder->program.addCallback("on_pre_round_barrier_timeout", *$4);
-  delete $4;
-}
-| callback_list TON_POST_TIMEOUT TLPAREN callback_name TRPAREN TSEMICOLON {
-  builder->program.addCallback("on_post_round_barrier_timeout", *$4);
-  delete $4;
-}
-| callback_list TON_RECV_FILTER TLPAREN callback_name TRPAREN TSEMICOLON {
-  builder->program.addCallback("on_receive_filter", *$4);
-  delete $4;
 }
 ;
 

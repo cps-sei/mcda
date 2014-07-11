@@ -1,8 +1,6 @@
 //a correct synchronous collision avoidance protocol
 MOC_SYNC;
 
-TRACK_LOCATIONS;
-
 TARGET GNU_CPP,WIN_CPP %%{
 #define GNU_WIN
 #include <stdlib.h>
@@ -227,7 +225,10 @@ prob_distance_drop (Madara::Knowledge_Map & incoming_records,
 }
 %%}
 
-//ON_RECEIVE_FILTER(distance_drop);
+//directives
+SEND_HEARTBEATS;
+TRACK_LOCATIONS;
+ON_RECEIVE_FILTER(distance_drop);
 
 //number of X and Y coordinates
 CONST X = 10;
