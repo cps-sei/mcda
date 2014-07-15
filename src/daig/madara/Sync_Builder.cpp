@@ -125,6 +125,7 @@ daig::madara::Sync_Builder::build_common_global_variables ()
   buffer_ << "std::string host (\"\");\n";
   buffer_ << "const std::string default_multicast (\"239.255.0.1:4150\");\n";
   buffer_ << "Madara::Transport::QoS_Transport_Settings settings;\n";
+  buffer_ << "int write_fd (-1);\n";
   buffer_ << "\n";
 
   //-- only generate this code if heartbeats are used
@@ -645,12 +646,21 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "    {\n";
   buffer_ << "      settings.send_reduced_message_header = true;\n";
   buffer_ << "    }\n";
-
+  buffer_ << "    else if (arg1 == \"--write-fd\")\n";
+  buffer_ << "    {\n";
+  buffer_ << "      if (i + 1 < argc)\n";
+  buffer_ << "      {\n";
+  buffer_ << "        std::stringstream buffer (argv[i + 1]);\n";
+  buffer_ << "        buffer >> write_fd;\n";
+  buffer_ << "      }\n";
+  buffer_ << "      \n";
+  buffer_ << "      ++i;\n";
+  buffer_ << "    }\n";
 
   Nodes & nodes = builder_.program.nodes;
   for (Nodes::iterator n = nodes.begin (); n != nodes.end (); ++n)
   {
-    buffer_ << "    // Providing init for global variables\n";
+    buffer_ << "\n    // Providing init for global variables\n";
     Variables & vars = n->second.globVars;
     for (Variables::iterator i = vars.begin (); i != vars.end (); ++i)
     {

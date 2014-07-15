@@ -88,20 +88,12 @@ void print_global_state()
   }
 }
 
-void write_to_pipe (int fd, int result)
-{
-  FILE * stream = fdopen (fd, "w");
-  std::stringstream ss;
-  ss << result;
-  fprintf (stream, ss.str().c_str());
-  fclose (stream);
-}
-
 void exit_succ()
 {
   if (write_fd != -1)
   {
-    write_to_pipe(write_fd, (int) *round_count);
+    int n = (int) *round_count;
+    write (write_fd, &n, sizeof (n));
   }
   exit(EXIT_SUCCESS);
 }
@@ -110,14 +102,10 @@ void exit_fail()
 {
   if (write_fd != -1)
   {
-    write_to_pipe(write_fd, -1);
+    int n = -1;
+    write (write_fd, &n, sizeof (n));
   }
   exit(EXIT_FAILURE);
-}
-
-bool DO_RAND(double prob)
-{
-  return rand() < (RAND_MAX * prob);
 }
 
 const int DROP_RADIUS = 5;
@@ -154,8 +142,7 @@ distance_drop (Madara::Knowledge_Map & incoming_records,
       // Discard both global and barrier updates
       // incoming_records.clear();
 
-      // For collision checking
-      // Preserved variables
+      // Preserved variables for collision checking
       std::string true_x = "true_x." + boost::lexical_cast<std::string>(sender_id);
       std::string true_y = "true_y." + boost::lexical_cast<std::string>(sender_id);
       std::string finished = "finished." + boost::lexical_cast<std::string>(sender_id);
@@ -166,7 +153,10 @@ distance_drop (Madara::Knowledge_Map & incoming_records,
         if (var == true_x || var == true_y || var == finished) {
           it2++;
         } else {
-          it2 = incoming_records.erase(it2);
+          Madara::Knowledge_Map::iterator it3 = it2;
+          it2++;
+          // Discard both global and barrier updates
+          incoming_records.erase(it3);
         }
       }
 
@@ -175,50 +165,6 @@ distance_drop (Madara::Knowledge_Map & incoming_records,
       // will not record last global updates round
       incoming_records["send_global_updates"] = Integer(0);
     }
-  }
-
-  return result; // empty record
-}
-
-const int LEVEL_1_RADIUS = 3;
-const int LEVEL_2_RADIUS = 5;
-const int LEVEL_3_RADIUS = 9;
-const double LEVEL_1_DROP_RATE = 0.05;
-const double LEVEL_2_DROP_RATE = 0.2;
-const double LEVEL_3_DROP_RATE = 0.5;
-const double LEVEL_4_DROP_RATE = 0.7;
-
-Madara::Knowledge_Record
-prob_distance_drop (Madara::Knowledge_Map & incoming_records,
-                    const Madara::Transport::Transport_Context & context,
-                    Madara::Knowledge_Engine::Variables & vars)
-{
-  Madara::Knowledge_Record result; // unused
-
-  // Get coordinates of this node
-  Integer my_x = x[*id];
-  Integer my_y = y[*id];
-
-  // Get coordinates of sender node
-  Integer sender_id = incoming_records["id"].to_integer();
-  const std::string sender_x_key = "x." + boost::lexical_cast<std::string>(sender_id);
-  const std::string sender_y_key = "y." + boost::lexical_cast<std::string>(sender_id);
-  Integer sender_x = vars.get(sender_x_key).to_integer();
-  Integer sender_y = vars.get(sender_y_key).to_integer();
-
-  Integer dx = my_x - sender_x;
-  Integer dy = my_y - sender_y;
-
-  double dr = sqrt(dx * dx + dy * dy);
-
-  if (dr <= LEVEL_1_RADIUS && DO_RAND(LEVEL_1_DROP_RATE)) {
-    incoming_records.clear();
-  } else if (dr <= LEVEL_2_RADIUS && DO_RAND(LEVEL_2_DROP_RATE)) {
-    incoming_records.clear();
-  } else if (dr <= LEVEL_3_RADIUS && DO_RAND(LEVEL_3_DROP_RATE)) {
-    incoming_records.clear();
-  } else if (DO_RAND(LEVEL_4_DROP_RATE)) {
-    incoming_records.clear();
   }
 
   return result; // empty record
@@ -262,21 +208,20 @@ NODE uav (id)
 
   // These global variables will always be up-to-date
   // Used for collision checking
-  GLOBAL unsigned char true_x [#N];
-  GLOBAL unsigned char true_y [#N];
-
-  GLOBAL int finished [#N];
+  GLOBAL int true_x [#N];
+  GLOBAL int true_y [#N];
+  GLOBAL _Bool finished [#N];
 
   //private variables -- local to the node.
   //preserved across rounds
   LOCAL unsigned char state; //the state
-  LOCAL unsigned char xp,yp; //next coordinates
-  LOCAL unsigned char xf,yf; //final coordinates
+  LOCAL int xp,yp; //next coordinates
+  LOCAL int xf,yf; //final coordinates
 
   // To calculate velocity
   LOCAL int prev_x, prev_y;
   // Whether (xp, yp) is in critical area
-  LOCAL int in_critical_area;
+  LOCAL _Bool in_critical_area;
 
   void NODE_INIT () {
     velocity_x[id] = NAN;
@@ -377,48 +322,58 @@ NODE uav (id)
   }
 
   void ROUND () {
-    //print_state(X,Y,id,x[id],y[id],xf,yf);
     print_global_state();
-    //my_sleep(1);
-    if(state == INITS) {
+
+    // Terminate if all nodes have finished
+    CHECK_ALL_FINISHED();
+    // Terminate if there is collision
+    CHECK_COLLISION();
+
+    if (state == INITS) {
       lock[x[id]][y[id]][id] = 1;
       state = NEXT;
-    } else if(state == NEXT) {
-      //compute next point on route
-      if(x[id] == xf && y[id] == yf) {
+    }
+    if (state == NEXT) {
+      if (x[id] == xf && y[id] == yf) {
+        // Arrive destination
         finished[id] = 1;
       } else {
+        // Compute next point on route
         NEXT_XY();
         state = REQUEST;
       }
-    } else if(state == REQUEST) {
-      // Check if (x',y') is in critical areas of timed out nodes
+    } else if (state == REQUEST) {
+      // Check if (x',y') is in critical area of timed-out node
       CHECK_CRITICAL_AREA();
       if (in_critical_area) {
         // (x',y') in critical area, do not grab lock
         return;
       }
-      //request the lock but only if it is free
-      if(EXISTS_LOWER(idp,lock[xp][yp][idp] != 0)) return;
+      // Request the lock but only if it is free
+      if (EXISTS_LOWER(idp,lock[xp][yp][idp] != 0)) {
+        return;
+      }
       lock[xp][yp][id] = 1;
       state = WAITING;
-    } else if(state == WAITING) {
-      //grab the lock if we are the highest 
-      //id node to request or hold the lock
-      if(EXISTS_HIGHER(idp, lock[xp][yp][idp] != 0)) return;
+    } else if (state == WAITING) {
+      // Grab the lock if we are the highest
+      // id node to request or hold the lock
+      if (EXISTS_HIGHER(idp, lock[xp][yp][idp] != 0)) {
+        return;
+      }
       state = MOVE;
-    } else if(state == MOVE) {
-      //now we have the lock on (x’,y’)
-      if(MOVE_TO(xp,yp)) return;
+    } else if (state == MOVE) {
+      // Now we have the lock on (x’,y’)
+      if (MOVE_TO(xp,yp)) {
+        return;
+      }
       lock[x[id]][y[id]][id] = 0;
       x[id] = xp; y[id] = yp;
       state = NEXT;
     }
 
-    // Use for collision checking only
+    // Update true_x and true_y for collision checking
     UPDATE_TRUE_VARS();
-    CHECK_COLLISION();
-    ALL_FINISHED();
   }
 
   void UPDATE_TRUE_VARS () {
@@ -435,7 +390,7 @@ NODE uav (id)
     }
   }
 
-  void ALL_FINISHED () {
+  void CHECK_ALL_FINISHED () {
     FORALL_NODE (i) {
       if (finished[i] == 0) {
         return;
