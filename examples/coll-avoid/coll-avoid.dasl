@@ -88,24 +88,29 @@ void print_global_state()
   }
 }
 
-void exit_succ()
+void write_to_pipe ()
 {
-  if (write_fd != -1)
-  {
-    int n = (int) *round_count;
-    write (write_fd, &n, sizeof (n));
-  }
-  exit(EXIT_SUCCESS);
+  int xi = (int) x[*id];
+  int yi = (int) y[*id];
+  int n = (int) *num_rounds;
+  FILE * stream = fdopen (write_fd, "w");
+  fprintf (stream, "%d %d %d", xi, yi, n);
+  fclose (stream);
 }
 
-void exit_fail()
+void write_and_exit (int status)
 {
   if (write_fd != -1)
   {
-    int n = -1;
-    write (write_fd, &n, sizeof (n));
+    write_to_pipe ();
   }
-  exit(EXIT_FAILURE);
+
+  exit (status);
+}
+
+void sigterm_handler (int signum)
+{
+  write_and_exit (EXIT_TIMEOUT);
 }
 
 const int DROP_RADIUS = 5;
@@ -187,14 +192,18 @@ CONST REQUEST = 2;
 CONST WAITING = 3;
 CONST MOVE = 4;
 
-CONST CRITICAL_RADIUS = 2;
+CONST CRITICAL_RADIUS = 3;
+
+// exit status
+CONST EXIT_FINISHED = 0;
+CONST EXIT_COLLISION = 1;
+CONST EXIT_TIMEOUT = 2;
 
 EXTERN int MOVE_TO(unsigned char x,unsigned char y);
 EXTERN int my_sleep(int seconds);
 EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
 EXTERN void print_global_state();
-EXTERN void exit_succ();
-EXTERN void exit_fail();
+EXTERN void write_and_exit (int status);
 
 NODE uav (id)
 {
@@ -218,10 +227,9 @@ NODE uav (id)
   LOCAL int xp,yp; //next coordinates
   LOCAL int xf,yf; //final coordinates
 
-  // To calculate velocity
-  LOCAL int prev_x, prev_y;
-  // Whether (xp, yp) is in critical area
-  LOCAL _Bool in_critical_area;
+  LOCAL int prev_x, prev_y; // To calculate velocity
+  LOCAL _Bool hover;
+  LOCAL int num_rounds;
 
   void NODE_INIT () {
     velocity_x[id] = NAN;
@@ -260,7 +268,49 @@ NODE uav (id)
     }
   }
 
-  void CHECK_CRITICAL_AREA () {
+  void CONSERVATIVE_METHOD () {
+    if (EXISTS_OTHER (i, round_count - last_global_updates_round[i] > 1)) {
+      // No heartbeat from node i
+      hover = 1;
+    } else {
+      hover = 0;
+    }
+  }
+
+  void DISC_METHOD () {
+    int lgu_round;
+    int dx, dy;
+    double dr;
+
+    FORALL_OTHER (i) {
+      lgu_round = last_global_updates_round[i];
+
+      if (lgu_round == -1) {
+        // Never received global updates from node i
+        // Assume node i is far away
+        continue;
+      }
+
+      if (round_count - lgu_round > 1) {
+        // No heartbeat from node i
+        // Check if last known location of node i
+        // is at least some distance away
+        dx = xp - x[i];
+        dy = yp - y[i];
+        dr = sqrt(dx * dx + dy * dy);
+
+        if (dr < CRITICAL_RADIUS)
+        {
+          hover = 1;
+          return;
+        }
+      }
+    }
+
+    hover = 0;
+  }
+
+  void APPROX_LOC_METHOD () {
     int last_known_xi, last_known_yi;
     int lgu_round;
     int dround;
@@ -312,17 +362,22 @@ NODE uav (id)
       if (dr < ri)
       {
         // (xp, yp) in critical area of node i
-        in_critical_area = 1;
+        hover = 1;
         return;
       }
     }
 
     // (xp, yp) not in critical area of any other node
-    in_critical_area = 0;
+    hover = 0;
   }
 
   void ROUND () {
-    print_global_state();
+    //print_global_state();
+
+    if (x[id] != xf || y[id] != yf) {
+      // Not at destination; continue to count rounds
+      num_rounds = round_count;
+    }
 
     // Terminate if all nodes have finished
     CHECK_ALL_FINISHED();
@@ -343,10 +398,11 @@ NODE uav (id)
         state = REQUEST;
       }
     } else if (state == REQUEST) {
-      // Check if (x',y') is in critical area of timed-out node
-      CHECK_CRITICAL_AREA();
-      if (in_critical_area) {
-        // (x',y') in critical area, do not grab lock
+      // CONSERVATIVE_METHOD();
+      DISC_METHOD();
+      // APPROX_LOC_METHOD();
+      if (hover) {
+        // do not grab lock
         return;
       }
       // Request the lock but only if it is free
@@ -385,7 +441,7 @@ NODE uav (id)
     FORALL_DISTINCT_NODE_PAIR (id1,id2) {
       if (true_x[id1] == true_x[id2] && true_y[id1] == true_y[id2]) {
         // Collision
-        exit_fail();
+        write_and_exit(EXIT_COLLISION);
       }
     }
   }
@@ -397,7 +453,7 @@ NODE uav (id)
       }
     }
     // All nodes have finished
-    exit_succ();
+    write_and_exit(EXIT_FINISHED);
   }
 }
 

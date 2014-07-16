@@ -84,6 +84,7 @@ daig::madara::Sync_Builder::build ()
   build_functions ();
   // close daig namespace
   close_daig_namespace ();
+  buffer_ << "using namespace daig;\n";
   build_main_function ();
 }
 
@@ -998,7 +999,9 @@ daig::madara::Sync_Builder::build_main_function ()
 {
   buffer_ << "int main (int argc, char ** argv)\n";
   buffer_ << "{\n";
-  buffer_ << "  using namespace daig;\n";
+  buffer_ << "  // Register signal SIGTERM handler\n";
+  buffer_ << "  signal (SIGTERM, sigterm_handler);\n";
+  buffer_ << "\n";
   buffer_ << "  settings.type = Madara::Transport::MULTICAST;\n";
   buffer_ << "\n";
   buffer_ << "  // handle any command line arguments\n";
