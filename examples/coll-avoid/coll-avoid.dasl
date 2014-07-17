@@ -70,7 +70,7 @@ void print_global_state()
       bool taken = false;
 
       for (int k = 0; k < processes; ++k) {
-        if (j == x[k] && i == y[k]) {
+        if (j == true_x[k] && i == true_y[k]) {
           printf("%d|", k);
           taken = true;
           break;
@@ -179,7 +179,7 @@ distance_drop (Madara::Knowledge_Map & incoming_records,
 //directives
 SEND_HEARTBEATS;
 TRACK_LOCATIONS;
-ON_RECEIVE_FILTER(distance_drop);
+//ON_RECEIVE_FILTER(distance_drop);
 
 //number of X and Y coordinates
 CONST X = 10;
@@ -372,7 +372,7 @@ NODE uav (id)
   }
 
   void ROUND () {
-    //print_global_state();
+    print_global_state();
 
     if (x[id] != xf || y[id] != yf) {
       // Not at destination; continue to count rounds
@@ -398,13 +398,14 @@ NODE uav (id)
         state = REQUEST;
       }
     } else if (state == REQUEST) {
-      // CONSERVATIVE_METHOD();
+      //CONSERVATIVE_METHOD();
       DISC_METHOD();
-      // APPROX_LOC_METHOD();
+      //APPROX_LOC_METHOD();
       if (hover) {
         // do not grab lock
         return;
       }
+
       // Request the lock but only if it is free
       if (EXISTS_LOWER(idp,lock[xp][yp][idp] != 0)) {
         return;
@@ -426,10 +427,10 @@ NODE uav (id)
       lock[x[id]][y[id]][id] = 0;
       x[id] = xp; y[id] = yp;
       state = NEXT;
-    }
 
-    // Update true_x and true_y for collision checking
-    UPDATE_TRUE_VARS();
+      // Update true_x and true_y for collision checking
+      UPDATE_TRUE_VARS();
+    }
   }
 
   void UPDATE_TRUE_VARS () {

@@ -15,7 +15,7 @@
 
 void sigalrm_handler (int signum);
 void compile ();
-void run (double &distance, int &num_rounds, double &num_collisions, int &num_timeouts);
+void run (const int r, double &distance, int &num_rounds, double &num_collisions, int &num_timeouts);
 void read_from_pipe (int read_fd, int &xi, int &yi, int &n);
 void create_out_files ();
 void close_out_files ();
@@ -32,6 +32,8 @@ std::vector<std::ofstream *> out_files;
 
 int main (int argc, char ** argv)
 {
+  srand (time(NULL));
+
   // Register alarm signal handler
   signal (SIGALRM, (void (*)(int)) sigalrm_handler);
 
@@ -52,8 +54,10 @@ int main (int argc, char ** argv)
 
   for (int i = 0; i < num_runs; i++)
   {
-    printf ("Run %d...\n", i);
-    run (distance, num_rounds, num_collisions, num_timeouts);
+    printf ("Run %d...", i);
+    fflush (stdout);
+    run (i, distance, num_rounds, num_collisions, num_timeouts);
+    printf ("completed\n");
   }
 
   double collision_rate = num_collisions / num_runs;
@@ -127,13 +131,11 @@ void compile ()
   wait (NULL);
 }
 
-void run (double &distance, int &num_rounds, double &num_collisions, int &num_timeouts)
+void run (const int r, double &distance, int &num_rounds, double &num_collisions, int &num_timeouts)
 {
   std::vector<int> xs (num_processes);
   std::vector<int> ys (num_processes);
   std::vector<int> read_fds (num_processes);
-
-  srand (time(NULL));
 
   // Fork #N processes
   for (int i = 0; i < num_processes; i++)
@@ -171,6 +173,7 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
       close (pipefd[0]);
 
       std::ofstream * out_file = out_files[i];
+      *out_file << "Run " << r << '\n';
       *out_file << "x : " << x << ", ";
       *out_file << "y : " << y << ", ";
       *out_file << "xf : " << xf << ", ";
