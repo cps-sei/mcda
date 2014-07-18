@@ -199,7 +199,8 @@ void
 daig::madara::Sync_Builder::build_common_filters (void)
 {
   //-- only generate this code if heartbeats are used
-  if(builder_.program.sendHeartbeats) {
+  if (builder_.program.sendHeartbeats)
+  {
     buffer_ << "// Set heartbeat when receive global updates from other node\n";
     std::stringstream set_heartbeat;
     set_heartbeat << "  // Record round of receiving global updates\n";
@@ -209,48 +210,27 @@ daig::madara::Sync_Builder::build_common_filters (void)
     set_heartbeat << "    last_global_updates_round.set (sender_id, *round_count);\n";
     set_heartbeat << "  }\n";
     build_common_filters_helper ("set_heartbeat", set_heartbeat);
-  }
 
-  //-- if either callbacks or heartbeats
-  if(!builder_.program.callbacks.empty() || builder_.program.sendHeartbeats) {
-    //-- only generate this if there are some callbacks
     buffer_ << "// Add auxiliary variables to the outgoing records\n";
     std::stringstream add_auxiliaries;
-    if(!builder_.program.callbacks.empty()) {
-      add_auxiliaries << "  // Node id\n";
-      add_auxiliaries << "  records[\"id\"] = vars.get (\".id\");\n";
-    }
-
-    //-- only generate this code if heartbeats are used
-    if(builder_.program.sendHeartbeats) {
-      add_auxiliaries << "  // Whether the outgoing records contain global updates\n";
-      add_auxiliaries << "  if (send_global_updates)\n";
-      add_auxiliaries << "  {\n";
-      add_auxiliaries << "    records[\"send_global_updates\"] = Integer (1);\n";
-      add_auxiliaries << "  }\n";
-      add_auxiliaries << "  else\n";
-      add_auxiliaries << "  {\n";
-      add_auxiliaries << "    records[\"send_global_updates\"] = Integer (0);\n";
-      add_auxiliaries << "  }\n";
-    }
-
+    add_auxiliaries << "  // Node id\n";
+    add_auxiliaries << "  records[\"id\"] = vars.get (\".id\");\n";
+    add_auxiliaries << "  // Whether the outgoing records contain global updates\n";
+    add_auxiliaries << "  if (send_global_updates)\n";
+    add_auxiliaries << "  {\n";
+    add_auxiliaries << "    records[\"send_global_updates\"] = Integer (1);\n";
+    add_auxiliaries << "  }\n";
+    add_auxiliaries << "  else\n";
+    add_auxiliaries << "  {\n";
+    add_auxiliaries << "    records[\"send_global_updates\"] = Integer (0);\n";
+    add_auxiliaries << "  }\n";
     build_common_filters_helper ("add_auxiliaries", add_auxiliaries);
-  }
 
-  //-- if either callbacks or heartbeats
-  if(!builder_.program.callbacks.empty() || builder_.program.sendHeartbeats) {
     buffer_ << "// Strip auxiliary variables from incoming records\n";
     std::stringstream remove_auxiliaries;
-    //-- only generate this if there are some callbacks
-    if(!builder_.program.callbacks.empty()) {
-      remove_auxiliaries << "  // erase auxiliary variables before the context tries to apply it locally\n";
-      remove_auxiliaries << "  records.erase (\"id\");\n";
-    }
-
-    //-- only generate this code if heartbeats are used
-    if(builder_.program.sendHeartbeats)
-      remove_auxiliaries << "  records.erase (\"send_global_updates\");\n";
-
+    remove_auxiliaries << "  // erase auxiliary variables before the context tries to apply it locally\n";
+    remove_auxiliaries << "  records.erase (\"id\");\n";
+    remove_auxiliaries << "  records.erase (\"send_global_updates\");\n";
     build_common_filters_helper ("remove_auxiliaries", remove_auxiliaries);
   }
 }

@@ -116,9 +116,9 @@ void sigterm_handler (int signum)
 const int DROP_RADIUS = 5;
 
 Madara::Knowledge_Record
-distance_drop (Madara::Knowledge_Map & incoming_records,
-               const Madara::Transport::Transport_Context & context,
-               Madara::Knowledge_Engine::Variables & vars)
+simple_distance_drop (Madara::Knowledge_Map & incoming_records,
+                      const Madara::Transport::Transport_Context & context,
+                      Madara::Knowledge_Engine::Variables & vars)
 {
   Madara::Knowledge_Record result; // unused
 
@@ -145,7 +145,6 @@ distance_drop (Madara::Knowledge_Map & incoming_records,
 
     if (dr > DROP_RADIUS) {
       // Discard both global and barrier updates
-      // incoming_records.clear();
 
       // Preserved variables for collision checking
       std::string true_x = "true_x." + boost::lexical_cast<std::string>(sender_id);
@@ -174,12 +173,87 @@ distance_drop (Madara::Knowledge_Map & incoming_records,
 
   return result; // empty record
 }
+
+const int RADIUS_LEVEL_1 = 2;
+const int RADIUS_LEVEL_2 = 5;
+const int RADIUS_LEVEL_3 = 8;
+const double DROP_PROB_LEVEL_1 = 0.05;
+const double DROP_PROB_LEVEL_2 = 0.1;
+const double DROP_PROB_LEVEL_3 = 0.5;
+const double DROP_PROB_LEVEL_4 = 0.8;
+
+bool flip (double prob)
+{
+  return rand() < (RAND_MAX * prob);
+}
+
+Madara::Knowledge_Record
+prob_distance_drop (Madara::Knowledge_Map & incoming_records,
+                    const Madara::Transport::Transport_Context & context,
+                    Madara::Knowledge_Engine::Variables & vars)
+{
+  Madara::Knowledge_Record result; // unused
+
+  // Get coordinates of this node
+  Integer my_x = x[*id];
+  Integer my_y = y[*id];
+
+  // Get coordinates of sender node
+  Integer sender_id = incoming_records["id"].to_integer();
+  std::string sender_x_key = "x." + boost::lexical_cast<std::string>(sender_id);
+  std::string sender_y_key = "y." + boost::lexical_cast<std::string>(sender_id);
+  Madara::Knowledge_Map::iterator it = incoming_records.find(sender_x_key);
+
+  // Check if incoming records contain global updates
+  if (it != incoming_records.end()) {
+    Integer sender_x = it->second.to_integer();
+    // Assume that x.{id} and y.{id} are always broadcasted together
+    Integer sender_y = incoming_records[sender_y_key].to_integer();
+
+    Integer dx = my_x - sender_x;
+    Integer dy = my_y - sender_y;
+
+    double dr = sqrt(dx * dx + dy * dy);
+
+    if ((dr > RADIUS_LEVEL_3 && flip(DROP_PROB_LEVEL_4)) ||
+        (dr <= RADIUS_LEVEL_3 && dr > RADIUS_LEVEL_2 && flip(DROP_PROB_LEVEL_3)) ||
+        (dr <= RADIUS_LEVEL_2 && dr > RADIUS_LEVEL_1 && flip(DROP_PROB_LEVEL_2)) ||
+        (dr <= RADIUS_LEVEL_1 && flip(DROP_PROB_LEVEL_1)))
+    {
+      // Discard both global and barrier updates
+
+      // Preserved variables for collision checking
+      std::string true_x = "true_x." + boost::lexical_cast<std::string>(sender_id);
+      std::string true_y = "true_y." + boost::lexical_cast<std::string>(sender_id);
+      std::string finished = "finished." + boost::lexical_cast<std::string>(sender_id);
+
+      Madara::Knowledge_Map::iterator it2 = incoming_records.begin();
+      while (it2 != incoming_records.end()) {
+        std::string var = it2->first;
+        if (var == true_x || var == true_y || var == finished) {
+          it2++;
+        } else {
+          Madara::Knowledge_Map::iterator it3 = it2;
+          it2++;
+          // Discard both global and barrier updates
+          incoming_records.erase(it3);
+        }
+      }
+
+      // Since we use filter to simulate packet drop,
+      // set send_global_updates flag to false so that set_heartbeat filter
+      // will not record last global updates round
+      incoming_records["send_global_updates"] = Integer(0);
+    }
+
+  return result; // empty record
+}
 %%}
 
 //directives
 SEND_HEARTBEATS;
 TRACK_LOCATIONS;
-//ON_RECEIVE_FILTER(distance_drop);
+ON_RECEIVE_FILTER(prob_distance_drop);
 
 //number of X and Y coordinates
 CONST X = 10;
@@ -398,8 +472,8 @@ NODE uav (id)
         state = REQUEST;
       }
     } else if (state == REQUEST) {
-      //CONSERVATIVE_METHOD();
-      DISC_METHOD();
+      CONSERVATIVE_METHOD();
+      //DISC_METHOD();
       //APPROX_LOC_METHOD();
       if (hover) {
         // do not grab lock
