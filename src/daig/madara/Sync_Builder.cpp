@@ -1176,6 +1176,7 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  // Call node initialization function, if any\n";
   if (!node.node_init_func_name.empty())
   {
+    buffer_ << "  wait_settings.delay_sending_modifieds = true;\n";
     buffer_ << "  knowledge.evaluate (\"" << node.node_init_func_name << " ()\", wait_settings);\n";
   }
   buffer_ << '\n';
@@ -1211,14 +1212,13 @@ daig::madara::Sync_Builder::build_main_function ()
   if(builder_.program.sendHeartbeats)
     buffer_ << "    send_global_updates = false;\n\n";
   
-  buffer_ << "    // Synchronize barrier information for late joiners\n";
-  buffer_ << "    knowledge.evaluate (barrier_sync_logic, wait_settings);\n\n";
-
   buffer_ << "    // Execute main user logic\n";
+  buffer_ << "    wait_settings.delay_sending_modifieds = true;\n";
   buffer_ << "    knowledge.evaluate (round_logic, wait_settings);\n\n";
 
   buffer_ << "    // second barrier for waiting on others to finish round\n";
   buffer_ << "    // Increment barrier and only send barrier update\n";
+  buffer_ << "    wait_settings.delay_sending_modifieds = false;\n";
   buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n\n";
 
   buffer_ << "  }\n\n";
