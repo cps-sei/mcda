@@ -54,12 +54,12 @@ void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf)
   }
 }
 
-void print_global_state()
+void print_global_state(int local_state)
 {
   for (int i = 0; i < 150; ++i)
     printf("\n");
 
-  printf("round = %d : id = %d\n", ++round, (int) *id);
+  printf("round = %d : id = %d : state = %d\n", ++round, (int) *id, local_state);
   printf("_X = %d _Y = %d\n", X, Y);
   print_line(X);
 
@@ -174,13 +174,13 @@ simple_distance_drop (Madara::Knowledge_Map & incoming_records,
   return result; // empty record
 }
 
-const int RADIUS_LEVEL_1 = 2;
+const int RADIUS_LEVEL_1 = 3;
 const int RADIUS_LEVEL_2 = 5;
 const int RADIUS_LEVEL_3 = 8;
 const double DROP_PROB_LEVEL_1 = 0.05;
 const double DROP_PROB_LEVEL_2 = 0.1;
-const double DROP_PROB_LEVEL_3 = 0.5;
-const double DROP_PROB_LEVEL_4 = 0.8;
+const double DROP_PROB_LEVEL_3 = 0.25;
+const double DROP_PROB_LEVEL_4 = 0.5;
 
 bool flip (double prob)
 {
@@ -266,6 +266,7 @@ CONST NEXT = 1;
 CONST REQUEST = 2;
 CONST WAITING = 3;
 CONST MOVE = 4;
+CONST FINISHED = 5;
 
 CONST CRITICAL_RADIUS = 3;
 
@@ -277,7 +278,7 @@ CONST EXIT_TIMEOUT = 2;
 EXTERN int MOVE_TO(unsigned char x,unsigned char y);
 EXTERN int my_sleep(int seconds);
 EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
-EXTERN void print_global_state();
+EXTERN void print_global_state(int local_state);
 EXTERN void write_and_exit (int status);
 
 NODE uav (id)
@@ -447,7 +448,7 @@ NODE uav (id)
   }
 
   void ROUND () {
-    print_global_state();
+    //print_global_state(state);
 
     if (x[id] != xf || y[id] != yf) {
       // Not at destination; continue to count rounds
@@ -467,6 +468,7 @@ NODE uav (id)
       if (x[id] == xf && y[id] == yf) {
         // Arrive destination
         finished[id] = 1;
+        state = FINISHED;
       } else {
         // Compute next point on route
         NEXT_XY();
@@ -506,6 +508,8 @@ NODE uav (id)
       // Update true_x and true_y for collision checking
       UPDATE_TRUE_VARS();
     }
+    // state == FINISHED
+    // Already at destination; do nothing
   }
 
   void UPDATE_TRUE_VARS () {

@@ -35,7 +35,7 @@ int main (int argc, char ** argv)
   srand (time(NULL));
 
   // Register alarm signal handler
-  signal (SIGALRM, (void (*)(int)) sigalrm_handler);
+  signal (SIGALRM, sigalrm_handler);
 
   num_processes = atoi (argv[1]);
   num_runs = atoi (argv[2]);
@@ -65,7 +65,7 @@ int main (int argc, char ** argv)
 
   printf ("Collision rate: %f\n", collision_rate);
   printf ("Average speed: %f unit/round\n", avg_speed);
-  printf ("Number of timeouts: %d\n", num_timeouts);
+  printf ("Number of timeouts: %d out of %d runs\n", num_timeouts, num_runs);
 
   close_out_files ();
 
