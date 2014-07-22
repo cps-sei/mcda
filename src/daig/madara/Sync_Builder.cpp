@@ -979,11 +979,6 @@ daig::madara::Sync_Builder::build_main_function ()
 {
   buffer_ << "int main (int argc, char ** argv)\n";
   buffer_ << "{\n";
-  buffer_ << "  // Initialize random seed\n";
-  buffer_ << "  srand (time (NULL));\n";
-  buffer_ << "  // Register signal SIGTERM handler\n";
-  buffer_ << "  signal (SIGTERM, sigterm_handler);\n";
-  buffer_ << "\n";
   buffer_ << "  settings.type = Madara::Transport::MULTICAST;\n";
   buffer_ << "\n";
   buffer_ << "  // handle any command line arguments\n";

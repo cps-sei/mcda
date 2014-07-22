@@ -249,6 +249,17 @@ prob_distance_drop (Madara::Knowledge_Map & incoming_records,
 
   return result; // empty record
 }
+
+//do some basic initialization at the start of the node -- set random
+//seed, set signal handlers etc.
+void basic_node_init()
+{
+  // Initialize random seed
+  srand (time (NULL));
+  // Register signal SIGTERM handler
+  signal (SIGTERM, sigterm_handler);
+}
+
 %%}
 
 //directives
@@ -280,6 +291,7 @@ EXTERN int my_sleep(int seconds);
 EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
 EXTERN void print_global_state(int local_state);
 EXTERN void write_and_exit (int status);
+EXTERN void basic_node_init();
 
 NODE uav (id)
 {
@@ -308,6 +320,8 @@ NODE uav (id)
   LOCAL int num_rounds;
 
   void NODE_INIT () {
+    basic_node_init(); //do basic initialization
+
     velocity_x[id] = NAN;
     velocity_y[id] = NAN;
     prev_x = x[id];
