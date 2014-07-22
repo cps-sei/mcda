@@ -39,6 +39,7 @@ int main (int argc, char ** argv)
 
   num_processes = atoi (argv[1]);
   num_runs = atoi (argv[2]);
+  const char * main_out_filename = argv[3];
 
   child_pids.resize(num_processes, 0);
 
@@ -68,6 +69,10 @@ int main (int argc, char ** argv)
   printf ("Number of timeouts: %d out of %d runs\n", num_timeouts, num_runs);
 
   close_out_files ();
+
+  std::ofstream main_out;
+  main_out.open (main_out_filename, std::ofstream::app);
+  main_out << collision_rate << '\t' << avg_speed << '\t' << num_timeouts << '\n';
 
   return 0;
 }
