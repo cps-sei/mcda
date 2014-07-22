@@ -249,6 +249,21 @@ prob_distance_drop (Madara::Knowledge_Map & incoming_records,
 
   return result; // empty record
 }
+
+void REMODIFY_LOCKS ()
+{
+  for (Integer i = 0; i < X; i++)
+  {
+    for (Integer j = 0; j < Y; j++)
+    {
+      containers::Array_N::Index index (3);
+      index[0] = i;
+      index[1] = j;
+      index[2] = *id;
+      lock.set (index, lock(i, j, *id).to_integer ());
+    }
+  }
+}
 %%}
 
 //directives
@@ -267,6 +282,10 @@ CONST REQUEST = 2;
 CONST WAITING = 3;
 CONST MOVE = 4;
 CONST FINISHED = 5;
+
+// Protocol to avoid deadlock
+CONST MAX_REQ = 10;
+CONST MAX_WAIT = 20;
 
 CONST CRITICAL_RADIUS = 3;
 
@@ -307,11 +326,17 @@ NODE uav (id)
   LOCAL _Bool hover;
   LOCAL int num_rounds;
 
+  // Protocol to avoid deadlock
+  LOCAL int req_count;
+  LOCAL int wait_count;
+  LOCAL _Bool move_x_first;
+
   void NODE_INIT () {
     velocity_x[id] = NAN;
     velocity_y[id] = NAN;
     prev_x = x[id];
     prev_y = y[id];
+    move_x_first = 1;
 
     true_x[id] = x[id];
     true_y[id] = y[id];
@@ -336,11 +361,61 @@ NODE uav (id)
 
   void NEXT_XY () {
     ATOMIC {
-      xp = x[id]; yp = y[id];
-      if(x[id] < xf) xp = x[id] + 1;
-      else if(x[id] > xf) xp = x[id] - 1;
-      else if(y[id] < yf) yp = y[id] + 1;
-      else yp = y[id] - 1;
+      xp = x[id];
+      yp = y[id];
+
+      if (move_x_first) {
+        if (x[id] < xf)
+          xp = x[id] + 1;
+        else if (x[id] > xf)
+          xp = x[id] - 1;
+        else if (y[id] < yf)
+          yp = y[id] + 1;
+        else
+          yp = y[id] - 1;
+      } else {
+        if (y[id] < yf)
+          yp = y[id] + 1;
+        else if (y[id] > yf)
+          yp = y[id] - 1;
+        else if (x[id] < xf)
+          xp = x[id] + 1;
+        else
+          xp = x[id] - 1;
+      }
+    }
+  }
+
+  // Protocol to avoid deadlock
+  void NEXT_XY_ALT () {
+    ATOMIC {
+      if (xp != x[id]) {
+        // Moving in x-axis
+        // Change to moving in y-axis
+        xp = x[id];
+
+        if (y[id] == 0 || y[id] < yf) {
+          yp = y[id] + 1;
+        } else {
+          yp = y[id] - 1;
+        }
+
+        // Move x first in the next round
+        move_x_first = 1;
+      } else {
+        // Moving in y-axis
+        // Change to moving in x-axis
+        yp = y[id];
+
+        if (x[id] == 0 || x[id] < xf){
+          xp = x[id] + 1;
+        } else {
+          xp = x[id] - 1;
+        }
+
+        // Move y first in the next round
+        move_x_first = 0;
+      }
     }
   }
 
@@ -475,26 +550,49 @@ NODE uav (id)
         state = REQUEST;
       }
     } else if (state == REQUEST) {
-      CONSERVATIVE_METHOD();
-      //DISC_METHOD();
+      req_count = req_count + 1;
+
+      if (req_count > MAX_REQ) {
+        NEXT_XY_ALT();
+        req_count = 0;
+        state = REQUEST;
+        return;
+      }
+
+      //CONSERVATIVE_METHOD();
+      DISC_METHOD();
       //APPROX_LOC_METHOD();
       if (hover) {
         // do not grab lock
         return;
       }
 
-      // Request the lock but only if it is free
+      // Request the lock (i.e., grab it) if no lower-id nodes
+      // holding the lock
       if (EXISTS_LOWER(idp,lock[xp][yp][idp] != 0)) {
         return;
       }
+
       lock[xp][yp][id] = 1;
+      req_count = 0;
       state = WAITING;
     } else if (state == WAITING) {
-      // Grab the lock if we are the highest
-      // id node to request or hold the lock
+      wait_count = wait_count + 1;
+
+      if (wait_count > MAX_WAIT) {
+        NEXT_XY_ALT();
+        wait_count = 0;
+        state = REQUEST;
+        return;
+      }
+
+      // Set to move to (x',y') if no higher-id nodes
+      // holding the lock
       if (EXISTS_HIGHER(idp, lock[xp][yp][idp] != 0)) {
         return;
       }
+
+      wait_count = 0;
       state = MOVE;
     } else if (state == MOVE) {
       // Now we have the lock on (x’,y’)

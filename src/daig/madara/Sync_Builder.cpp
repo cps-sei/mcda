@@ -801,6 +801,10 @@ daig::madara::Sync_Builder::build_refresh_modify_globals ()
       build_refresh_modify_global (var);
     }
   }
+
+  buffer_ << '\n';
+  buffer_ << "  REMODIFY_LOCKS ();\n";
+  buffer_ << '\n';
   
   buffer_ << "  return Integer (0);\n";
   buffer_ << "}\n\n";
