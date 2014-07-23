@@ -295,15 +295,9 @@ void run (const int r, double &distance, int &num_rounds, double &num_collisions
   // Reset alarm
   alarm (0);
 
-  if (collision)
-  {
-    num_collisions++;
-  }
-
-  if (timeout)
-  {
-    num_timeouts++;
-  }
+  //update stats
+  if (collision) num_collisions++;
+  if (timeout) num_timeouts++;
 }
 
 void read_from_pipe (int read_fd, int &xi, int &yi, int &n)
