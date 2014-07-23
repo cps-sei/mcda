@@ -233,8 +233,8 @@ void run (const int r, double &distance, int &num_rounds, double &num_collisions
     }
   }
 
-  bool collision = false;
-  bool timeout = false;
+  bool collision = false; //flag to indicate if there was collision
+  bool timeout = false; //flag to indicate if there was a timeout
 
   // Set timeout for child processes
   alarm (CHILD_WAIT_TIME);
