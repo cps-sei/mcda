@@ -100,10 +100,7 @@ void write_to_pipe ()
 
 void write_and_exit (int status)
 {
-  if (write_fd != -1)
-  {
-    write_to_pipe ();
-  }
+  if (write_fd != -1) write_to_pipe ();
 
   exit (status);
 }
