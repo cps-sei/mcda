@@ -256,6 +256,8 @@ void run (const int r, double &distance, int &num_rounds, double &num_collisions
       exit (EXIT_FAILURE);
     }
 
+    bool node_timeout = false; //flag to indicate if this node timeouts
+
     if (WEXITSTATUS (status) == EXIT_FINISHED)
     {
       // Node reached destination
@@ -270,20 +272,23 @@ void run (const int r, double &distance, int &num_rounds, double &num_collisions
     else if (WEXITSTATUS (status) == EXIT_TIMEOUT)
     {
       // Node timed out
-      timeout = true;
+      node_timeout = timeout = true;
       *out_file << "Timed out\n";
     }
 
-    // Read output from child process
-    int xi, yi, n;
-    read_from_pipe (read_fd, xi, yi, n);
+    // Read output from child process and update stats but only if the
+    // node did not timeout
+    if(!node_timeout) {
+      int xi, yi, n;
+      read_from_pipe (read_fd, xi, yi, n);
 
-    int d = abs (xs[i] - xi) + abs (ys[i] - yi);
-    distance += d;
-    num_rounds += n;
-
-    *out_file << "Distance completed: " << d << '\n';
-    *out_file << "Rounds taken: " << n << '\n';
+      int d = abs (xs[i] - xi) + abs (ys[i] - yi);
+      distance += d;
+      num_rounds += n;
+      
+      *out_file << "Distance completed: " << d << '\n';
+      *out_file << "Rounds taken: " << n << '\n';
+    }
     out_file->flush ();
   }
 
