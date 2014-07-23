@@ -627,10 +627,8 @@ NODE uav (id)
 
   //Detect Collision and Exit if detected
   void CHECK_COLLISION () {
-    FORALL_OTHER (i) {
-      if (true_x[i] == true_x[id] && true_y[i] == true_y[id]) {
-        write_and_exit(EXIT_COLLISION);
-      }
+    if (EXISTS_LOWER(idp,true_x[idp] == true_x[id] && true_y[idp] == true_y[id])) {
+      write_and_exit(EXIT_COLLISION);
     }
   }
 
