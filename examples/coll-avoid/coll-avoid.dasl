@@ -625,10 +625,10 @@ NODE uav (id)
     true_y[id] = y[id];
   }
 
+  //Detect Collision and Exit if detected
   void CHECK_COLLISION () {
-    FORALL_DISTINCT_NODE_PAIR (id1,id2) {
-      if (true_x[id1] == true_x[id2] && true_y[id1] == true_y[id2]) {
-        // Collision
+    FORALL_OTHER (i) {
+      if (true_x[i] == true_x[id] && true_y[i] == true_y[id]) {
         write_and_exit(EXIT_COLLISION);
       }
     }
