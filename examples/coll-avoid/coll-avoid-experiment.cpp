@@ -14,6 +14,7 @@
 #define EXIT_TIMEOUT 2
 
 void sigalrm_handler (int signum);
+void set_env_vars();
 void compile ();
 void run (const int r, double &distance, int &num_rounds, double &num_collisions, int &num_timeouts);
 void read_from_pipe (int read_fd, int &xi, int &yi, int &n);
@@ -30,6 +31,9 @@ int num_runs;
 std::vector<pid_t> child_pids;
 std::vector<std::ofstream *> out_files;
 
+//-- environment variables
+std::string mcda_root,madara_root,ace_root;
+
 int main (int argc, char ** argv)
 {
   srand (time(NULL));
@@ -43,6 +47,7 @@ int main (int argc, char ** argv)
 
   child_pids.resize(num_processes, 0);
 
+  set_env_vars();
   compile ();
   create_out_files ();
 
@@ -85,6 +90,21 @@ void sigalrm_handler (int signum)
   }
 }
 
+// set environment variables
+void set_env_vars()
+{
+  char *envVar = NULL;
+  envVar = getenv("MCDA_ROOT");
+  if(!envVar) assert(0 && "ERROR: environment variable MCDA_ROOT not set!");
+  mcda_root = std::string(envVar);
+  envVar = getenv("MADARA_ROOT");
+  if(!envVar) assert(0 && "ERROR: environment variable MADARA_ROOT not set!");
+  madara_root = std::string(envVar);
+  envVar = getenv("ACE_ROOT");
+  if(!envVar) assert(0 && "ERROR: environment variable ACE_ROOT not set!");
+  ace_root = std::string(envVar);
+}
+
 void compile ()
 {
   // 1st fork: to compile dasl program
@@ -98,7 +118,8 @@ void compile ()
 
   if (pid == 0)
   {
-    execl ("/home/rsukkerd/Projects/mcda/src/daslc/daslc", "daslc",
+    std::string cmd = mcda_root + "/src/daslc/daslc";
+    execl (cmd.c_str(), "daslc",
            "--nodes", boost::lexical_cast<std::string> (num_processes).c_str (),
            "--madara",
            "--out", "coll-avoid.cpp", "coll-avoid.dasl", NULL);
@@ -121,12 +142,14 @@ void compile ()
 
   if (pid == 0)
   {
-    execl ("/usr/bin/g++", "g++",
-           "-I/home/rsukkerd/Projects/mcda/madara/ace/ACE_wrappers",
-           "-I/home/rsukkerd/Projects/mcda/madara/madara/include",
+    std::string cmd1 = std::string("-I") + ace_root;
+    std::string cmd2 = std::string("-I") + madara_root + "/include";
+    std::string cmd3 = madara_root + "/libMADARA.so";
+    std::string cmd4 = ace_root + "/lib/libACE.so";
+
+    execl ("/usr/bin/g++", "g++", cmd1.c_str(), cmd2.c_str(),
            "-o", "coll-avoid", "coll-avoid.cpp",
-           "/home/rsukkerd/Projects/mcda/madara/madara/libMADARA.so",
-           "/home/rsukkerd/Projects/mcda/madara/ace/ACE_wrappers/lib/libACE.so", NULL);
+           cmd3.c_str(), cmd4.c_str(), NULL);
 
     // execl returns only if error occured
     perror ("execl g++ failed");

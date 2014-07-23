@@ -100,10 +100,7 @@ void write_to_pipe ()
 
 void write_and_exit (int status)
 {
-  if (write_fd != -1)
-  {
-    write_to_pipe ();
-  }
+  if (write_fd != -1) write_to_pipe ();
 
   exit (status);
 }
@@ -264,6 +261,16 @@ void REMODIFY_LOCKS ()
     }
   }
 }
+
+//do some basic initialization at the start of the node -- set random
+//seed, set signal handlers etc.
+void basic_node_init()
+{
+  // Initialize random seed
+  srand (time (NULL));
+  // Register signal SIGTERM handler
+  signal (SIGTERM, sigterm_handler);
+}
 %%}
 
 //directives
@@ -299,6 +306,7 @@ EXTERN int my_sleep(int seconds);
 EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
 EXTERN void print_global_state(int local_state);
 EXTERN void write_and_exit (int status);
+EXTERN void basic_node_init();
 
 NODE uav (id)
 {
@@ -332,6 +340,8 @@ NODE uav (id)
   LOCAL _Bool move_x_first;
 
   void NODE_INIT () {
+    basic_node_init(); //do basic initialization
+
     velocity_x[id] = NAN;
     velocity_y[id] = NAN;
     prev_x = x[id];
