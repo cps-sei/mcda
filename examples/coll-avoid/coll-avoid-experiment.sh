@@ -33,3 +33,13 @@ for i in $TMPDS; do
     cat $i/out
     cat $i/stats >> $OUT_FILE
 done
+
+#compute and print stats
+COLL_AVG=$(tail -n +2 $OUT_FILE | awk '{sum+=$1} END { print sum/NR}')
+COLL_SD=$(tail -n +2 $OUT_FILE | awk '{print $1}' | awk '{x[NR]=$0; s+=$0; n++} END{a=s/n; for (i in x){ss += (x[i]-a)^2} sd = sqrt(ss/n); print sd}')
+COLL_RE=$(echo "$COLL_SD / $COLL_AVG" | bc -l)
+SPD_AVG=$(tail -n +2 $OUT_FILE | awk '{sum+=$2} END { print sum/NR}')
+SPD_SD=$(tail -n +2 $OUT_FILE | awk '{print $2}' | awk '{x[NR]=$0; s+=$0; n++} END{a=s/n; for (i in x){ss += (x[i]-a)^2} sd = sqrt(ss/n); print sd}')
+SPD_RE=$(echo "$SPD_SD / $SPD_AVG" | bc -l)
+echo "Collision : Avg = $COLL_AVG StDev = $COLL_SD RE = $COLL_RE" >> $OUT_FILE
+echo "Speed : Avg = $SPD_AVG StDev = $SPD_SD RE = $SPD_RE" >> $OUT_FILE
