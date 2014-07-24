@@ -17,9 +17,10 @@
 //-- function declarations
 /*********************************************************************/
 void sigalrm_handler (int signum);
+void process_args(int argc,char **argv);
 void set_env_vars();
 void compile ();
-void run (const int r, double &distance, int &num_rounds, double &num_collisions, int &num_timeouts);
+void run (double &distance, int &num_rounds, double &num_collisions, int &num_timeouts);
 void read_from_pipe (int read_fd, int &xi, int &yi, int &n);
 void create_out_files ();
 void close_out_files ();
@@ -36,7 +37,8 @@ const int MAX_WAIT_TIME = 3;
 //-- global variables
 /*********************************************************************/
 int num_processes;
-int num_runs;
+std::string domain;
+std::string out_dir;
 std::vector<pid_t> child_pids;
 std::vector<std::ofstream *> out_files;
 
@@ -49,16 +51,9 @@ std::string mcda_root,madara_root,ace_root;
 int main (int argc, char ** argv)
 {
   srand (time(NULL));
-
-  // Register alarm signal handler
   signal (SIGALRM, sigalrm_handler);
-
-  num_processes = atoi (argv[1]);
-  num_runs = atoi (argv[2]);
-  const char * main_out_filename = argv[3];
-
+  process_args(argc,argv);
   child_pids.resize(num_processes, 0);
-
   set_env_vars();
   compile ();
   create_out_files ();
@@ -70,28 +65,32 @@ int main (int argc, char ** argv)
   double num_collisions = 0;
   int num_timeouts = 0;
 
-  for (int i = 0; i < num_runs; i++)
-  {
-    printf ("Run %d...", i);
-    fflush (stdout);
-    run (i, distance, num_rounds, num_collisions, num_timeouts);
-    printf ("completed\n");
-  }
+  run (distance, num_rounds, num_collisions, num_timeouts);
 
-  double collision_rate = num_collisions / num_runs;
-  double avg_speed = distance / num_rounds;
-
-  printf ("Collision rate: %f\n", collision_rate);
+  printf ("Number of nodes collided: %f\n", num_collisions);
+  double avg_speed = num_rounds ? distance / num_rounds : 0.0;
   printf ("Average speed: %f unit/round\n", avg_speed);
-  printf ("Number of timeouts: %d out of %d runs\n", num_timeouts, num_runs);
+  printf ("Number of nodes timedout: %d\n", num_timeouts);
 
   close_out_files ();
 
   std::ofstream main_out;
-  main_out.open (main_out_filename, std::ofstream::app);
-  main_out << collision_rate << '\t' << avg_speed << '\t' << num_timeouts << '\n';
+  std::string main_out_filename = out_dir + "/stats";
+  main_out.open (main_out_filename.c_str(), std::ofstream::app);
+  main_out << num_collisions << '\t' << avg_speed << '\t' << num_timeouts << '\n';
+  main_out.close();
 
   return 0;
+}
+
+/*********************************************************************/
+//-- process arguments
+/*********************************************************************/
+void process_args(int argc,char **argv)
+{
+  num_processes = atoi (argv[1]);
+  domain = argv[2];
+  out_dir = argv[3];
 }
 
 /*********************************************************************/
@@ -182,7 +181,7 @@ void compile ()
 /*********************************************************************/
 //do one run
 /*********************************************************************/
-void run (const int r, double &distance, int &num_rounds, double &num_collisions, int &num_timeouts)
+void run (double &distance, int &num_rounds, double &num_collisions, int &num_timeouts)
 {
   std::vector<int> xs (num_processes);
   std::vector<int> ys (num_processes);
@@ -224,8 +223,7 @@ void run (const int r, double &distance, int &num_rounds, double &num_collisions
       close (pipefd[0]);
 
       std::ofstream * out_file = out_files[i];
-      *out_file << "Run " << r << '\n'
-                << "x : " << x << ", "
+      *out_file << "x : " << x << ", "
                 << "y : " << y << ", "
                 << "xf : " << xf << ", "
                 << "yf : " << yf << '\n';
@@ -233,6 +231,7 @@ void run (const int r, double &distance, int &num_rounds, double &num_collisions
 
       execl ("./coll-avoid", "coll-avoid",
              "--id", boost::lexical_cast<std::string> (i).c_str (),
+             "--domain", domain.c_str (),
              "--var_x",boost::lexical_cast<std::string> (x).c_str (),
              "--var_y", boost::lexical_cast<std::string> (y).c_str (),
              "--var_xf", boost::lexical_cast<std::string> (xf).c_str (),
@@ -255,9 +254,6 @@ void run (const int r, double &distance, int &num_rounds, double &num_collisions
       read_fds[i] = pipefd[0];
     }
   }
-
-  bool collision = false; //flag to indicate if there was collision
-  bool timeout = false; //flag to indicate if there was a timeout
 
   // Set timeout for child processes
   alarm (CHILD_WAIT_TIME);
@@ -289,13 +285,14 @@ void run (const int r, double &distance, int &num_rounds, double &num_collisions
     else if (WEXITSTATUS (status) == EXIT_COLLISION)
     {
       // Collision
-      collision = true;
+      num_collisions++;
       *out_file << "Collision!\n";
     }
     else if (WEXITSTATUS (status) == EXIT_TIMEOUT)
     {
       // Node timed out
-      node_timeout = timeout = true;
+      node_timeout = true;
+      num_timeouts++;
       *out_file << "Timed out\n";
     }
 
@@ -317,10 +314,6 @@ void run (const int r, double &distance, int &num_rounds, double &num_collisions
 
   // Reset alarm
   alarm (0);
-
-  //update stats
-  if (collision) num_collisions++;
-  if (timeout) num_timeouts++;
 }
 
 void read_from_pipe (int read_fd, int &xi, int &yi, int &n)
@@ -343,7 +336,7 @@ void create_out_files ()
   {
     std::ofstream * out_file = new std::ofstream ();
     std::stringstream ss;
-    ss << "node" << i << ".out";
+    ss << out_dir << "/node" << i << ".out";
     out_file->open (ss.str().c_str());
     *out_file << "Node " << i << '\n';
     out_file->flush ();
