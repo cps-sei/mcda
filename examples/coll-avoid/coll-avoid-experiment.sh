@@ -13,7 +13,7 @@ OUT_FILE=$3
 g++ -Wall coll-avoid-experiment.cpp -o coll-avoid-experiment
 daslc --nodes $NUM_NODES --madara --out coll-avoid.cpp coll-avoid.dasl
 g++ -I$ACE_ROOT -I$MADARA_ROOT/include -o coll-avoid coll-avoid.cpp \
-$MADARA_ROOT/libMADARA.so $ACE_ROOT/libACE.so
+$MADARA_ROOT/libMADARA.so $ACE_ROOT/lib/libACE.so
 
 #names of output directories
 TMPDS=""
