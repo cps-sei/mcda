@@ -29,7 +29,7 @@ do
         echo "Experiment $i Run $j: $TMPD"
         TMPDS="$TMPDS $TMPD"
         echo "Experiment $i Run $j:" > $TMPD/out
-        $MCDA_ROOT/examples/coll-avoid/coll-avoid-experiment $NUM_NODES dom-$i $TMPD 2>&1 >> $TMPD/out &
+        $MCDA_ROOT/examples/coll-avoid/coll-avoid-experiment $NUM_NODES dom-$j $TMPD 2>&1 >> $TMPD/out &
     done
     wait
 done
