@@ -22,6 +22,7 @@ int my_sleep (int seconds)
 
 int round = 0;
 int xi,yi;
+bool node_finished = false;
 
 void print_line(int _X)
 {
@@ -107,7 +108,7 @@ void write_and_exit (int status)
 
 void sigterm_handler (int signum)
 {
-  write_and_exit (EXIT_TIMEOUT);
+  write_and_exit (node_finished ? EXIT_FINISHED : EXIT_TIMEOUT);
 }
 
 const int DROP_RADIUS = 5;
@@ -146,12 +147,11 @@ simple_distance_drop (Madara::Knowledge_Map & incoming_records,
       // Preserved variables for collision checking
       std::string true_x = "true_x." + boost::lexical_cast<std::string>(sender_id);
       std::string true_y = "true_y." + boost::lexical_cast<std::string>(sender_id);
-      std::string finished = "finished." + boost::lexical_cast<std::string>(sender_id);
 
       Madara::Knowledge_Map::iterator it2 = incoming_records.begin();
       while (it2 != incoming_records.end()) {
         std::string var = it2->first;
-        if (var == true_x || var == true_y || var == finished) {
+        if (var == true_x || var == true_y) {
           it2++;
         } else {
           Madara::Knowledge_Map::iterator it3 = it2;
@@ -222,12 +222,11 @@ prob_distance_drop (Madara::Knowledge_Map & incoming_records,
       // Preserved variables for collision checking
       std::string true_x = "true_x." + boost::lexical_cast<std::string>(sender_id);
       std::string true_y = "true_y." + boost::lexical_cast<std::string>(sender_id);
-      std::string finished = "finished." + boost::lexical_cast<std::string>(sender_id);
 
       Madara::Knowledge_Map::iterator it2 = incoming_records.begin();
       while (it2 != incoming_records.end()) {
         std::string var = it2->first;
-        if (var == true_x || var == true_y || var == finished) {
+        if (var == true_x || var == true_y) {
           it2++;
         } else {
           Madara::Knowledge_Map::iterator it3 = it2;
@@ -322,7 +321,6 @@ NODE uav (id)
   // Used for collision checking
   GLOBAL int true_x [#N];
   GLOBAL int true_y [#N];
-  GLOBAL _Bool finished [#N];
 
   //private variables -- local to the node.
   //preserved across rounds
@@ -350,7 +348,6 @@ NODE uav (id)
 
     true_x[id] = x[id];
     true_y[id] = y[id];
-    finished[id] = 0;
   }
 
   @PERIODIC (10)
@@ -540,9 +537,6 @@ NODE uav (id)
       num_rounds = round_count;
     }
 
-    // Terminate if all nodes finished (reached destinations)
-    CHECK_ALL_FINISHED();
-
     // Terminate if there is collision
     CHECK_COLLISION();
 
@@ -553,7 +547,7 @@ NODE uav (id)
     if (state == NEXT) {
       if (x[id] == xf && y[id] == yf) {
         // Arrive destination
-        finished[id] = 1;
+        node_finished = 1;
         state = FINISHED;
       } else {
         // Compute next point on route
@@ -621,8 +615,6 @@ NODE uav (id)
       // Update true_x and true_y for collision checking
       UPDATE_TRUE_VARS();
     }
-    // state == FINISHED
-    // Already at destination; do nothing
   }
 
   void UPDATE_TRUE_VARS () {
@@ -635,17 +627,6 @@ NODE uav (id)
     if (EXISTS_LOWER(idp,true_x[idp] == true_x[id] && true_y[idp] == true_y[id])) {
       write_and_exit(EXIT_COLLISION);
     }
-  }
-
-  //Check termination
-  void CHECK_ALL_FINISHED () {
-    FORALL_NODE (i) {
-      if (finished[i] == 0) {
-        return;
-      }
-    }
-    // All nodes have finished
-    write_and_exit(EXIT_FINISHED);
   }
 }
 
