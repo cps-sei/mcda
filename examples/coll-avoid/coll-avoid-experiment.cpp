@@ -19,7 +19,6 @@
 void sigalrm_handler (int signum);
 void process_args(int argc,char **argv);
 void set_env_vars();
-void compile ();
 void run (double &distance, int &num_rounds, double &num_collisions, int &num_timeouts);
 void read_from_pipe (int read_fd, int &xi, int &yi, int &n);
 void create_out_files ();
@@ -55,7 +54,6 @@ int main (int argc, char ** argv)
   process_args(argc,argv);
   child_pids.resize(num_processes, 0);
   set_env_vars();
-  compile ();
   create_out_files ();
 
   // of all nodes combined
@@ -119,63 +117,6 @@ void set_env_vars()
   envVar = getenv("ACE_ROOT");
   if(!envVar) assert(0 && "ERROR: environment variable ACE_ROOT not set!");
   ace_root = std::string(envVar);
-}
-
-/*********************************************************************/
-//run daslc to generate code, then compile with g++
-/*********************************************************************/
-void compile ()
-{
-  // 1st fork: to compile dasl program
-  pid_t pid = fork ();
-
-  if (pid < 0)
-  {
-    perror ("fork failed");
-    exit (EXIT_FAILURE);
-  }
-
-  if (pid == 0)
-  {
-    std::string cmd = mcda_root + "/src/daslc/daslc";
-    execl (cmd.c_str(), "daslc",
-           "--nodes", boost::lexical_cast<std::string> (num_processes).c_str (),
-           "--madara",
-           "--out", "coll-avoid.cpp", "coll-avoid.dasl", NULL);
-
-    // execl returns only if error occured
-    perror ("execl daslc failed");
-    _exit (EXIT_FAILURE);
-  }
-
-  wait (NULL);
-
-  // 2nd fork: to compile c++ program
-  pid = fork ();
-
-  if (pid < 0)
-  {
-    perror ("fork failed");
-    exit (EXIT_FAILURE);
-  }
-
-  if (pid == 0)
-  {
-    std::string cmd1 = std::string("-I") + ace_root;
-    std::string cmd2 = std::string("-I") + madara_root + "/include";
-    std::string cmd3 = madara_root + "/libMADARA.so";
-    std::string cmd4 = ace_root + "/lib/libACE.so";
-
-    execl ("/usr/bin/g++", "g++", cmd1.c_str(), cmd2.c_str(),
-           "-o", "coll-avoid", "coll-avoid.cpp",
-           cmd3.c_str(), cmd4.c_str(), NULL);
-
-    // execl returns only if error occured
-    perror ("execl g++ failed");
-    _exit (EXIT_FAILURE);
-  }
-
-  wait (NULL);
 }
 
 /*********************************************************************/

@@ -11,6 +11,9 @@ NUM_EXPERIMENTS=$2
 OUT_FILE=$3
 
 g++ -Wall coll-avoid-experiment.cpp -o coll-avoid-experiment
+daslc --nodes $NUM_NODES --madara --out coll-avoid.cpp coll-avoid.dasl
+g++ -I$ACE_ROOT -I$MADARA_ROOT/include -o coll-avoid coll-avoid.cpp \
+$MADARA_ROOT/libMADARA.so $ACE_ROOT/libACE.so
 
 #names of output directories
 TMPDS=""
@@ -22,7 +25,6 @@ do
     TMPDS="$TMPDS $TMPD"
     echo "Experiment $i:" > $TMPD/out
     $MCDA_ROOT/examples/coll-avoid/coll-avoid-experiment $NUM_NODES dom-$i $TMPD 2>&1 >> $TMPD/out &
-    sleep 1
 done
 
 #wait for experiments to finish, then concatenate outputs
