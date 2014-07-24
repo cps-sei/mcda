@@ -2,6 +2,8 @@
 
 if [ "$#" != "4" ]; then
     echo "Usage : $0 <num-nodes> <num-experiments> <use-disc> <out-file>"
+    echo "        num-experiments = number of experiments"
+    echo "        each experiment will do 25 runs in parallel"
     echo "Example : $0 3 10 1 foo.out (to use disc method)"
     echo "Example : $0 3 10 0 foo.out (to use conservative method)"
     exit 1
@@ -22,15 +24,17 @@ TMPDS=""
 
 for ((i=0; i < $NUM_EXPERIMENTS; i++))
 do
-    TMPD=$(mktemp -d /tmp/coll-avoid.XXXXXXXX)
-    echo "Experiment $i: $TMPD"
-    TMPDS="$TMPDS $TMPD"
-    echo "Experiment $i:" > $TMPD/out
-    $MCDA_ROOT/examples/coll-avoid/coll-avoid-experiment $NUM_NODES dom-$i $TMPD 2>&1 >> $TMPD/out &
+    for j in `seq 1 25`; do
+        TMPD=$(mktemp -d /tmp/coll-avoid.XXXXXXXX)
+        echo "Experiment $i Run $j: $TMPD"
+        TMPDS="$TMPDS $TMPD"
+        echo "Experiment $i Run $j:" > $TMPD/out
+        $MCDA_ROOT/examples/coll-avoid/coll-avoid-experiment $NUM_NODES dom-$i $TMPD 2>&1 >> $TMPD/out &
+    done
+    wait
 done
 
-#wait for experiments to finish, then concatenate outputs
-wait
+#concatenate outputs
 rm -f $OUT_FILE
 echo 'Coll  AvgSpeed  Timeout' > $OUT_FILE
 for i in $TMPDS; do
