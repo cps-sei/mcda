@@ -540,8 +540,8 @@ NODE uav (id)
       num_rounds = round_count;
     }
 
-    // Terminate if finished (reached destination)
-    CHECK_FINISHED();
+    // Terminate if all nodes finished (reached destinations)
+    CHECK_ALL_FINISHED();
 
     // Terminate if there is collision
     CHECK_COLLISION();
@@ -638,9 +638,14 @@ NODE uav (id)
   }
 
   //Check termination
-  void CHECK_FINISHED () {
-    if (finished[id] != 0)
-      write_and_exit(EXIT_FINISHED);
+  void CHECK_ALL_FINISHED () {
+    FORALL_NODE (i) {
+      if (finished[i] == 0) {
+        return;
+      }
+    }
+    // All nodes have finished
+    write_and_exit(EXIT_FINISHED);
   }
 }
 
