@@ -201,11 +201,11 @@ void run (const int r, double &distance, int &num_rounds, double &num_collisions
       close (pipefd[0]);
 
       std::ofstream * out_file = out_files[i];
-      *out_file << "Run " << r << '\n';
-      *out_file << "x : " << x << ", ";
-      *out_file << "y : " << y << ", ";
-      *out_file << "xf : " << xf << ", ";
-      *out_file << "yf : " << yf << '\n';
+      *out_file << "Run " << r << '\n'
+                << "x : " << x << ", "
+                << "y : " << y << ", "
+                << "xf : " << xf << ", "
+                << "yf : " << yf << '\n';
       out_file->flush ();
 
       execl ("./coll-avoid", "coll-avoid",
