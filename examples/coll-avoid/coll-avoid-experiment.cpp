@@ -49,7 +49,6 @@ std::string mcda_root,madara_root,ace_root;
 /*********************************************************************/
 int main (int argc, char ** argv)
 {
-  srand (time(NULL));
   signal (SIGALRM, sigalrm_handler);
   process_args(argc,argv);
   child_pids.resize(num_processes, 0);
