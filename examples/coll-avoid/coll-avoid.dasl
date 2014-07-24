@@ -273,9 +273,9 @@ void basic_node_init()
 %%}
 
 //directives
-SEND_HEARTBEATS;
-TRACK_LOCATIONS;
-ON_RECEIVE_FILTER(prob_distance_drop);
+@SEND_HEARTBEATS;
+@TRACK_LOCATIONS;
+@ON_RECEIVE_FILTER(prob_distance_drop);
 
 //number of X and Y coordinates
 CONST X = 20;
@@ -350,7 +350,7 @@ NODE uav (id)
     true_y[id] = y[id];
   }
 
-  @PERIODIC (10)
+  @ONCE_EVERY(10)
   void CALCULATE_VELOCITY () {
     // Calculate velocity in unit/round
     double dx, dy;

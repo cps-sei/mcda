@@ -75,7 +75,7 @@ std::string thunk;
 %token <token> TBWNOT TBWAND TBWOR TBWXOR TBWLSH TBWRSH
 %token <token> TON_PRE_TIMEOUT TON_POST_TIMEOUT TON_RECV_FILTER
 %token <token> TTRACK_LOCATIONS TSEND_HEARTBEATS
-%token <token> TNODE_INIT TPERIODIC
+%token <token> TNODE_INIT TPERIODIC TONCE_EVERY
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -290,7 +290,7 @@ node_init_procedure : TVOID TNODE_INIT TLPAREN TRPAREN TLBRACE var_decl_list stm
 }
 ;
 
-periodic_procedure : TPERIODIC TLPAREN TINTEGER TRPAREN TVOID TIDENTIFIER TLPAREN TRPAREN TLBRACE var_decl_list stmt_list TRBRACE {
+periodic_procedure : TONCE_EVERY TLPAREN TINTEGER TRPAREN TVOID TIDENTIFIER TLPAREN TRPAREN TLBRACE var_decl_list stmt_list TRBRACE {
   /** declare PERIOD as function's local variable */
   $10->push_back(daig::Variable("PERIOD", daig::intType()));
   /** assign value to PERIOD */
