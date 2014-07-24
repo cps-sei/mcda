@@ -27,7 +27,7 @@ void close_out_files ();
 /*********************************************************************/
 //-- constants
 /*********************************************************************/
-const unsigned int CHILD_WAIT_TIME = 60;
+const unsigned int CHILD_WAIT_TIME = 120;
 const int X_SIZE = 20;
 const int Y_SIZE = 20;
 const int MAX_WAIT_TIME = 3;
