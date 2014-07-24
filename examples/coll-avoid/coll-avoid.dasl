@@ -542,6 +542,7 @@ NODE uav (id)
 
     // Terminate if finished (reached destination)
     CHECK_FINISHED();
+
     // Terminate if there is collision
     CHECK_COLLISION();
 
@@ -569,8 +570,12 @@ NODE uav (id)
         return;
       }
 
-      //CONSERVATIVE_METHOD();
-      DISC_METHOD();
+      if(USE_DISC_METHOD == 1) {
+        DISC_METHOD();
+      } else {
+        CONSERVATIVE_METHOD();
+      }
+
       //APPROX_LOC_METHOD();
       if (hover) {
         // do not grab lock
