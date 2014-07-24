@@ -13,6 +13,9 @@
 #define EXIT_COLLISION 1
 #define EXIT_TIMEOUT 2
 
+/*********************************************************************/
+//-- function declarations
+/*********************************************************************/
 void sigalrm_handler (int signum);
 void set_env_vars();
 void compile ();
@@ -21,11 +24,17 @@ void read_from_pipe (int read_fd, int &xi, int &yi, int &n);
 void create_out_files ();
 void close_out_files ();
 
+/*********************************************************************/
+//-- constants
+/*********************************************************************/
 const unsigned int CHILD_WAIT_TIME = 60;
 const int X_SIZE = 10;
 const int Y_SIZE = 10;
 const int MAX_WAIT_TIME = 3;
 
+/*********************************************************************/
+//-- global variables
+/*********************************************************************/
 int num_processes;
 int num_runs;
 std::vector<pid_t> child_pids;
@@ -34,6 +43,9 @@ std::vector<std::ofstream *> out_files;
 //-- environment variables
 std::string mcda_root,madara_root,ace_root;
 
+/*********************************************************************/
+//-- this is where everything starts
+/*********************************************************************/
 int main (int argc, char ** argv)
 {
   srand (time(NULL));
@@ -82,6 +94,9 @@ int main (int argc, char ** argv)
   return 0;
 }
 
+/*********************************************************************/
+//-- signal handler
+/*********************************************************************/
 void sigalrm_handler (int signum)
 {
   BOOST_FOREACH (pid_t pid, child_pids)
@@ -90,7 +105,9 @@ void sigalrm_handler (int signum)
   }
 }
 
+/*********************************************************************/
 // set environment variables
+/*********************************************************************/
 void set_env_vars()
 {
   char *envVar = NULL;
@@ -105,6 +122,9 @@ void set_env_vars()
   ace_root = std::string(envVar);
 }
 
+/*********************************************************************/
+//run daslc to generate code, then compile with g++
+/*********************************************************************/
 void compile ()
 {
   // 1st fork: to compile dasl program
@@ -159,6 +179,9 @@ void compile ()
   wait (NULL);
 }
 
+/*********************************************************************/
+//do one run
+/*********************************************************************/
 void run (const int r, double &distance, int &num_rounds, double &num_collisions, int &num_timeouts)
 {
   std::vector<int> xs (num_processes);
@@ -311,6 +334,9 @@ void read_from_pipe (int read_fd, int &xi, int &yi, int &n)
   n = _n;
 }
 
+/*********************************************************************/
+//read stuff written by each child process (i.e., node) via pipe
+/*********************************************************************/
 void create_out_files ()
 {
   for (int i = 0; i < num_processes; i++)
@@ -325,6 +351,9 @@ void create_out_files ()
   }
 }
 
+/*********************************************************************/
+//close output files
+/*********************************************************************/
 void close_out_files ()
 {
   BOOST_FOREACH (std::ofstream * out_file, out_files)
@@ -333,3 +362,7 @@ void close_out_files ()
     delete out_file;
   }
 }
+
+/*********************************************************************/
+//all done
+/*********************************************************************/
