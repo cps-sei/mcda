@@ -279,8 +279,8 @@ TRACK_LOCATIONS;
 ON_RECEIVE_FILTER(prob_distance_drop);
 
 //number of X and Y coordinates
-CONST X = 10;
-CONST Y = 10;
+CONST X = 20;
+CONST Y = 20;
 
 //states of each node
 CONST INITS = 0;
