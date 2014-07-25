@@ -140,11 +140,10 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
     int y = rand () % Y_SIZE;
     int xf = rand () % X_SIZE;
     int yf = rand () % Y_SIZE;
-    while(abs(x-xf) < 5 || abs(y-yf) < 5) {
+    while(yf * num_processes / Y_SIZE != i) {
       xf = rand () % X_SIZE;
       yf = rand () % Y_SIZE;
     }
-
 
     xs[i] = x;
     ys[i] = y;
