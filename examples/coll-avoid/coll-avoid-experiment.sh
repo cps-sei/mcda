@@ -1,22 +1,25 @@
 #!/bin/bash
 
-if [ "$#" != "4" ]; then
-    echo "Usage : $0 <num-nodes> <num-experiments> <daslc-args> <out-file>"
+if [ "$#" != "5" ]; then
+    echo "Usage : $0 <num-nodes> <num-experiments> <dasl-file> <daslc-args> <out-file>"
     echo "        num-experiments = number of experiments"
     echo "        each experiment will do 5 runs in parallel"
-    echo 'Example : $0 3 10 "--DUSE_DISC_METHOD 1" foo.out (to use disc method)'
-    echo 'Example : $0 3 10 "--DUSE_DISC_METHOD 0" foo.out (to use conservative method)'
+    echo 'Example : $0 3 10 coll-avoid.dasl "--DUSE_DISC_METHOD 1" foo.out (to use disc method)'
+    echo 'Example : $0 3 10 coll-avoid.dasl "--DUSE_DISC_METHOD 0" foo.out (to use conservative method)'
     exit 1
 fi
 
 NUM_NODES=$1
 NUM_EXPERIMENTS=$2
-DASLC_ARGS="$3"
-OUT_FILE=$4
+DASL_FILE=$3
+DASLC_ARGS="$4"
+OUT_FILE=$5
 
+DASL_BASE=$(basename $DASL_FILE.dasl)
+CPP_FILE="$DASL_BASE.cpp"
 g++ -Wall coll-avoid-experiment.cpp -o coll-avoid-experiment
-daslc $DASLC_ARGS --nodes $NUM_NODES --madara --out coll-avoid.cpp coll-avoid.dasl
-g++ -I$ACE_ROOT -I$MADARA_ROOT/include -o coll-avoid coll-avoid.cpp \
+daslc $DASLC_ARGS --nodes $NUM_NODES --madara --out $CPP_FILE $DASL_FILE
+g++ -I$ACE_ROOT -I$MADARA_ROOT/include -o $DASL_BASE $CPP_FILE \
 $MADARA_ROOT/libMADARA.so $ACE_ROOT/lib/libACE.so
 
 #names of output directories
@@ -29,7 +32,7 @@ do
         echo "Experiment $i Run $j: $TMPD"
         TMPDS="$TMPDS $TMPD"
         echo "Experiment $i Run $j:" > $TMPD/out
-        $MCDA_ROOT/examples/coll-avoid/coll-avoid-experiment ./coll-avoid $NUM_NODES dom-$j $TMPD 2>&1 >> $TMPD/out &
+        $MCDA_ROOT/examples/coll-avoid/coll-avoid-experiment ./$DASL_BASE $NUM_NODES dom-$j $TMPD 2>&1 >> $TMPD/out &
     done
     wait
 done
