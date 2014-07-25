@@ -50,6 +50,7 @@ std::string mcda_root,madara_root,ace_root;
 int main (int argc, char ** argv)
 {
   signal (SIGALRM, sigalrm_handler);
+  srand(getpid());
   process_args(argc,argv);
   child_pids.resize(num_processes, 0);
   set_env_vars();
