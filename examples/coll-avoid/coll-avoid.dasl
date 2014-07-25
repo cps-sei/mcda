@@ -603,6 +603,7 @@ NODE uav (id)
         wait_count = wait_count + 1;
 
         if (wait_count > MAX_WAIT) {
+          lock[xp][yp][id] = 0;
           NEXT_XY_ALT();
           wait_count = 0;
           state = REQUEST;
