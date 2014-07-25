@@ -36,6 +36,7 @@ do
 done
 
 #concatenate outputs
+sleep 1
 rm -f $OUT_FILE
 echo 'Coll  AvgSpeed  Timeout' > $OUT_FILE
 for i in $TMPDS; do
