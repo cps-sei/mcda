@@ -106,7 +106,7 @@ void daig::program::SanityChecker::exitFADNP(daig::FADNPStmt &stmt)
 }
 
 daig::Program::Program ()
-  : trackLocations (false), sendHeartbeats (false)
+  : trackLocations (false), sendHeartbeats (false), period(0)
 {}
 
 daig::Program::~Program () {}

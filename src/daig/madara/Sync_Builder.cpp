@@ -1182,9 +1182,38 @@ daig::madara::Sync_Builder::build_main_function ()
   }
   buffer_ << '\n';
 
+  //-- for periodic nodes
+  if(builder_.program.period) {
+    std::string period = boost::lexical_cast<std::string>(builder_.program.period);
+    buffer_ << "  ACE_Time_Value current = ACE_OS::gettimeofday ();\n"
+            << "  ACE_Time_Value next_epoch = current;\n"
+            << "  ACE_Time_Value period; period.msec(" << period << ");\n"
+            << '\n';
+  }
+
   buffer_ << "  while (1)\n";
   buffer_ << "  {\n";
   
+  //-- for periodic nodes
+  if(builder_.program.period) {
+    std::string period = boost::lexical_cast<std::string>(builder_.program.period);
+    buffer_ << "    // wait for next period\n"
+            << "    current = ACE_OS::gettimeofday ();\n"
+            << "    if(current < next_epoch) {\n"
+            << "      Madara::Utility::sleep (next_epoch - current);\n"
+            << "      next_epoch += period;\n"
+            << "    } else {\n"
+            << "      unsigned long current_msec = current.msec();\n"
+            << "      unsigned long next_epoch_msec = next_epoch.msec();\n"
+            << "      unsigned long diff_msec = current_msec - next_epoch_msec;\n"
+            << "      next_epoch_msec += (diff_msec / " << period << " + 1) * " << period << ";\n"
+            << "      next_epoch.msec(next_epoch_msec);\n"
+            << "      Madara::Utility::sleep (next_epoch - current);\n"
+            << "      next_epoch += period;\n"
+            << "    }\n"
+            << '\n';
+  }
+
   buffer_ << "    // Pre-round barrier increment\n";
   buffer_ << "    wait_settings.delay_sending_modifieds = true;\n";
   buffer_ << "    knowledge.evaluate (\"++mbarrier.{.id}\", wait_settings);\n\n";

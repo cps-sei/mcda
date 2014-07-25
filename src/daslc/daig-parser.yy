@@ -138,6 +138,12 @@ directive_list : {}
   builder->program.addCallback("on_receive_filter", *$4);
   delete $4;
 }
+| directive_list TPERIODIC TLPAREN TINTEGER TRPAREN TSEMICOLON {
+  int p = atoi($4->c_str());
+  assert(p > 0 && "ERROR : period must be greater than 0!!");
+  builder->program.setPeriod(p);
+  delete $4;
+}
 ;
 
 callback_name : TIDENTIFIER { $$ = $1; }

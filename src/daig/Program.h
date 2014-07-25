@@ -128,6 +128,9 @@ namespace daig
     typedef std::map<std::string,std::string> Callbacks;
     Callbacks callbacks;
 
+    ///period in milliseconds. 0 means no period.
+    int period;
+
     //constant definitions
     typedef std::map<std::string,std::string> ConstDef;
     ConstDef constDef;
@@ -193,6 +196,9 @@ namespace daig
     {
       return externalFuncs.count(fn) > 0;
     }
+
+    ///set the period
+    void setPeriod(int p) { period = p; }
 
     ///check various sanity conditions on the program
     void sanityCheck();
