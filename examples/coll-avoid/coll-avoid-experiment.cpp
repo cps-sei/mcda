@@ -20,7 +20,7 @@ void sigalrm_handler (int signum);
 void process_args(int argc,char **argv);
 void set_env_vars();
 void run (double &distance, int &num_rounds, double &num_collisions, int &num_timeouts);
-void read_from_pipe (int read_fd, int &xi, int &yi, int &n);
+void read_from_pipe (int read_fd, int &retst, int &xi, int &yi, int &n);
 void create_out_files ();
 void close_out_files ();
 
@@ -96,10 +96,10 @@ void process_args(int argc,char **argv)
 /*********************************************************************/
 void sigalrm_handler (int signum)
 {
-  BOOST_FOREACH (pid_t pid, child_pids)
-  {
-    kill (pid, SIGTERM);
-  }
+  //BOOST_FOREACH (pid_t pid, child_pids) kill (pid, SIGTERM);
+  //sleep(1);
+  BOOST_FOREACH (pid_t pid, child_pids) kill (pid, SIGKILL);
+  sleep(1);
 }
 
 /*********************************************************************/
@@ -126,20 +126,10 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
 {
   std::vector<int> xs (num_processes);
   std::vector<int> ys (num_processes);
-  std::vector<int> read_fds (num_processes);
 
   // Fork #N processes
   for (int i = 0; i < num_processes; i++)
   {
-    // Create pipe for parent to read result from child
-    int pipefd[2];
-
-    if (pipe (pipefd) == -1)
-    {
-      perror ("pipe failed");
-      exit (EXIT_FAILURE);
-    }
-
     // Generate random starting and ending points
     int x = rand () % X_SIZE;
     int y = rand () % Y_SIZE;
@@ -165,10 +155,6 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
 
     if (pid == 0)
     {
-      // Child process writes result to pipe
-      // Close read end of pipe
-      close (pipefd[0]);
-
       std::ofstream * out_file = out_files[i];
       *out_file << "x : " << x << ", "
                 << "y : " << y << ", "
@@ -184,7 +170,7 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
              "--var_xf", boost::lexical_cast<std::string> (xf).c_str (),
              "--var_yf", boost::lexical_cast<std::string> (yf).c_str (),
              "-mb", boost::lexical_cast<std::string> (MAX_WAIT_TIME).c_str (),
-             "--write-fd", boost::lexical_cast<std::string> (pipefd[1]).c_str (), NULL);
+             NULL);
 
       // execl returns only if error occured
       perror ("execl coll-avoid failed");
@@ -192,13 +178,8 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
     }
     else
     {
-      // Parent process reads result from pipe
       // Record child pid for later waitpid
       child_pids[i] = pid;
-      // Close write end of pipe
-      close (pipefd[1]);
-      // Record read pipefd for later read
-      read_fds[i] = pipefd[0];
     }
   }
 
@@ -211,9 +192,7 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
     std::ofstream * out_file = out_files[i];
 
     pid_t pid = child_pids[i];
-    int read_fd = read_fds[i];
     int status;
-
     pid_t ret = waitpid (pid, &status, 0);
 
     if (ret == -1)
@@ -222,40 +201,37 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
       exit (EXIT_FAILURE);
     }
 
-    bool node_timeout = false; //flag to indicate if this node timeouts
-
-    if (WEXITSTATUS (status) == EXIT_FINISHED)
+    // Read output from child process and update stats but only if the
+    // node did not timeout
+    int retst = -1,xi=0, yi=0, n=0;
+    read_from_pipe (pid, retst, xi, yi, n);
+    
+    if (retst == EXIT_FINISHED)
     {
       // Node reached destination
       *out_file << "Finished\n";
     }
-    else if (WEXITSTATUS (status) == EXIT_COLLISION)
+    else if (retst == EXIT_COLLISION)
     {
       // Collision
       num_collisions++;
       *out_file << "Collision!\n";
     }
-    else if (WEXITSTATUS (status) == EXIT_TIMEOUT)
+    else
     {
       // Node timed out
-      node_timeout = true;
       num_timeouts++;
       *out_file << "Timed out\n";
     }
 
-    // Read output from child process and update stats but only if the
-    // node did not timeout
-    if(!node_timeout) {
-      int xi, yi, n;
-      read_from_pipe (read_fd, xi, yi, n);
-
+    if(retst == EXIT_FINISHED || retst == EXIT_COLLISION) {
       int d = abs (xs[i] - xi) + abs (ys[i] - yi);
       distance += d;
-      num_rounds += n;
-      
+      num_rounds += n;      
       *out_file << "Distance completed: " << d << '\n';
       *out_file << "Rounds taken: " << n << '\n';
     }
+
     out_file->flush ();
   }
 
@@ -263,15 +239,15 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
   alarm (0);
 }
 
-void read_from_pipe (int read_fd, int &xi, int &yi, int &n)
+void read_from_pipe (int read_fd, int &retst, int &xi, int &yi, int &n)
 {
-  int _xi, _yi, _n;
-  FILE * stream = fdopen (read_fd, "r");
-  fscanf (stream, "%d %d %d", &_xi, &_yi, &_n);
-  fclose (stream);
-  xi = _xi;
-  yi = _yi;
-  n = _n;
+  char buf[64];
+  snprintf(buf,64,"/tmp/coll-avoid-%d",read_fd);
+  FILE * stream = fopen (buf, "r");
+  if(stream) {
+    fscanf (stream, "%d %d %d %d", &retst, &xi, &yi, &n);
+    fclose (stream);
+  }
 }
 
 /*********************************************************************/

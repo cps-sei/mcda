@@ -89,26 +89,30 @@ void print_global_state(int local_state)
   }
 }
 
-void write_to_pipe ()
+void write_to_pipe (int status)
 {
   int xi = (int) x[*id];
   int yi = (int) y[*id];
   int n = (int) *num_rounds;
-  FILE * stream = fdopen (write_fd, "w");
-  fprintf (stream, "%d %d %d", xi, yi, n);
-  fclose (stream);
+  char buf[64];
+  snprintf(buf,64,"/tmp/coll-avoid-%d",getpid());
+  FILE * stream = fopen(buf, "w");
+  if(stream) {
+    fprintf (stream, "%d %d %d %d\n", status, xi, yi, n);
+    fclose (stream);
+  }
 }
 
 void write_and_exit (int status)
 {
-  if (write_fd != -1) write_to_pipe ();
-
+  write_to_pipe (status);
   exit (status);
 }
 
 void sigterm_handler (int signum)
 {
-  write_and_exit (node_finished ? EXIT_FINISHED : EXIT_TIMEOUT);
+  if(node_finished) exit(EXIT_FINISHED);
+  write_and_exit (EXIT_TIMEOUT);
 }
 
 const int DROP_RADIUS = 5;
@@ -305,6 +309,7 @@ EXTERN int MOVE_TO(unsigned char x,unsigned char y);
 EXTERN int my_sleep(int seconds);
 EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
 EXTERN void print_global_state(int local_state);
+EXTERN void write_to_pipe (int status);
 EXTERN void write_and_exit (int status);
 EXTERN void basic_node_init();
 
@@ -549,6 +554,7 @@ NODE uav (id)
       if (x[id] == xf && y[id] == yf) {
         // Arrive destination
         node_finished = 1;
+        write_to_pipe(EXIT_FINISHED);
         state = FINISHED;
       } else {
         // Compute next point on route
