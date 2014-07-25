@@ -25,7 +25,7 @@ TMPDS=""
 
 for ((i=0; i < $NUM_EXPERIMENTS; i++))
 do
-    for j in `seq 1 25`; do
+    for j in `seq 1 5`; do
         TMPD=$(mktemp -d /tmp/coll-avoid.XXXXXXXX)
         echo "Experiment $i Run $j: $TMPD"
         TMPDS="$TMPDS $TMPD"
