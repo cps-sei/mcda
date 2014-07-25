@@ -36,8 +36,7 @@ const int MAX_WAIT_TIME = 3;
 //-- global variables
 /*********************************************************************/
 int num_processes;
-std::string domain;
-std::string out_dir;
+std::string exec_name,domain,out_dir;
 std::vector<pid_t> child_pids;
 std::vector<std::ofstream *> out_files;
 
@@ -86,14 +85,15 @@ int main (int argc, char ** argv)
 /*********************************************************************/
 void process_args(int argc,char **argv)
 {
-  if(argc != 4) {
-    std::cerr << "Usage: " << argv[0] << " <num-nodes> <domain> <out-dir>\n";
+  if(argc != 5) {
+    std::cerr << "Usage: " << argv[0] << " <executable> <num-nodes> <domain> <out-dir>\n";
     exit(1);
   }
 
-  num_processes = atoi (argv[1]);
-  domain = argv[2];
-  out_dir = argv[3];
+  exec_name = argv[1];
+  num_processes = atoi (argv[2]);
+  domain = argv[3];
+  out_dir = argv[4];
 }
 
 /*********************************************************************/
@@ -149,7 +149,7 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
     xs[i] = x;
     ys[i] = y;
 
-    // Fork process to run coll-avoid
+    // Fork process to run the executable
     pid_t pid = fork ();
 
     if (pid < 0)
@@ -167,7 +167,7 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
                 << "yf : " << yf << '\n';
       out_file->flush ();
 
-      execl ("./coll-avoid", "coll-avoid",
+      execl (exec_name.c_str(), exec_name.c_str(),
              "--id", boost::lexical_cast<std::string> (i).c_str (),
              "--domain", domain.c_str (),
              "--var_x",boost::lexical_cast<std::string> (x).c_str (),
@@ -178,7 +178,7 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
              NULL);
 
       // execl returns only if error occured
-      perror ("execl coll-avoid failed");
+      perror ("execl failed");
       _exit (EXIT_FAILURE);
     }
     else
