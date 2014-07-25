@@ -86,6 +86,11 @@ int main (int argc, char ** argv)
 /*********************************************************************/
 void process_args(int argc,char **argv)
 {
+  if(argc != 4) {
+    std::cerr << "Usage: " << argv[0] << " <num-nodes> <domain> <out-dir>\n";
+    exit(1);
+  }
+
   num_processes = atoi (argv[1]);
   domain = argv[2];
   out_dir = argv[3];
