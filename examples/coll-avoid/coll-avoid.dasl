@@ -265,8 +265,6 @@ void REMODIFY_LOCKS ()
 //seed, set signal handlers etc.
 void basic_node_init()
 {
-  // Initialize random seed
-  srand (time (NULL));
   // Register signal SIGTERM handler
   signal (SIGTERM, sigterm_handler);
 }
