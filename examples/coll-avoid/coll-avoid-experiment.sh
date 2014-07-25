@@ -15,7 +15,8 @@ USE_DISC=$3
 OUT_FILE=$4
 
 g++ -Wall coll-avoid-experiment.cpp -o coll-avoid-experiment
-daslc --DUSE_DISC_METHOD $USE_DISC --nodes $NUM_NODES --madara --out coll-avoid.cpp coll-avoid.dasl
+daslc --DUSE_DISC_METHOD $USE_DISC --DNO_DEADLOCK 0 --nodes $NUM_NODES --madara \
+--out coll-avoid.cpp coll-avoid.dasl
 g++ -I$ACE_ROOT -I$MADARA_ROOT/include -o coll-avoid coll-avoid.cpp \
 $MADARA_ROOT/libMADARA.so $ACE_ROOT/lib/libACE.so
 

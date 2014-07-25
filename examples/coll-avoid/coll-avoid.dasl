@@ -556,13 +556,17 @@ NODE uav (id)
         state = REQUEST;
       }
     } else if (state == REQUEST) {
-      req_count = req_count + 1;
 
-      if (req_count > MAX_REQ) {
-        NEXT_XY_ALT();
-        req_count = 0;
-        state = REQUEST;
-        return;
+      //-- no deadlock stuff
+      if(NO_DEADLOCK == 1) {
+        req_count = req_count + 1;
+
+        if (req_count > MAX_REQ) {
+          NEXT_XY_ALT();
+          req_count = 0;
+          state = REQUEST;
+          return;
+        }
       }
 
       if(USE_DISC_METHOD == 1) {
@@ -572,6 +576,7 @@ NODE uav (id)
       }
 
       //APPROX_LOC_METHOD();
+
       if (hover) {
         // do not grab lock
         return;
@@ -583,17 +588,20 @@ NODE uav (id)
         return;
       }
 
+      if(NO_DEADLOCK == 1) { req_count = 0; }
       lock[xp][yp][id] = 1;
-      req_count = 0;
       state = WAITING;
     } else if (state == WAITING) {
-      wait_count = wait_count + 1;
 
-      if (wait_count > MAX_WAIT) {
-        NEXT_XY_ALT();
-        wait_count = 0;
-        state = REQUEST;
-        return;
+      if(NO_DEADLOCK == 1) {
+        wait_count = wait_count + 1;
+
+        if (wait_count > MAX_WAIT) {
+          NEXT_XY_ALT();
+          wait_count = 0;
+          state = REQUEST;
+          return;
+        }
       }
 
       // Set to move to (x',y') if no higher-id nodes
@@ -602,7 +610,7 @@ NODE uav (id)
         return;
       }
 
-      wait_count = 0;
+      if(NO_DEADLOCK == 1) { wait_count = 0; }
       state = MOVE;
     } else if (state == MOVE) {
       // Now we have the lock on (x’,y’)
