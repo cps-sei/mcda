@@ -1,22 +1,21 @@
 #!/bin/bash
 
 if [ "$#" != "4" ]; then
-    echo "Usage : $0 <num-nodes> <num-experiments> <use-disc> <out-file>"
+    echo "Usage : $0 <num-nodes> <num-experiments> <daslc-args> <out-file>"
     echo "        num-experiments = number of experiments"
-    echo "        each experiment will do 25 runs in parallel"
-    echo "Example : $0 3 10 1 foo.out (to use disc method)"
-    echo "Example : $0 3 10 0 foo.out (to use conservative method)"
+    echo "        each experiment will do 5 runs in parallel"
+    echo 'Example : $0 3 10 "--DUSE_DISC_METHOD 1" foo.out (to use disc method)'
+    echo 'Example : $0 3 10 "--DUSE_DISC_METHOD 0" foo.out (to use conservative method)'
     exit 1
 fi
 
 NUM_NODES=$1
 NUM_EXPERIMENTS=$2
-USE_DISC=$3
+DASLC_ARGS="$3"
 OUT_FILE=$4
 
 g++ -Wall coll-avoid-experiment.cpp -o coll-avoid-experiment
-daslc --DUSE_DISC_METHOD $USE_DISC --DNO_DEADLOCK 0 --nodes $NUM_NODES --madara \
---out coll-avoid.cpp coll-avoid.dasl
+daslc $DASLC_ARGS --nodes $NUM_NODES --madara --out coll-avoid.cpp coll-avoid.dasl
 g++ -I$ACE_ROOT -I$MADARA_ROOT/include -o coll-avoid coll-avoid.cpp \
 $MADARA_ROOT/libMADARA.so $ACE_ROOT/lib/libACE.so
 
