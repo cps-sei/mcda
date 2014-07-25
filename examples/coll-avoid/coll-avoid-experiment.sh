@@ -15,7 +15,7 @@ DASL_FILE=$3
 DASLC_ARGS="$4"
 OUT_FILE=$5
 
-DASL_BASE=$(basename $DASL_FILE.dasl)
+DASL_BASE=$(basename $DASL_FILE .dasl)
 CPP_FILE="$DASL_BASE.cpp"
 g++ -Wall coll-avoid-experiment.cpp -o coll-avoid-experiment
 daslc $DASLC_ARGS --nodes $NUM_NODES --madara --out $CPP_FILE $DASL_FILE
