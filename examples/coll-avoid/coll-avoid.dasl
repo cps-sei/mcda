@@ -109,12 +109,6 @@ void write_and_exit (int status)
   exit (status);
 }
 
-void sigterm_handler (int signum)
-{
-  if(node_finished) exit(EXIT_FINISHED);
-  write_and_exit (EXIT_TIMEOUT);
-}
-
 const int DROP_RADIUS = 5;
 
 Madara::Knowledge_Record
@@ -265,13 +259,9 @@ void REMODIFY_LOCKS ()
   }
 }
 
-//do some basic initialization at the start of the node -- set random
-//seed, set signal handlers etc.
+//do some basic initialization at the start of the node
 void basic_node_init()
 {
-  // Register signal SIGTERM handler
-  signal (SIGTERM, sigterm_handler);
-  //randomize seed
   srand(getpid());
 }
 %%}
