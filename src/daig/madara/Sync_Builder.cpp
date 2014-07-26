@@ -801,10 +801,6 @@ daig::madara::Sync_Builder::build_refresh_modify_globals ()
       build_refresh_modify_global (var);
     }
   }
-
-  buffer_ << '\n';
-  buffer_ << "  REMODIFY_LOCKS ();\n";
-  buffer_ << '\n';
   
   buffer_ << "  return Integer (0);\n";
   buffer_ << "}\n\n";
@@ -813,12 +809,10 @@ daig::madara::Sync_Builder::build_refresh_modify_globals ()
 void
 daig::madara::Sync_Builder::build_refresh_modify_global (const Variable & var)
 {
-  buffer_ << "  ";
-
   // is this an array type?
   if (var.type->dims.size () == 1)
   {
-    buffer_ << var.name;
+    buffer_ << "  " << var.name;
     buffer_ << ".set (*id, ";
     buffer_ << var.name;
     buffer_ << "[*id]);\n";
@@ -826,12 +820,40 @@ daig::madara::Sync_Builder::build_refresh_modify_global (const Variable & var)
   // is this an n-dimensional array type?
   else if (var.type->dims.size () > 1)
   {
+    //by convention, a node owns all array elements where the last
+    //index equals its id. we will create a set of nested for loops to
+    //remodify all such elements
+    std::vector<int> dims;
+    BOOST_FOREACH(int i,var.type->dims) dims.push_back(i);
+
+    //open for loops
+    std::string index_str = "";
+    for(int i = 0;i < dims.size () - 1;++i) {
+      std::string spacer(2*i+2,' ');
+      buffer_ << spacer << "for(Integer i" << i << " = 0;i" << i <<" < " 
+              << dims[i] << "; ++i" << i << ") {\n";
+      index_str += "i" + boost::lexical_cast<std::string>(i) + ", ";
+    }
+
+    std::string spacer(2*dims.size(),' ');
+    buffer_ << spacer << "containers::Array_N::Index index (" << dims.size() << ");\n";
+    for(int i = 0;i < dims.size () - 1;++i)
+      buffer_ << spacer << "index[" << i << "] = i" << i << ";\n";
+    buffer_ << spacer << "index[" << dims.size() << "] = *id;\n";
+    buffer_ << spacer << var.name << ".set (index, " << var.name << "(" << index_str << "*id).to_integer ());\n";
+
+    //close for loops
+    for(int i = dims.size () - 2;i >= 0;--i) {
+      std::string spacer(2*i+2,' ');
+      buffer_ << spacer << "}\n";
+    }
+
     // we currently have no way of specifying owned locations in an array
     buffer_ << "\n";
   }
   else
   {
-    buffer_ << var.name;
+    buffer_ << "  " << var.name;
     buffer_ << " = *";
     buffer_ << var.name;
     buffer_ << ";\n";
