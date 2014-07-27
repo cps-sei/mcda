@@ -149,16 +149,6 @@ namespace daig
       void build_functions_declarations (void);
       
       /**
-       * Builds a function for refreshing modification flag on globals
-       **/
-      void build_refresh_modify_globals (void);
-      
-      /**
-       * Builds a refresh statement for modification on a global
-       **/
-      void build_refresh_modify_global (const Variable & var);
-
-      /**
        * Builds a function
        * @param  function  a defined function in the parsed program
        **/

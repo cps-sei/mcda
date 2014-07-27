@@ -138,7 +138,7 @@ daig::madara::Async_Builder::build_common_global_variables ()
   //-- only generate this code if heartbeats are used
   if(builder_.program.sendHeartbeats) {
     buffer_ << "// Whether the current broadcast sends global updates\n";
-    buffer_ << "bool send_global_updates (false);\n\n";
+    buffer_ << "bool send_global_updates (true);\n\n";
   }
   
   if (do_vrep_)
@@ -165,7 +165,6 @@ daig::madara::Async_Builder::build_common_global_variables ()
 
   buffer_ << "// Containers for commonly used variables\n";
   buffer_ << "// Global variables\n";
-  buffer_ << "containers::Integer_Array barrier;\n";
 
   //-- only generate this code if heartbeats are used
   if(builder_.program.sendHeartbeats) {
@@ -176,7 +175,6 @@ daig::madara::Async_Builder::build_common_global_variables ()
 
   buffer_ << "containers::Integer id;\n";
   buffer_ << "containers::Integer num_processes;\n";
-  buffer_ << "double max_barrier_time (-1);\n";
   buffer_ << "engine::Knowledge_Update_Settings private_update (true);\n";
   buffer_ << "\n";
   buffer_ << "// number of participating processes\n";
@@ -434,9 +432,6 @@ void
 daig::madara::Async_Builder::build_program_variables_bindings ()
 { 
   buffer_ << "  // Binding common variables\n";
-  buffer_ << "  barrier.set_name (\"mbarrier\", knowledge, ";
-  buffer_ << builder_.program.processes.size ();
-  buffer_ << ");\n";
 
   //-- only generate this code if heartbeats are used
   if(builder_.program.sendHeartbeats) {
@@ -567,16 +562,6 @@ daig::madara::Async_Builder::build_parse_args ()
   buffer_ << "      if (i + 1 < argc)\n";
   buffer_ << "        host = argv[i + 1];\n";
   buffer_ << "        \n";
-  buffer_ << "      ++i;\n";
-  buffer_ << "    }\n";
-  buffer_ << "    else if (arg1 == \"-mb\" || arg1 == \"--max-barrier-time\")\n";
-  buffer_ << "    {\n";
-  buffer_ << "      if (i + 1 < argc)\n";
-  buffer_ << "      {\n";
-  buffer_ << "        std::stringstream buffer (argv[i + 1]);\n";
-  buffer_ << "        buffer >> max_barrier_time;\n";
-  buffer_ << "      }\n";
-  buffer_ << "      \n";
   buffer_ << "      ++i;\n";
   buffer_ << "    }\n";
   buffer_ << "    else if (arg1 == \"-d\" || arg1 == \"--domain\")\n";
@@ -785,92 +770,8 @@ daig::madara::Async_Builder::build_functions_declarations ()
 }
 
 void
-daig::madara::Async_Builder::build_refresh_modify_globals ()
-{
-  buffer_ << "Madara::Knowledge_Record\n";
-  buffer_ << "REMODIFY_GLOBALS";
-  buffer_ << " (engine::Function_Arguments &,\n";
-  buffer_ << "  engine::Variables & vars)\n";
-  buffer_ << "{\n";
-  
-  buffer_ << "  // Remodifying common global variables\n";
-  buffer_ << "  barrier.set (*id, barrier[*id]);\n\n";
-
-  Nodes & nodes = builder_.program.nodes;
-  for (Nodes::iterator n = nodes.begin (); n != nodes.end (); ++n)
-  {
-    buffer_ << "  // Remodifying program-specific global variables\n";
-    Variables & vars = n->second.globVars;
-    for (Variables::iterator i = vars.begin (); i != vars.end (); ++i)
-    {
-      Variable & var = i->second;
-      build_refresh_modify_global (var);
-    }
-  }
-  
-  buffer_ << "  return Integer (0);\n";
-  buffer_ << "}\n\n";
-}
-
-void
-daig::madara::Async_Builder::build_refresh_modify_global (const Variable & var)
-{
-  // is this an array type?
-  if (var.type->dims.size () == 1)
-  {
-    buffer_ << "  " << var.name;
-    buffer_ << ".set (*id, ";
-    buffer_ << var.name;
-    buffer_ << "[*id]);\n";
-  }
-  // is this an n-dimensional array type?
-  else if (var.type->dims.size () > 1)
-  {
-    //by convention, a node owns all array elements where the last
-    //index equals its id. we will create a set of nested for loops to
-    //remodify all such elements
-    std::vector<int> dims;
-    BOOST_FOREACH(int i,var.type->dims) dims.push_back(i);
-
-    //open for loops
-    std::string index_str = "";
-    for(int i = 0;i < dims.size () - 1;++i) {
-      std::string spacer(2*i+2,' ');
-      buffer_ << spacer << "for(Integer i" << i << " = 0;i" << i <<" < " 
-              << dims[i] << "; ++i" << i << ") {\n";
-      index_str += "i" + boost::lexical_cast<std::string>(i) + ", ";
-    }
-
-    std::string spacer(2*dims.size(),' ');
-    buffer_ << spacer << "containers::Array_N::Index index (" << dims.size() << ");\n";
-    for(int i = 0;i < dims.size () - 1;++i)
-      buffer_ << spacer << "index[" << i << "] = i" << i << ";\n";
-    buffer_ << spacer << "index[" << dims.size() << "] = *id;\n";
-    buffer_ << spacer << var.name << ".set (index, " << var.name << "(" << index_str << "*id).to_integer ());\n";
-
-    //close for loops
-    for(int i = dims.size () - 2;i >= 0;--i) {
-      std::string spacer(2*i+2,' ');
-      buffer_ << spacer << "}\n";
-    }
-
-    // we currently have no way of specifying owned locations in an array
-    buffer_ << "\n";
-  }
-  else
-  {
-    buffer_ << "  " << var.name;
-    buffer_ << " = *";
-    buffer_ << var.name;
-    buffer_ << ";\n";
-  }
-}
-
-void
 daig::madara::Async_Builder::build_functions (void)
 {
-  build_refresh_modify_globals ();
-
   buffer_ << "// Defining global functions\n\n";
   Functions & funcs = builder_.program.funcs;
   for (Functions::iterator i = funcs.begin (); i != funcs.end (); ++i)
@@ -996,7 +897,6 @@ daig::madara::Async_Builder::build_main_function ()
   }
 
   buffer_ << "  Madara::Knowledge_Engine::Wait_Settings wait_settings;\n";
-  buffer_ << "  wait_settings.max_wait_time = max_barrier_time;\n";
   buffer_ << "  wait_settings.poll_frequency = .1;\n\n";
 
   buffer_ << "  // create the knowledge base with the transport settings\n";
@@ -1017,106 +917,16 @@ daig::madara::Async_Builder::build_main_function ()
     buffer_ << "  }\n\n";
   }
 
-  // build the barrier string  
-  buffer_ << "  std::map <std::string, bool>  barrier_send_list;\n";
-  buffer_ << "  barrier_send_list [knowledge.expand_statement (";
-  buffer_ << "\"mbarrier.{.id}\")] = true;\n\n";
-  
-  if (do_vrep_)
-  {
-    buffer_ << "  // Building the barrier string for this node. NOTE: VREP_BARRIER ADDED\n";
-    buffer_ << "  std::stringstream barrier_string, barrier_sync, vrep_barrier;\n";
-  }
-  else
-  {
-    buffer_ << "  // Building the barrier string for this node\n";
-    buffer_ << "  std::stringstream barrier_string, barrier_sync;\n";
-  }
-
-  buffer_ << "  bool started = false;\n\n";
-
-  if (do_vrep_)
-  {
-    buffer_ << "  // Create VREP_BARRIER string\n";
-    buffer_ << "  vrep_barrier << \"vrep.ready.{.id} = 1 ;> (\";\n\n";
-  }
-
-  buffer_ << "  barrier_string << \"REMODIFY_GLOBALS () ;> \";\n";
-  buffer_ << "  barrier_sync << \"mbarrier.\";\n";
-  buffer_ << "  barrier_sync << settings.id;\n";
-  buffer_ << "  barrier_sync << \" = (mbarrier.\";\n";
-  buffer_ << "  barrier_sync << settings.id;\n\n";
-  buffer_ << "  // create barrier check for all lower ids\n";
-  buffer_ << "  for (unsigned int i = 0; i < settings.id; ++i)\n";
-  buffer_ << "  {\n";
-  buffer_ << "    if (started)\n";
-  buffer_ << "    {\n";
-  buffer_ << "      barrier_string << \" && \";\n";
-  if (do_vrep_) buffer_ << "      vrep_barrier << \" && \";\n";
-  buffer_ << "    }\n\n";
-
-  if (do_vrep_)
-  {
-    buffer_ << "    vrep_barrier << \"vrep.ready.\";\n";
-    buffer_ << "    vrep_barrier << i;\n\n";
-  }
-
-  buffer_ << "    barrier_string << \"mbarrier.\";\n";
-  buffer_ << "    barrier_string << i;\n";
-  buffer_ << "    barrier_string << \" >= mbarrier.\";\n";
-  buffer_ << "    barrier_string << settings.id;\n";
-  buffer_ << "    barrier_sync << \" ; \";\n";
-  buffer_ << "    barrier_sync << \"mbarrier.\";\n";
-  buffer_ << "    barrier_sync << i;\n\n";
-  buffer_ << "    if (!started)\n";
-  buffer_ << "      started = true;\n";
-  buffer_ << "  }\n\n";
-  buffer_ << "  // create barrier check for all higher ids\n";
-  buffer_ << "  for (int64_t i = settings.id + 1; i < processes; ++i)\n";
-  buffer_ << "  {\n";
-  buffer_ << "    if (started)\n";
-  buffer_ << "    {\n";
-  buffer_ << "      barrier_string << \" && \";\n";
-  if (do_vrep_) buffer_ << "      vrep_barrier << \" && \";\n";
-  buffer_ << "    }\n\n";
-
-  if (do_vrep_)
-  {
-    buffer_ << "    vrep_barrier << \"vrep.ready.\";\n";
-    buffer_ << "    vrep_barrier << i;\n\n";
-  }
-
-  buffer_ << "    barrier_string << \"mbarrier.\";\n";
-  buffer_ << "    barrier_string << i;\n";
-  buffer_ << "    barrier_string << \" >= mbarrier.\";\n";
-  buffer_ << "    barrier_string << settings.id;\n";
-  buffer_ << "    barrier_sync << \" ; \";\n";
-  buffer_ << "    barrier_sync << \"mbarrier.\";\n";
-  buffer_ << "    barrier_sync << i;\n\n";
-  buffer_ << "    if (!started)\n";
-  buffer_ << "      started = true;\n";
-  buffer_ << "  }\n\n";
-  buffer_ << "  barrier_sync << \")\";\n";
-  if (do_vrep_) buffer_ << "  vrep_barrier << \")\";\n";
-  buffer_ << '\n';
-
   buffer_ << "  // Compile frequently used expressions\n";
   buffer_ << "  engine::Compiled_Expression round_logic = knowledge.compile (\n";
 
   if(builder_.program.sendHeartbeats)
-    buffer_ << "    knowledge.expand_statement (\"++.round; ROUND (); ++mbarrier.{.id}\"));\n";
+    buffer_ << "    knowledge.expand_statement (\"++.round; ROUND ()\"));\n";
   else
-    buffer_ << "    knowledge.expand_statement (\"ROUND (); ++mbarrier.{.id}\"));\n";
+    buffer_ << "    knowledge.expand_statement (\"ROUND ()\"));\n";
     
-
-  buffer_ << "  engine::Compiled_Expression barrier_logic = \n";
-  buffer_ << "    knowledge.compile (barrier_string.str ());\n";
-  buffer_ << "  engine::Compiled_Expression barrier_sync_logic = \n";
-  buffer_ << "    knowledge.compile (barrier_sync.str ());\n";
   if (do_vrep_)
   {
-    buffer_ << "  engine::Compiled_Expression vrep_barrier_logic =\n";
-    buffer_ << "    knowledge.compile (vrep_barrier.str ());\n\n";
     buffer_ << "  // SETUP VREP HERE\n";
     buffer_ << '\n';
     buffer_ << "  // create the DV object\n";
@@ -1137,11 +947,6 @@ daig::madara::Async_Builder::build_main_function ()
     buffer_ << "  vrep_interface->placeNodeAt (vrep_node_id, var_init_x, var_init_y, 1);\n";
     buffer_ << "  Madara::Utility::sleep (1);\n";
     buffer_ << '\n';
-    buffer_ << "  wait_settings.max_wait_time = max_barrier_time;\n";
-    buffer_ << '\n';
-    buffer_ << "  // Barrier for all processes before running the simulation\n";
-    buffer_ << "  knowledge.wait (vrep_barrier_logic, wait_settings);\n";
-    buffer_ << '\n';
     buffer_ << "  if (settings.id == 0)\n";
     buffer_ << "  {\n";
     buffer_ << "    std::cout << \"Starting VREP simulator on id 0.\\n\";\n";
@@ -1156,7 +961,6 @@ daig::madara::Async_Builder::build_main_function ()
   buffer_ << "  // Call node initialization function, if any\n";
   if (!node.node_init_func_name.empty())
   {
-    buffer_ << "  wait_settings.delay_sending_modifieds = true;\n";
     buffer_ << "  knowledge.evaluate (\"" << node.node_init_func_name << " ()\", wait_settings);\n";
   }
   buffer_ << '\n';
@@ -1193,10 +997,6 @@ daig::madara::Async_Builder::build_main_function ()
             << '\n';
   }
 
-  buffer_ << "    // Pre-round barrier increment\n";
-  buffer_ << "    wait_settings.delay_sending_modifieds = true;\n";
-  buffer_ << "    knowledge.evaluate (\"++mbarrier.{.id}\", wait_settings);\n\n";
-
   buffer_ << "    // Call periodic functions, if any\n";
   for (std::map <std::string, int>::iterator it = node.periodic_func_names.begin ();
        it != node.periodic_func_names.end();
@@ -1207,28 +1007,8 @@ daig::madara::Async_Builder::build_main_function ()
   }
   buffer_ << '\n';
 
-  buffer_ << "    // remodify our globals and send all updates\n";
-  buffer_ << "    wait_settings.send_list.clear ();\n";
-  buffer_ << "    wait_settings.delay_sending_modifieds = false;\n";
-  if(builder_.program.sendHeartbeats)
-    buffer_ << "    send_global_updates = true;\n\n";
-
-  buffer_ << "    // first barrier for new data from previous round\n";
-  buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n\n";
-
-  buffer_ << "    // Send only barrier information\n";
-  buffer_ << "    wait_settings.send_list = barrier_send_list;\n";
-  if(builder_.program.sendHeartbeats)
-    buffer_ << "    send_global_updates = false;\n\n";
-  
   buffer_ << "    // Execute main user logic\n";
-  buffer_ << "    wait_settings.delay_sending_modifieds = true;\n";
   buffer_ << "    knowledge.evaluate (round_logic, wait_settings);\n\n";
-
-  buffer_ << "    // second barrier for waiting on others to finish round\n";
-  buffer_ << "    // Increment barrier and only send barrier update\n";
-  buffer_ << "    wait_settings.delay_sending_modifieds = false;\n";
-  buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n\n";
 
   buffer_ << "  }\n\n";
 
@@ -1243,11 +1023,6 @@ daig::madara::Async_Builder::build_main_function ()
 void
 daig::madara::Async_Builder::build_main_define_functions ()
 {
-  buffer_ << "  // Defining common functions\n\n";
-
-  buffer_ << "  knowledge.define_function (\"REMODIFY_GLOBALS\", ";
-  buffer_ << "REMODIFY_GLOBALS);\n\n";
-
   buffer_ << "  // Defining global functions for MADARA\n\n";
   Functions & funcs = builder_.program.funcs;
   for (Functions::iterator i = funcs.begin (); i != funcs.end (); ++i)
