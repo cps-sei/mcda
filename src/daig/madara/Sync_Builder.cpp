@@ -62,10 +62,7 @@
 daig::madara::Sync_Builder::Sync_Builder (daig::DaigBuilder & builder,
                                           const std::string &target,
                                           const bool do_vrep)
-  : builder_ (builder), target_ (target), do_vrep_ (do_vrep)
-{
-
-}
+  : Madara_Builder(builder,target,do_vrep) {}
 
 void
 daig::madara::Sync_Builder::build ()

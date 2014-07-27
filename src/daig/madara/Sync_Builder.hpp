@@ -59,8 +59,7 @@
 
 #include <iostream>
 #include <sstream>
-#include "daslc/DaigBuilder.hpp"
-
+#include "daig/madara/Madara_Builder.hpp"
 
 namespace daig
 {
@@ -69,7 +68,7 @@ namespace daig
     /*******************************************************************/
     // Synchronous program builder for MADARA
     /*******************************************************************/
-    class Sync_Builder
+    class Sync_Builder : public Madara_Builder
     {
     public:
       /**
@@ -228,16 +227,6 @@ namespace daig
 
 
     private:
-      
-      /// the result of the DASL parsing function
-      DaigBuilder & builder_;
-
-      ///the target to build against
-      std::string target_;
-
-      ///whether to generate VREP code
-      bool do_vrep_;
-
       /// character buffer for holding results of build
       std::stringstream buffer_;
 
@@ -273,4 +262,4 @@ namespace daig
   } // namespace madara
 } //namespace daig
 
-#endif //__MADARA_SYNC_H__
+#endif //__MADARA_SYNC_BUILDER_H__

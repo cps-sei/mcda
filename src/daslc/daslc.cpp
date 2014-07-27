@@ -125,18 +125,31 @@ int main (int argc, char **argv)
       program.processes.push_back (daig::Process (nodeName, i));
 
     // create a madara builder instance of the daig builder parse
-    daig::madara::Sync_Builder madara_builder (builder, madara_target, do_vrep);
-    madara_builder.build ();
+    std::string moc = builder.program.moc.to_string_type ();
+    daig::madara::Madara_Builder *madara_builder = NULL;
+    
+    if(moc == "MOC_SYNC")
+      madara_builder = new daig::madara::Sync_Builder (builder, madara_target, do_vrep);
+    else {
+      std::cerr << "ERROR: cannot generate code for " << moc << " programs!!\n";
+      exit (1);
+    }
+
+    //build the generated code
+    madara_builder->build ();
 
     //print the generated code
     if (out_file.empty ())
-      madara_builder.print (std::cout);
+      madara_builder->print (std::cout);
     else
     {
       std::ofstream os (out_file.c_str ());
-      madara_builder.print (os);
+      madara_builder->print (os);
       os.close ();
     }
+
+    //cleanup
+    delete madara_builder;
   }
 
   //sequentialize and print result
