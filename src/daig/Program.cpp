@@ -173,8 +173,9 @@ daig::Program::print (std::ostream &os,unsigned int indent)
 void
 daig::Program::sanityCheck()
 {
-  //right now we only support synchronous programs
-  if(moc.to_string_type() != "MOC_SYNC") return;
+  //right now we only support synchronous and asynchronous programs
+  if(moc.to_string_type() != "MOC_SYNC" && moc.to_string_type() != "MOC_ASYNC") 
+    return;
 
   //only one type of node
   assert(nodes.size() == 1 && "ERROR: only node type supported!");
