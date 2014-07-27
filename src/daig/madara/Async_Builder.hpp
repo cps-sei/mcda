@@ -144,18 +144,6 @@ namespace daig
       std::string build_parse_args (const Variable & var);
 
       /**
-       * Builds external functions
-       **/
-      void build_external_functions (void);
-
-      /**
-       * Builds an external function
-       * @param  function   the function to build    
-       **/
-      void build_external_function (
-        const daig::Function & function);
-
-      /**
        * Builds all function declarations to prevent undefined references
        **/
       void build_functions_declarations (void);

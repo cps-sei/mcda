@@ -85,7 +85,6 @@ daig::madara::Sync_Builder::build ()
   build_common_filters ();
   // build target thunk WITHOUT includes
   build_target_thunk ();
-  build_external_functions ();
   build_parse_args ();
   build_functions_declarations ();
   build_functions ();
@@ -865,55 +864,6 @@ daig::madara::Sync_Builder::build_refresh_modify_global (const Variable & var)
     buffer_ << var.name;
     buffer_ << ";\n";
   }
-}
-
-void
-daig::madara::Sync_Builder::build_external_functions (void)
-{
-  //
-  //buffer_ << "/**\n";
-  //buffer_ << " * Defining external function stubs so this code will compile.\n\n";
-  //buffer_ << " * TODO: THESE STUBS SHOULD BE REMOVED OR FILLED IN WITH ACTUAL\n";
-  //buffer_ << "   IMPLEMENTATIONS.\n";
-  //buffer_ << " **/\n\n";
-  //Functions & funcs = builder_.program.externalFuncs;
-  //for (Functions::iterator i = funcs.begin (); i != funcs.end (); ++i)
-  //{
-  //  build_external_function (i->second);
-  //}
-}
-
-void
-daig::madara::Sync_Builder::build_external_function (
-  const Function & function)
-{
-  buffer_ << "Integer ";
-  buffer_ << function.name << " ";
-  buffer_ << " (";
-
-  bool started = false;
-  BOOST_FOREACH (const Variables::value_type & variable, function.params)
-  {
-    if (started)
-      buffer_ << ", ";
-
-    buffer_ << variable.second.type->toString ();
-    buffer_ << " ";
-    buffer_ << variable.second.name;
-
-    if (!started)
-      started = true;
-  }
-
-  buffer_ << ")\n";
-  buffer_ << "{\n";
-  buffer_ << "  // TODO: Fill this function in or remove the function\n";
-  buffer_ << "  //       and add a header include for the actual function\n";
-
-
-  buffer_ << "\n";
-  buffer_ << "  return 1;\n";
-  buffer_ << "}\n\n";
 }
 
 void
