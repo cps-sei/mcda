@@ -61,6 +61,7 @@
 #include <string>
 #include "DaigBuilder.hpp"
 #include "daig/madara/Sync_Builder.hpp"
+#include "daig/madara/Async_Builder.hpp"
 #include "SyncSeq.hpp"
 #include "SyncSem.hpp"
 #include "SyncSeqDbl.hpp"
@@ -130,6 +131,8 @@ int main (int argc, char **argv)
     
     if(moc == "MOC_SYNC")
       madara_builder = new daig::madara::Sync_Builder (builder, madara_target, do_vrep);
+    else if(moc == "MOC_ASYNC")
+      madara_builder = new daig::madara::Async_Builder (builder, madara_target, do_vrep);
     else {
       std::cerr << "ERROR: cannot generate code for " << moc << " programs!!\n";
       exit (1);

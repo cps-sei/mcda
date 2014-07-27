@@ -4,7 +4,8 @@ SyncSeq.cpp SyncSem.cpp SyncSeqDbl.cpp ArrayElim.cpp \
 ../daig/Model_Of_Computation.cpp ../daig/Node.cpp ../daig/Program.cpp \
 ../daig/Variable.cpp ../daig/Statement.cpp ../daig/Type.cpp \
 ../daig/CProgram.cpp ../daig/Visitor.cpp \
-../daig/madara/Sync_Builder.cpp ../daig/madara/Function_Visitor.cpp
+../daig/madara/Sync_Builder.cpp ../daig/madara/Async_Builder.cpp \
+../daig/madara/Function_Visitor.cpp
 OBJ=$(patsubst %.cpp,%.o,$(SRC))
 INC=-I$(ACE_ROOT) -I$(MADARA_ROOT)/include -I..
 LIB=$(MADARA_ROOT)/libMADARA.so
