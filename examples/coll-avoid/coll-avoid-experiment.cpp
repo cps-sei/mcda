@@ -11,9 +11,8 @@
 #include <boost/foreach.hpp>
 #include <fstream>
 
-#define EXIT_FINISHED 0
-#define EXIT_COLLISION 1
-#define EXIT_TIMEOUT 2
+#define NODE_FINISHED 5
+#define NODE_COLLIDED 6
 
 /*********************************************************************/
 //-- function declarations
@@ -21,10 +20,10 @@
 void sigalrm_handler (int signum);
 void process_args(int argc,char **argv);
 void set_env_vars();
-void run (double &distance, int &num_rounds, double &num_collisions, int &num_timeouts);
-void read_from_pipe (int read_fd, int &retst, int &xi, int &yi, int &n);
-void create_out_files ();
-void close_out_files ();
+void run (double & collided_nodes, double & finished_nodes, double & rounds_to_dest, double & distance_to_dest);
+void read_from_file (int read_fd, int &retst, int &xi, int &yi, int &n);
+void create_log_files ();
+void close_log_files ();
 
 /*********************************************************************/
 //-- constants
@@ -32,7 +31,7 @@ void close_out_files ();
 const unsigned int CHILD_WAIT_TIME = 60;
 const int X_SIZE = 20;
 const int Y_SIZE = 20;
-const int MAX_WAIT_TIME = 3;
+const int MAX_BARRIER_TIME = 3;
 
 /*********************************************************************/
 //-- global variables
@@ -40,7 +39,7 @@ const int MAX_WAIT_TIME = 3;
 int num_processes;
 std::string exec_name,domain,out_dir;
 std::vector<pid_t> child_pids;
-std::vector<std::ofstream *> out_files;
+std::vector<std::ofstream *> log_files;
 
 //-- environment variables
 std::string mcda_root,madara_root,ace_root;
@@ -55,29 +54,25 @@ int main (int argc, char ** argv)
   process_args(argc,argv);
   child_pids.resize(num_processes, 0);
   set_env_vars();
-  create_out_files ();
+  create_log_files ();
 
-  // of all nodes combined
-  double distance = 0;
-  int num_rounds = 0;
-  // incr by <= 1 each run
-  double num_collisions = 0;
-  int num_timeouts = 0;
+  double collided_nodes = 0;
+  double finished_nodes = 0;
+  double rounds_to_dest = 0;
+  double distance_to_dest = 0;
 
-  run (distance, num_rounds, num_collisions, num_timeouts);
+  run (collided_nodes, finished_nodes, rounds_to_dest, distance_to_dest);
+  close_log_files ();
 
-  printf ("Number of nodes collided: %f\n", num_collisions);
-  double avg_speed = num_rounds ? distance / num_rounds : 0.0;
-  printf ("Average speed: %f unit/round\n", avg_speed);
-  printf ("Number of nodes timedout: %d\n", num_timeouts);
+  double collision_rate = collided_nodes / num_processes;
+  double success_rate = finished_nodes / num_processes;
+  double norm_completion_time = rounds_to_dest / distance_to_dest;
 
-  close_out_files ();
-
-  std::ofstream main_out;
-  std::string main_out_filename = out_dir + "/stats";
-  main_out.open (main_out_filename.c_str(), std::ofstream::app);
-  main_out << num_collisions << '\t' << avg_speed << '\t' << num_timeouts << '\n';
-  main_out.close();
+  std::ofstream stats;
+  std::string stats_filename = out_dir + "/stats";
+  stats.open (stats_filename.c_str(), std::ofstream::app);
+  stats << collision_rate << '\t' << success_rate << '\t' << norm_completion_time << '\n';
+  stats.close();
 
   return 0;
 }
@@ -103,8 +98,6 @@ void process_args(int argc,char **argv)
 /*********************************************************************/
 void sigalrm_handler (int signum)
 {
-  //BOOST_FOREACH (pid_t pid, child_pids) kill (pid, SIGTERM);
-  //sleep(1);
   BOOST_FOREACH (pid_t pid, child_pids) kill (pid, SIGKILL);
   sleep(1);
 }
@@ -129,7 +122,7 @@ void set_env_vars()
 /*********************************************************************/
 //do one run
 /*********************************************************************/
-void run (double &distance, int &num_rounds, double &num_collisions, int &num_timeouts)
+void run (double & collided_nodes, double & finished_nodes, double & rounds_to_dest, double & distance_to_dest)
 {
   std::vector<int> xs (num_processes);
   std::vector<int> ys (num_processes);
@@ -142,11 +135,15 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
     int y = rand () % Y_SIZE;
     int xf = rand () % X_SIZE;
     int yf = rand () % Y_SIZE;
-    while(yf * num_processes / Y_SIZE != i) {
+
+    // Ensure different destinations for different nodes
+    while (yf * num_processes / Y_SIZE != i)
+    {
       xf = rand () % X_SIZE;
       yf = rand () % Y_SIZE;
     }
 
+    // Record x and y for later use
     xs[i] = x;
     ys[i] = y;
 
@@ -161,12 +158,12 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
 
     if (pid == 0)
     {
-      std::ofstream * out_file = out_files[i];
-      *out_file << "x : " << x << ", "
+      std::ofstream * log_file = log_files[i];
+      *log_file << "x : " << x << ", "
                 << "y : " << y << ", "
                 << "xf : " << xf << ", "
                 << "yf : " << yf << '\n';
-      out_file->flush ();
+      log_file->flush ();
 
       execl (exec_name.c_str(), exec_name.c_str(),
              "--id", boost::lexical_cast<std::string> (i).c_str (),
@@ -175,7 +172,7 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
              "--var_y", boost::lexical_cast<std::string> (y).c_str (),
              "--var_xf", boost::lexical_cast<std::string> (xf).c_str (),
              "--var_yf", boost::lexical_cast<std::string> (yf).c_str (),
-             "-mb", boost::lexical_cast<std::string> (MAX_WAIT_TIME).c_str (),
+             "-mb", boost::lexical_cast<std::string> (MAX_BARRIER_TIME).c_str (),
              NULL);
 
       // execl returns only if error occured
@@ -195,57 +192,62 @@ void run (double &distance, int &num_rounds, double &num_collisions, int &num_ti
   // Wait for all #N processes to finish
   for (int i = 0; i < num_processes; i++)
   {
-    std::ofstream * out_file = out_files[i];
+    std::ofstream * log_file = log_files[i];
 
     pid_t pid = child_pids[i];
     int status;
-    pid_t ret = waitpid (pid, &status, 0);
+    pid_t wait_ret = waitpid (pid, &status, 0);
 
-    if (ret == -1)
+    if (wait_ret == -1)
     {
       perror ("waitpid error");
       exit (EXIT_FAILURE);
     }
 
-    // Read output from child process and update stats but only if the
-    // node did not timeout
-    int retst = -1,xi=0, yi=0, n=0;
-    read_from_pipe (pid, retst, xi, yi, n);
+    // Read output from child process and update stats
+    int child_status = -1;
+    int xi = 0;
+    int yi = 0;
+    int n = 0;
+    read_from_file (pid, child_status, xi, yi, n);
+    int d = abs (xs[i] - xi) + abs (ys[i] - yi);
     
-    if (retst == EXIT_FINISHED)
+    if (child_status == NODE_FINISHED)
     {
       // Node reached destination
-      *out_file << "Finished\n";
+      finished_nodes++;
+      rounds_to_dest += n;
+      distance_to_dest += d;
+      *log_file << "Finished\n";
     }
-    else if (retst == EXIT_COLLISION)
+    else if (child_status == NODE_COLLIDED)
     {
-      // Collision
-      num_collisions++;
-      *out_file << "Collision!\n";
+      // Node collided with at least 1 other node
+      collided_nodes++;
+      *log_file << "Collided!\n";
     }
     else
     {
       // Node timed out
-      num_timeouts++;
-      *out_file << "Timed out\n";
+      *log_file << "Timed out\n";
     }
 
-    if(retst == EXIT_FINISHED || retst == EXIT_COLLISION) {
-      int d = abs (xs[i] - xi) + abs (ys[i] - yi);
-      distance += d;
-      num_rounds += n;      
-      *out_file << "Distance completed: " << d << '\n';
-      *out_file << "Rounds taken: " << n << '\n';
-    }
+    // Note: only use distance and rounds to compute normalized completion time
+    // in cases where nodes finished; otherwise, just log them
+    *log_file << "Distance: " << d << '\n';
+    *log_file << "Rounds: " << n << '\n';
 
-    out_file->flush ();
+    log_file->flush ();
   }
 
   // Reset alarm
   alarm (0);
 }
 
-void read_from_pipe (int read_fd, int &retst, int &xi, int &yi, int &n)
+/*********************************************************************/
+//read stuff written by each child process (i.e., node) via file
+/*********************************************************************/
+void read_from_file (int read_fd, int &retst, int &xi, int &yi, int &n)
 {
   char buf[64];
   snprintf(buf,64,"/tmp/coll-avoid-%d",read_fd);
@@ -257,28 +259,28 @@ void read_from_pipe (int read_fd, int &retst, int &xi, int &yi, int &n)
 }
 
 /*********************************************************************/
-//read stuff written by each child process (i.e., node) via pipe
+//create log files for all nodes
 /*********************************************************************/
-void create_out_files ()
+void create_log_files ()
 {
   for (int i = 0; i < num_processes; i++)
   {
-    std::ofstream * out_file = new std::ofstream ();
+    std::ofstream * log_file = new std::ofstream ();
     std::stringstream ss;
-    ss << out_dir << "/node" << i << ".out";
-    out_file->open (ss.str().c_str());
-    *out_file << "Node " << i << '\n';
-    out_file->flush ();
-    out_files.push_back (out_file);
+    ss << out_dir << "/node" << i << ".log";
+    log_file->open (ss.str().c_str());
+    *log_file << "Node " << i << '\n';
+    log_file->flush ();
+    log_files.push_back (log_file);
   }
 }
 
 /*********************************************************************/
 //close output files
 /*********************************************************************/
-void close_out_files ()
+void close_log_files ()
 {
-  BOOST_FOREACH (std::ofstream * out_file, out_files)
+  BOOST_FOREACH (std::ofstream * out_file, log_files)
   {
     out_file->close ();
     delete out_file;
