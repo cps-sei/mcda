@@ -89,11 +89,8 @@ void print_global_state(int local_state)
   }
 }
 
-void write_to_pipe (int status)
+void write_to_file (int status, int xi, int yi, int n)
 {
-  int xi = (int) x[*id];
-  int yi = (int) y[*id];
-  int n = (int) *num_rounds;
   char buf[64];
   snprintf(buf,64,"/tmp/coll-avoid-%d",getpid());
   FILE * stream = fopen(buf, "w");
@@ -103,10 +100,9 @@ void write_to_pipe (int status)
   }
 }
 
-void write_and_exit (int status)
+void node_exit ()
 {
-  write_to_pipe (status);
-  exit (status);
+  exit (EXIT_SUCCESS);
 }
 
 const int DROP_RADIUS = 5;
@@ -220,11 +216,12 @@ prob_distance_drop (Madara::Knowledge_Map & incoming_records,
       // Preserved variables for collision checking
       std::string true_x = "true_x." + boost::lexical_cast<std::string>(sender_id);
       std::string true_y = "true_y." + boost::lexical_cast<std::string>(sender_id);
+      std::string done = "done." + boost::lexical_cast<std::string>(sender_id);
 
       Madara::Knowledge_Map::iterator it2 = incoming_records.begin();
       while (it2 != incoming_records.end()) {
         std::string var = it2->first;
-        if (var == true_x || var == true_y) {
+        if (var == true_x || var == true_y || var == done) {
           it2++;
         } else {
           Madara::Knowledge_Map::iterator it3 = it2;
@@ -268,6 +265,7 @@ CONST REQUEST = 2;
 CONST WAITING = 3;
 CONST MOVE = 4;
 CONST FINISHED = 5;
+CONST COLLIDED = 6;
 
 // Protocol to avoid deadlock
 CONST MAX_REQ = 10;
@@ -275,17 +273,12 @@ CONST MAX_WAIT = 20;
 
 CONST CRITICAL_RADIUS = 3;
 
-// exit status
-CONST EXIT_FINISHED = 0;
-CONST EXIT_COLLISION = 1;
-CONST EXIT_TIMEOUT = 2;
-
 EXTERN int MOVE_TO(unsigned char x,unsigned char y);
 EXTERN int my_sleep(int seconds);
 EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
 EXTERN void print_global_state(int local_state);
-EXTERN void write_to_pipe (int status);
-EXTERN void write_and_exit (int status);
+EXTERN void write_to_file(int status, int xi, int yi, int n);
+EXTERN void node_exit();
 EXTERN void basic_node_init();
 
 NODE uav (id)
@@ -302,6 +295,7 @@ NODE uav (id)
   // Used for collision checking
   GLOBAL int true_x [#N];
   GLOBAL int true_y [#N];
+  GLOBAL _Bool done [#N];
 
   //private variables -- local to the node.
   //preserved across rounds
@@ -329,6 +323,7 @@ NODE uav (id)
 
     true_x[id] = x[id];
     true_y[id] = y[id];
+    done[id] = 0;
   }
 
   @ONCE_EVERY(10)
@@ -518,8 +513,11 @@ NODE uav (id)
       num_rounds = round_count;
     }
 
-    // Terminate if there is collision
+    // Check collision and update state
     CHECK_COLLISION();
+
+    // Terminate if all nodes are done
+    CHECK_ALL_DONE();
 
     if (state == INITS) {
       lock[x[id]][y[id]][id] = 1;
@@ -528,9 +526,8 @@ NODE uav (id)
     if (state == NEXT) {
       if (x[id] == xf && y[id] == yf) {
         // Arrive destination
-        node_finished = 1;
-        write_to_pipe(EXIT_FINISHED);
         state = FINISHED;
+        done[id] = 1;
       } else {
         // Compute next point on route
         NEXT_XY();
@@ -550,13 +547,11 @@ NODE uav (id)
         }
       }
 
-      if(USE_DISC_METHOD == 1) {
+      if (USE_DISC_METHOD == 1) {
         DISC_METHOD();
       } else {
         CONSERVATIVE_METHOD();
       }
-
-      //APPROX_LOC_METHOD();
 
       if (hover) {
         // do not grab lock
@@ -569,15 +564,18 @@ NODE uav (id)
         return;
       }
 
-      if(NO_DEADLOCK == 1) { req_count = 0; }
+      if (NO_DEADLOCK == 1) {
+        req_count = 0;
+      }
       lock[xp][yp][id] = 1;
       state = WAITING;
     } else if (state == WAITING) {
 
-      if(NO_DEADLOCK == 1) {
+      if (NO_DEADLOCK == 1) {
         wait_count = wait_count + 1;
 
         if (wait_count > MAX_WAIT) {
+          // Release old lock
           lock[xp][yp][id] = 0;
           NEXT_XY_ALT();
           wait_count = 0;
@@ -592,7 +590,9 @@ NODE uav (id)
         return;
       }
 
-      if(NO_DEADLOCK == 1) { wait_count = 0; }
+      if(NO_DEADLOCK == 1) {
+        wait_count = 0;
+      }
       state = MOVE;
     } else if (state == MOVE) {
       // Now we have the lock on (x’,y’)
@@ -606,6 +606,11 @@ NODE uav (id)
       // Update true_x and true_y for collision checking
       UPDATE_TRUE_VARS();
     }
+    // state == FINISHED or state == COLLIDED
+    // do nothing
+
+    // Write status to file every round
+    write_to_file(state, x[id], y[id], num_rounds);
   }
 
   void UPDATE_TRUE_VARS () {
@@ -613,11 +618,27 @@ NODE uav (id)
     true_y[id] = y[id];
   }
 
-  //Detect Collision and Exit if detected
+  // Check if this node collides with other node
+  // if so, update status
   void CHECK_COLLISION () {
-    if (EXISTS_LOWER(idp,true_x[idp] == true_x[id] && true_y[idp] == true_y[id])) {
-      write_and_exit(EXIT_COLLISION);
+    if (EXISTS_OTHER (i, true_x[i] == true_x[id] && true_y[i] == true_y[id])) {
+      state = COLLIDED;
+      done[id] = 1;
+      write_to_file(state, x[id], y[id], num_rounds);
     }
+  }
+
+  // Check if all nodes are done, i.e., either finished or collided
+  // if so, terminate
+  void CHECK_ALL_DONE () {
+    FORALL_NODE (i) {
+      if (done[i] == 0) {
+        // Some node is not done
+        return;
+      }
+    }
+    // All nodes have either finished or collided
+    node_exit();
   }
 }
 
