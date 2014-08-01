@@ -66,12 +66,22 @@ int main (int argc, char ** argv)
 
   double collision_rate = collided_nodes / num_processes;
   double success_rate = finished_nodes / num_processes;
-  double norm_completion_time = rounds_to_dest / distance_to_dest;
 
   std::ofstream stats;
   std::string stats_filename = out_dir + "/stats";
   stats.open (stats_filename.c_str(), std::ofstream::app);
-  stats << collision_rate << '\t' << success_rate << '\t' << norm_completion_time << '\n';
+  stats << collision_rate << '\t' << success_rate << '\t';
+
+  if (distance_to_dest > 0)
+  {
+    double norm_completion_time = rounds_to_dest / distance_to_dest;
+    stats << norm_completion_time << '\n';
+  }
+  else
+  {
+    stats << "N/A" << '\n';
+  }
+
   stats.close();
 
   return 0;
