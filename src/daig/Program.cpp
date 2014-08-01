@@ -213,16 +213,19 @@ daig::Program::sanityCheck()
            "ERROR: last dimension of global variables must be #N");
   }
 
-  // if track locations is set, then add the x, y, z variables to
-  // declarations
+  // if trackLocations is set, add x, y, z as global variables
   if (trackLocations)
   {
     std::vector<std::string> vars;
     vars.push_back ("x");
     vars.push_back ("y");
     vars.push_back ("z");
+    // these variables are always up-to-date
+    vars.push_back ("true_x");
+    vars.push_back ("true_y");
+    vars.push_back ("true_z");
     
-    // x, y, z are 1 dimensional arrays of length nodes.size ()
+    // x, y, z are 1 dimensional arrays of length #N
     BOOST_FOREACH(std::string & var_name, vars) {
       // we blow away any existing var.name and prefer our version
       daig::BaseType *t = new daig::BaseType(TINT);
@@ -235,15 +238,25 @@ daig::Program::sanityCheck()
     }
   }
 
+  // if sendHeartbeats is set, add round_count and heartbeats as local variables
   if (sendHeartbeats)
   {
-    daig::BaseType *t = new daig::BaseType(TINT);
+    // round_count (int) : current round of this node
+
+    daig::BaseType *round_type = new daig::BaseType(TINT);
+    daig::Variable round_var ("round_count", daig::Type(round_type));
+    round_var.scope = Variable::LOCAL;
+    node.locVars[round_var.name] = round_var;
+
+    // heartbeats (int array): last (local) rounds that this node received updates from other nodes
+
+    daig::BaseType *heartbeats_type = new daig::BaseType(TINT);
     //-- set the dimension to -1 since this will be replaced by the
     //-- number of nodes later on
-    t->dims.push_back(-1);
-    daig::Variable var ("heartbeats", daig::Type(t));
-    var.scope = Variable::LOCAL;
-    node.locVars[var.name] = var;
+    heartbeats_type->dims.push_back(-1);
+    daig::Variable heartbeats_var ("heartbeats", daig::Type(heartbeats_type));
+    heartbeats_var.scope = Variable::LOCAL;
+    node.locVars[heartbeats_var.name] = heartbeats_var;
   }
 }
 

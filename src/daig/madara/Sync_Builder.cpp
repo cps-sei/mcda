@@ -166,14 +166,6 @@ daig::madara::Sync_Builder::build_common_global_variables ()
   buffer_ << "// Containers for commonly used variables\n";
   buffer_ << "// Global variables\n";
   buffer_ << "containers::Integer_Array barrier;\n";
-
-  //-- only generate this code if heartbeats are used
-  if(builder_.program.sendHeartbeats) {
-    buffer_ << "// Local variables\n";
-    buffer_ << "containers::Integer round_count;\n";
-    buffer_ << "containers::Integer_Array last_global_updates_round;\n";
-  }
-
   buffer_ << "containers::Integer id;\n";
   buffer_ << "containers::Integer num_processes;\n";
   buffer_ << "double max_barrier_time (-1);\n";
@@ -213,7 +205,7 @@ daig::madara::Sync_Builder::build_common_filters (void)
     set_heartbeat << "  if (records[\"send_global_updates\"].is_true ())\n";
     set_heartbeat << "  {\n";
     set_heartbeat << "    Integer sender_id = records[\"id\"].to_integer ();\n";
-    set_heartbeat << "    last_global_updates_round.set (sender_id, *round_count);\n";
+    set_heartbeat << "    heartbeats.set (sender_id, *round_count);\n";
     set_heartbeat << "  }\n";
     build_common_filters_helper ("set_heartbeat", set_heartbeat);
 
@@ -437,14 +429,6 @@ daig::madara::Sync_Builder::build_program_variables_bindings ()
   buffer_ << "  barrier.set_name (\"mbarrier\", knowledge, ";
   buffer_ << builder_.program.processes.size ();
   buffer_ << ");\n";
-
-  //-- only generate this code if heartbeats are used
-  if(builder_.program.sendHeartbeats) {
-    buffer_ << "  round_count.set_name (\".round\", knowledge);\n";
-    buffer_ << "  last_global_updates_round.set_name (\".last_global_updates_round\", knowledge, ";
-    buffer_ << builder_.program.processes.size () << ");\n";
-  }
-
   buffer_ << "  id.set_name (\".id\", knowledge);\n";
   buffer_ << "  num_processes.set_name (\".processes\", knowledge);\n";
   buffer_ << "\n";
@@ -1009,11 +993,13 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  // Initialize commonly used local variables\n";  
   buffer_ << "  id = Integer (settings.id);\n";
   buffer_ << "  num_processes = processes;\n";
-  if(builder_.program.sendHeartbeats) {
+
+  // Initialize round_count and heartbeats
+  if (builder_.program.sendHeartbeats) {
     buffer_ << "  round_count = Integer (0);\n";
     buffer_ << "  for (Integer i = 0; i < processes; i++)\n";
     buffer_ << "  {\n";
-    buffer_ << "    last_global_updates_round.set (i, -1);\n";
+    buffer_ << "    heartbeats.set (i, -1);\n";
     buffer_ << "  }\n\n";
   }
 
@@ -1103,8 +1089,8 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  // Compile frequently used expressions\n";
   buffer_ << "  engine::Compiled_Expression round_logic = knowledge.compile (\n";
 
-  if(builder_.program.sendHeartbeats)
-    buffer_ << "    knowledge.expand_statement (\"++.round; ROUND (); ++mbarrier.{.id}\"));\n";
+  if (builder_.program.sendHeartbeats)
+    buffer_ << "    knowledge.expand_statement (\"++.round_count; ROUND (); ++mbarrier.{.id}\"));\n";
   else
     buffer_ << "    knowledge.expand_statement (\"ROUND (); ++mbarrier.{.id}\"));\n";
     
@@ -1202,7 +1188,7 @@ daig::madara::Sync_Builder::build_main_function ()
        it != node.periodic_func_names.end();
        ++it)
   {
-    buffer_ << "    knowledge.evaluate (\"(.round > 0 && .round % " << it->second << " == 0)";
+    buffer_ << "    knowledge.evaluate (\"(.round_count > 0 && .round_count % " << it->second << " == 0)";
     buffer_ << " => " << it->first << " ()\", wait_settings);\n";
   }
   buffer_ << '\n';
