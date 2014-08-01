@@ -266,6 +266,7 @@ CONST WAITING = 3;
 CONST MOVE = 4;
 CONST FINISHED = 5;
 CONST COLLIDED = 6;
+CONST FINISHED_AND_COLLIDED = 7;
 
 // Protocol to avoid deadlock
 CONST MAX_REQ = 10;
@@ -292,10 +293,7 @@ NODE uav (id)
   GLOBAL double velocity_y [#N];
 
   // These global variables will always be up-to-date
-  // Used for collision checking
-  GLOBAL int true_x [#N];
-  GLOBAL int true_y [#N];
-  GLOBAL _Bool done [#N];
+  GLOBAL _Bool done [#N]; // for termination
 
   //private variables -- local to the node.
   //preserved across rounds
@@ -403,7 +401,7 @@ NODE uav (id)
   }
 
   void CONSERVATIVE_METHOD () {
-    if (EXISTS_OTHER (i, round_count - last_global_updates_round[i] > 1)) {
+    if (EXISTS_OTHER (i, round_count - heartbeats[i] > 1)) {
       // No heartbeat from node i
       hover = 1;
     } else {
@@ -417,7 +415,7 @@ NODE uav (id)
     double dr;
 
     FORALL_OTHER (i) {
-      lgu_round = last_global_updates_round[i];
+      lgu_round = heartbeats[i];
 
       if (lgu_round == -1) {
         // Never received global updates from node i
@@ -454,7 +452,7 @@ NODE uav (id)
     double dx, dy, dr;
 
     FORALL_OTHER (i) {
-      lgu_round = last_global_updates_round[i];
+      lgu_round = heartbeats[i];
       if (lgu_round == -1) {
         // Never received global updates from node i
         // Assume node i is far away
@@ -508,8 +506,9 @@ NODE uav (id)
   void ROUND () {
     //print_global_state(state);
 
-    if (x[id] != xf || y[id] != yf) {
-      // Not at destination; continue to count rounds
+    if (done[id] == 0) {
+      // Not at destination and not collided
+      // Continue to count rounds
       num_rounds = round_count;
     }
 
@@ -590,7 +589,7 @@ NODE uav (id)
         return;
       }
 
-      if(NO_DEADLOCK == 1) {
+      if (NO_DEADLOCK == 1) {
         wait_count = 0;
       }
       state = MOVE;
@@ -606,7 +605,7 @@ NODE uav (id)
       // Update true_x and true_y for collision checking
       UPDATE_TRUE_VARS();
     }
-    // state == FINISHED or state == COLLIDED
+    // state == FINISHED || state == FINISHED_AND_COLLIDED || state == COLLIDED
     // do nothing
 
     // Write status to file every round
@@ -622,9 +621,13 @@ NODE uav (id)
   // if so, update status
   void CHECK_COLLISION () {
     if (EXISTS_OTHER (i, true_x[i] == true_x[id] && true_y[i] == true_y[id])) {
-      state = COLLIDED;
+      if (state == FINISHED) {
+        // Node already finished (i.e., at destination), but other node collides with it
+        state = FINISHED_AND_COLLIDED;
+      } else {
+        state = COLLIDED;
+      }
       done[id] = 1;
-      write_to_file(state, x[id], y[id], num_rounds);
     }
   }
 
@@ -638,6 +641,8 @@ NODE uav (id)
       }
     }
     // All nodes have either finished or collided
+    // Write status to file
+    write_to_file(state, x[id], y[id], num_rounds);
     node_exit();
   }
 }
