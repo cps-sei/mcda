@@ -13,6 +13,7 @@
 
 #define NODE_FINISHED 5
 #define NODE_COLLIDED 6
+#define NODE_FINISHED_AND_COLLIDED 7
 
 /*********************************************************************/
 //-- function declarations
@@ -235,6 +236,15 @@ void run (double & collided_nodes, double & finished_nodes, double & rounds_to_d
       // Node collided with at least 1 other node
       collided_nodes++;
       *log_file << "Collided!\n";
+    }
+    else if (child_status == NODE_FINISHED_AND_COLLIDED)
+    {
+      // Node already reached destination, but another node collided with it
+      finished_nodes++;
+      rounds_to_dest += n;
+      distance_to_dest += d;
+      collided_nodes++;
+      *log_file << "Finished and Collided!\n";
     }
     else
     {
