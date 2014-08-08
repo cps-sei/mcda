@@ -116,7 +116,17 @@ namespace daig
        * Builds the program's MADARA generated variables
        **/
       void build_program_variable_init (const Variable & var);
-      
+
+      /**
+       * Initializes special variables if trackLocations and/or sendHeartbeats are set
+       */
+      void build_special_variables_init ();
+
+      /**
+       * Builds UPDATE_TRUE_LOCS function
+       */
+      void build_update_true_locs ();
+
       /**
        * Builds the program's MADARA generated variable bindings in main
        **/

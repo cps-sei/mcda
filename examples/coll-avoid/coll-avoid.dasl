@@ -318,9 +318,6 @@ NODE uav (id)
     prev_x = x[id];
     prev_y = y[id];
     move_x_first = 1;
-
-    true_x[id] = x[id];
-    true_y[id] = y[id];
     done[id] = 0;
   }
 
@@ -601,20 +598,12 @@ NODE uav (id)
       lock[x[id]][y[id]][id] = 0;
       x[id] = xp; y[id] = yp;
       state = NEXT;
-
-      // Update true_x and true_y for collision checking
-      UPDATE_TRUE_VARS();
     }
     // state == FINISHED || state == FINISHED_AND_COLLIDED || state == COLLIDED
     // do nothing
 
     // Write status to file every round
     write_to_file(state, x[id], y[id], num_rounds);
-  }
-
-  void UPDATE_TRUE_VARS () {
-    true_x[id] = x[id];
-    true_y[id] = y[id];
   }
 
   // Check if this node collides with other node

@@ -773,7 +773,7 @@ daig::madara::Sync_Builder::build_refresh_modify_globals ()
 {
   buffer_ << "Madara::Knowledge_Record\n";
   buffer_ << "REMODIFY_GLOBALS";
-  buffer_ << " (engine::Function_Arguments &,\n";
+  buffer_ << " (engine::Function_Arguments & args,\n";
   buffer_ << "  engine::Variables & vars)\n";
   buffer_ << "{\n";
   
@@ -851,9 +851,28 @@ daig::madara::Sync_Builder::build_refresh_modify_global (const Variable & var)
 }
 
 void
+daig::madara::Sync_Builder::build_update_true_locs ()
+{
+  buffer_ << "Madara::Knowledge_Record\n";
+  buffer_ << "UPDATE_TRUE_LOCS (engine::Function_Arguments & args, engine::Variables & vars)\n";
+  buffer_ << "{\n";
+  buffer_ << "  Madara::Knowledge_Record result;\n";
+  buffer_ << "  true_x.set (*id, x[*id]);\n";
+  buffer_ << "  true_y.set (*id, y[*id]);\n";
+  buffer_ << "  true_z.set (*id, z[*id]);\n";
+  buffer_ << "  return result;\n";
+  buffer_ << "}\n\n";
+}
+
+void
 daig::madara::Sync_Builder::build_functions (void)
 {
   build_refresh_modify_globals ();
+
+  if (builder_.program.trackLocations)
+  {
+    build_update_true_locs ();
+  }
 
   buffer_ << "// Defining global functions\n\n";
   Functions & funcs = builder_.program.funcs;
@@ -940,6 +959,28 @@ daig::madara::Sync_Builder::build_function (
   buffer_ << "}\n\n";
 }
 
+void
+daig::madara::Sync_Builder::build_special_variables_init ()
+{
+  buffer_ << "  // Initialize special variables\n";
+
+  if (builder_.program.trackLocations) {
+    buffer_ << "  true_x.set (settings.id, x[settings.id]);\n";
+    buffer_ << "  true_y.set (settings.id, y[settings.id]);\n";
+    buffer_ << "  true_z.set (settings.id, z[settings.id]);\n";
+  }
+
+  if (builder_.program.sendHeartbeats) {
+    buffer_ << "  round_count = Integer (0);\n";
+    buffer_ << "  for (Integer i = 0; i < processes; i++)\n";
+    buffer_ << "  {\n";
+    buffer_ << "    heartbeats.set (i, -1);\n";
+    buffer_ << "  }\n";
+  }
+
+  buffer_ << '\n';
+}
+
 
 void
 daig::madara::Sync_Builder::build_main_function ()
@@ -993,15 +1034,9 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  // Initialize commonly used local variables\n";  
   buffer_ << "  id = Integer (settings.id);\n";
   buffer_ << "  num_processes = processes;\n";
+  buffer_ << '\n';
 
-  // Initialize round_count and heartbeats
-  if (builder_.program.sendHeartbeats) {
-    buffer_ << "  round_count = Integer (0);\n";
-    buffer_ << "  for (Integer i = 0; i < processes; i++)\n";
-    buffer_ << "  {\n";
-    buffer_ << "    heartbeats.set (i, -1);\n";
-    buffer_ << "  }\n\n";
-  }
+  build_special_variables_init ();
 
   // build the barrier string  
   buffer_ << "  std::map <std::string, bool>  barrier_send_list;\n";
@@ -1090,9 +1125,9 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "  engine::Compiled_Expression round_logic = knowledge.compile (\n";
 
   if (builder_.program.sendHeartbeats)
-    buffer_ << "    knowledge.expand_statement (\"++.round_count; ROUND (); ++mbarrier.{.id}\"));\n";
+    buffer_ << "    knowledge.expand_statement (\"++.round_count; ROUND (); UPDATE_TRUE_LOCS (); ++mbarrier.{.id}\"));\n";
   else
-    buffer_ << "    knowledge.expand_statement (\"ROUND (); ++mbarrier.{.id}\"));\n";
+    buffer_ << "    knowledge.expand_statement (\"ROUND (); UPDATE_TRUE_LOCS (); ++mbarrier.{.id}\"));\n";
     
 
   buffer_ << "  engine::Compiled_Expression barrier_logic = \n";
@@ -1139,9 +1174,9 @@ daig::madara::Sync_Builder::build_main_function ()
   // For now, use the first node definition
   Node & node = builder_.program.nodes.begin()->second;
 
-  buffer_ << "  // Call node initialization function, if any\n";
   if (!node.node_init_func_name.empty())
   {
+    buffer_ << "  // Call node initialization function\n";
     buffer_ << "  wait_settings.delay_sending_modifieds = true;\n";
     buffer_ << "  knowledge.evaluate (\"" << node.node_init_func_name << " ()\", wait_settings);\n";
   }
@@ -1232,7 +1267,15 @@ daig::madara::Sync_Builder::build_main_define_functions ()
   buffer_ << "  // Defining common functions\n\n";
 
   buffer_ << "  knowledge.define_function (\"REMODIFY_GLOBALS\", ";
-  buffer_ << "REMODIFY_GLOBALS);\n\n";
+  buffer_ << "REMODIFY_GLOBALS);\n";
+
+  if (builder_.program.trackLocations)
+  {
+    buffer_ << "  knowledge.define_function (\"UPDATE_TRUE_LOCS\", ";
+    buffer_ << "UPDATE_TRUE_LOCS);\n";
+  }
+
+  buffer_ << '\n';
 
   buffer_ << "  // Defining global functions for MADARA\n\n";
   Functions & funcs = builder_.program.funcs;
