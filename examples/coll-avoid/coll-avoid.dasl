@@ -378,20 +378,20 @@ NODE uav (id)
           yp = y[id] - 1;
         }
 
-        // Move x first in the next round
+        // Move in x-axis first in the next round
         move_x_first = 1;
       } else {
         // Moving in y-axis
         // Change to moving in x-axis
         yp = y[id];
 
-        if (x[id] == 0 || x[id] < xf){
+        if (x[id] == 0 || x[id] < xf) {
           xp = x[id] + 1;
         } else {
           xp = x[id] - 1;
         }
 
-        // Move y first in the next round
+        // Move in y-axis first in the next round
         move_x_first = 0;
       }
     }
@@ -407,20 +407,20 @@ NODE uav (id)
   }
 
   void DISC_METHOD () {
-    int lgu_round;
+    int heartbeat;
     int dx, dy;
     double dr;
 
     FORALL_OTHER (i) {
-      lgu_round = heartbeats[i];
+      heartbeat = heartbeats[i];
 
-      if (lgu_round == -1) {
-        // Never received global updates from node i
+      if (heartbeat == -1) {
+        // Never received heartbeat from node i
         // Assume node i is far away
         continue;
       }
 
-      if (round_count - lgu_round > 1) {
+      if (round_count - heartbeat > 1) {
         // No heartbeat from node i
         // Check if last known location of node i
         // is at least some distance away
@@ -441,7 +441,7 @@ NODE uav (id)
 
   void APPROX_LOC_METHOD () {
     int last_known_xi, last_known_yi;
-    int lgu_round;
+    int heartbeat;
     int dround;
     double approx_xi, approx_yi;
     int ri; // critical radius
@@ -449,15 +449,15 @@ NODE uav (id)
     double dx, dy, dr;
 
     FORALL_OTHER (i) {
-      lgu_round = heartbeats[i];
-      if (lgu_round == -1) {
-        // Never received global updates from node i
+      heartbeat = heartbeats[i];
+      if (heartbeat == -1) {
+        // Never received heartbeat from node i
         // Assume node i is far away
         continue;
       }
 
-      // Number of rounds passed since last global updates from node i
-      dround = round_count - lgu_round;
+      // Number of rounds passed since last heartbeat from node i
+      dround = round_count - heartbeat;
       if (dround <= 1) {
         // We received updates in the previous round
         continue;
@@ -516,12 +516,14 @@ NODE uav (id)
     CHECK_ALL_DONE();
 
     if (state == INITS) {
+      // Initial state
       lock[x[id]][y[id]][id] = 1;
       state = NEXT;
     }
+
     if (state == NEXT) {
       if (x[id] == xf && y[id] == yf) {
-        // Arrive destination
+        // At destination
         state = FINISHED;
         done[id] = 1;
       } else {
@@ -531,7 +533,7 @@ NODE uav (id)
       }
     } else if (state == REQUEST) {
 
-      //-- no deadlock stuff
+      //-- no deadlock protocol
       if(NO_DEADLOCK == 1) {
         req_count = req_count + 1;
 
@@ -563,10 +565,13 @@ NODE uav (id)
       if (NO_DEADLOCK == 1) {
         req_count = 0;
       }
+
+      // Grab the lock and wait
       lock[xp][yp][id] = 1;
       state = WAITING;
     } else if (state == WAITING) {
 
+      //-- no deadlock protocol
       if (NO_DEADLOCK == 1) {
         wait_count = wait_count + 1;
 
@@ -589,12 +594,17 @@ NODE uav (id)
       if (NO_DEADLOCK == 1) {
         wait_count = 0;
       }
+
+      // Set to move to (x',y')
       state = MOVE;
     } else if (state == MOVE) {
-      // Now we have the lock on (x’,y’)
+      // Try to move to (x’,y’)
       if (MOVE_TO(xp,yp)) {
         return;
       }
+
+      // Release lock on old location
+      // Move to new location
       lock[x[id]][y[id]][id] = 0;
       x[id] = xp; y[id] = yp;
       state = NEXT;
