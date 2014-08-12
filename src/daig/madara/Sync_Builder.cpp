@@ -83,6 +83,7 @@ daig::madara::Sync_Builder::build ()
   build_common_global_variables ();
   build_program_variables ();
   build_common_filters ();
+  build_pre_exit ();
   // build target thunk WITHOUT includes
   build_target_thunk ();
   build_parse_args ();
@@ -132,7 +133,8 @@ daig::madara::Sync_Builder::build_common_global_variables ()
   buffer_ << "std::string host (\"\");\n";
   buffer_ << "const std::string default_multicast (\"239.255.0.1:4150\");\n";
   buffer_ << "Madara::Transport::QoS_Transport_Settings settings;\n";
-  buffer_ << "int write_fd (-1);\n";
+  buffer_ << "// Application-specific logger\n";
+  buffer_ << "std::ofstream logger;\n";
   buffer_ << "\n";
 
   //-- only generate this code if heartbeats are used
@@ -617,12 +619,12 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "    {\n";
   buffer_ << "      settings.send_reduced_message_header = true;\n";
   buffer_ << "    }\n";
-  buffer_ << "    else if (arg1 == \"--write-fd\")\n";
+  buffer_ << "    else if (arg1 == \"--app-logfile\")\n";
   buffer_ << "    {\n";
   buffer_ << "      if (i + 1 < argc)\n";
   buffer_ << "      {\n";
   buffer_ << "        std::stringstream buffer (argv[i + 1]);\n";
-  buffer_ << "        buffer >> write_fd;\n";
+  buffer_ << "        logger.open (buffer.str (), std::ofstream::app);\n";
   buffer_ << "      }\n";
   buffer_ << "      \n";
   buffer_ << "      ++i;\n";
@@ -1174,13 +1176,13 @@ daig::madara::Sync_Builder::build_main_function ()
   // For now, use the first node definition
   Node & node = builder_.program.nodes.begin()->second;
 
-  if (!node.node_init_func_name.empty())
+  if (node.funcs.find ("NODE_INIT") != node.funcs.end ())
   {
     buffer_ << "  // Call node initialization function\n";
     buffer_ << "  wait_settings.delay_sending_modifieds = true;\n";
-    buffer_ << "  knowledge.evaluate (\"" << node.node_init_func_name << " ()\", wait_settings);\n";
+    buffer_ << "  knowledge.evaluate (\"NODE_INIT ()\", wait_settings);\n";
+    buffer_ << '\n';
   }
-  buffer_ << '\n';
 
   //-- for periodic nodes
   if(builder_.program.period) {
@@ -1259,6 +1261,24 @@ daig::madara::Sync_Builder::build_main_function ()
   }
   buffer_ << "  return 0;\n";
   buffer_ << "}\n";
+}
+
+void
+daig::madara::Sync_Builder::build_pre_exit ()
+{
+  buffer_ << "void pre_exit ()\n";
+  buffer_ << "{\n";
+  buffer_ << "  if (logger.is_open ())\n";
+  buffer_ << "  {\n";
+  buffer_ << "    logger.close ();\n";
+  buffer_ << "  }\n";
+
+  if (do_vrep_)
+  {
+    buffer_ << "\n  delete vrep_interface;\n";
+  }
+
+  buffer_ << "}\n\n";
 }
 
 void

@@ -213,6 +213,11 @@ namespace daig
       void build_main_logic (void);
 
       /**
+       * Builds a function which will be called before node exits
+       */
+      void build_pre_exit (void);
+
+      /**
        * Clears the underlying buffer
        **/
       void clear_buffer (void);

@@ -58,6 +58,7 @@ extern "C" int yywrap() { return 1; }
 "break"                     PRINT_TOKEN; return TOKEN(TBREAK);
 "continue"                  PRINT_TOKEN; return TOKEN(TCONTINUE);
 "return"                    PRINT_TOKEN; return TOKEN(TRETURN);
+"EXIT"                      PRINT_TOKEN; return TOKEN(TEXIT);
 "EXISTS_OTHER"              PRINT_TOKEN; return TOKEN(TEXO);
 "EXISTS_HIGHER"             PRINT_TOKEN; return TOKEN(TEXH);
 "EXISTS_LOWER"              PRINT_TOKEN; return TOKEN(TEXL);

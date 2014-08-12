@@ -958,12 +958,13 @@ daig::madara::Async_Builder::build_main_function ()
   // For now, use the first node definition
   Node & node = builder_.program.nodes.begin()->second;
 
-  buffer_ << "  // Call node initialization function, if any\n";
-  if (!node.node_init_func_name.empty())
+  if (node.funcs.find ("NODE_INIT") != node.funcs.end ())
   {
-    buffer_ << "  knowledge.evaluate (\"" << node.node_init_func_name << " ()\", wait_settings);\n";
+    buffer_ << "  // Call node initialization function\n";
+    buffer_ << "  wait_settings.delay_sending_modifieds = true;\n";
+    buffer_ << "  knowledge.evaluate (\"NODE_INIT ()\", wait_settings);\n";
+    buffer_ << '\n';
   }
-  buffer_ << '\n';
 
   //-- for periodic nodes
   if(builder_.program.period) {

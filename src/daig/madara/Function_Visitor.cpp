@@ -775,6 +775,23 @@ daig::madara::Function_Visitor::exitRetVoid (RetVoidStmt & statement)
 
 
 bool
+daig::madara::Function_Visitor::enterEXIT (EXITStmt & statement)
+{
+  return false;
+}
+
+
+void
+daig::madara::Function_Visitor::exitEXIT (EXITStmt & statement)
+{
+  std::string spacer (indentation_, ' ');
+
+  buffer_ << spacer << "pre_exit ();\n";
+  buffer_ << spacer << "exit (EXIT_SUCCESS);\n";
+}
+
+
+bool
 daig::madara::Function_Visitor::enterCall (CallStmt & statement)
 {
   return false;

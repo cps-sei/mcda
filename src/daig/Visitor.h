@@ -338,6 +338,18 @@ namespace daig
      * @param  stmt   the return void statement
      **/
     virtual void exitRetVoid(RetVoidStmt &stmt) {}
+
+    /**
+     * Returns whether or not to visit an EXIT statement's subfields first.
+     * @param  stmt   the EXIT statement
+     **/
+    virtual bool enterEXIT(EXITStmt &stmt) { return true; }
+
+    /**
+     * Visits an EXIT statement.
+     * @param  stmt   the EXIT statement
+     **/
+    virtual void exitEXIT(EXITStmt &stmt) {}
     
     /**
      * Returns whether or not to visit a function call's subfields first.

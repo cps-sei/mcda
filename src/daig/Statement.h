@@ -322,6 +322,18 @@ namespace daig
     }
   };
 
+  //an EXIT statement
+  class EXITStmt : public Statement
+  {
+  public:
+    std::string toString() const { return "EXIT;"; }
+    void print (std::ostream &os,unsigned int indent) const
+    {
+      std::string spacer (indent, ' ');
+      os << spacer << "EXIT;\n";
+    }
+  };
+
   //a function call statement whose return value is discarded
   class CallStmt : public Statement
   {

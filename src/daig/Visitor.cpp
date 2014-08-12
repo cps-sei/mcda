@@ -149,6 +149,9 @@ void daig::Visitor::visit(const daig::Stmt &stmt)
   } else if(RetVoidStmt *st = dynamic_cast<RetVoidStmt*>(&*stmt)) {
     hostStmt = stmt; enterRetVoid(*st);
     hostStmt = stmt; exitRetVoid(*st);
+  } else if(EXITStmt *st = dynamic_cast<EXITStmt*>(&*stmt)) {
+    hostStmt = stmt; enterEXIT(*st);
+    hostStmt = stmt; exitEXIT(*st);
   } else if(CallStmt *st = dynamic_cast<CallStmt*>(&*stmt)) {
     hostStmt = stmt; if(enterCall(*st)) visit(st->data);
     hostStmt = stmt; exitCall(*st);

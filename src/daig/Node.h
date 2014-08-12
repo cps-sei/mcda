@@ -101,17 +101,17 @@ namespace daig
     Functions funcs;
 
     /**
-     * Name of node initialization function -- empty by default
-     */
-    std::string node_init_func_name;
+     * NOTE: NODE_INIT and periodic functions are added to funcs
+     **/
 
     /**
      * A map of names of periodic functions to their periods
+     * (note: the actual functions are in funcs)
      */
     std::map <std::string, int> periodic_func_names;
 
     ///constructors
-    Node() : node_init_func_name ("") {}
+    Node() {}
 
     ///clear the node -- reset it to an empty node
     void clear()
@@ -143,13 +143,6 @@ namespace daig
 
     ///add a function
     void addFunction(const Function &f) { funcs[f.name] = f; }
-
-    ///set the node initialization function
-    void setNodeInitFunction(const Function &f)
-    {
-      addFunction(f);
-      node_init_func_name = f.name;
-    }
 
     ///add a periodic function and its period
     void addPeriodicFunction(const Function &f, int T)

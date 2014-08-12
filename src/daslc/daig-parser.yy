@@ -76,6 +76,7 @@ std::string thunk;
 %token <token> TON_PRE_TIMEOUT TON_POST_TIMEOUT TON_RECV_FILTER
 %token <token> TTRACK_LOCATIONS TSEND_HEARTBEATS
 %token <token> TNODE_INIT TPERIODIC TONCE_EVERY
+%token <token> TEXIT
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -225,7 +226,7 @@ node_body_elem_list :
 node_body_elem :
   global_var {}
 | local_var {}
-| node_init_procedure {}
+| node_init {}
 | periodic_procedure {}
 | procedure {}
 ;
@@ -288,10 +289,11 @@ simp_type : TBOOL { $$ = new daig::Type(daig::boolType()); }
 | TCHAR { $$ = new daig::Type(daig::charType()); }
 ;
 
-node_init_procedure : TVOID TNODE_INIT TLPAREN TRPAREN TLBRACE var_decl_list stmt_list TRBRACE {
+node_init : TVOID TNODE_INIT TLPAREN TRPAREN TLBRACE var_decl_list stmt_list TRBRACE {
   /** set scope of temporary variables */
   BOOST_FOREACH(daig::Variable &v,*$6) v.scope = daig::Variable::TEMP;
-  currNode.setNodeInitFunction(daig::Function(daig::voidType(),"NODE_INIT",daig::VarList(),*$6,*$7));
+  /** create and add node init function to the node */
+  currNode.addFunction(daig::Function(daig::voidType(),"NODE_INIT",daig::VarList(),*$6,*$7));
   delete $6; delete $7;
 }
 ;
@@ -405,6 +407,7 @@ stmt : TATOMIC stmt { $$ = new daig::Stmt(new daig::AtomicStmt(*$2)); delete $2;
   $$ = new daig::Stmt(new daig::FAOHStmt(*$3,*$5));
   delete $3; delete $5;
 }
+| TEXIT TSEMICOLON { $$ = new daig::Stmt(new daig::EXITStmt()); }
 ;
 
 lval : TIDENTIFIER { 
