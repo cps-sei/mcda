@@ -65,7 +65,7 @@ std::string thunk;
 %token <token> TBOOL TINT TDOUBLE_TYPE TVOID TCHAR TSIGNED TUNSIGNED
 %token <token> TNODENUM TATOMIC TPRIVATE TEXTERN
 %token <token> TIF TELSE TFOR TWHILE
-%token <token> TBREAK TCONTINUE TRETURN TEXO TEXH TEXL TPROGRAM
+%token <token> TBREAK TCONTINUE TRETURN TEXA TEXO TEXH TEXL TPROGRAM
 %token <token> TINIT TSAFETY TFAN TFADNP TFAO TFAOL TFAOH
 %token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL
 %token <token> TLAND TLOR TLNOT TQUEST TCOLON
@@ -76,7 +76,7 @@ std::string thunk;
 %token <token> TON_PRE_TIMEOUT TON_POST_TIMEOUT TON_RECV_FILTER
 %token <token> TTRACK_LOCATIONS TSEND_HEARTBEATS
 %token <token> TNODE_INIT TPERIODIC TONCE_EVERY
-%token <token> TEXIT TLOG
+%token <token> TEXIT TLOG TLOCAL_ASSERT
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -411,6 +411,9 @@ stmt : TATOMIC stmt { $$ = new daig::Stmt(new daig::AtomicStmt(*$2)); delete $2;
 | TLOG TLPAREN lval TRPAREN TSEMICOLON {
   $$ = new daig::Stmt(new daig::LOGStmt(daig::Expr($3)));
 }
+| TLOCAL_ASSERT TLPAREN expr TRPAREN TSEMICOLON {
+  $$ = new daig::Stmt(new daig::LocAsrtStmt(*$3));
+}
 ;
 
 lval : TIDENTIFIER { 
@@ -494,6 +497,10 @@ expr : lval { $$ = new daig::Expr($1); printExpr(*$$); }
   $$ = new daig::Expr(new daig::CallExpr(daig::Expr($1),*$3));
   delete $3; printExpr(*$$);
 } 
+| TEXA TLPAREN TIDENTIFIER TCOMMA expr TRPAREN {
+  $$ = new daig::Expr(new daig::EXAExpr(*$3,daig::Expr(*$5)));
+  delete $3; delete $5;
+}
 | TEXO TLPAREN TIDENTIFIER TCOMMA expr TRPAREN {
   $$ = new daig::Expr(new daig::EXOExpr(*$3,daig::Expr(*$5)));
   delete $3; delete $5;

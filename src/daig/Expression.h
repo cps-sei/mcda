@@ -189,6 +189,19 @@ namespace daig
     }
   };
 
+  //an exists any expression
+  class EXAExpr : public Expression
+  {
+  public:
+    std::string id;
+    Expr arg;
+
+    EXAExpr(const std::string &i,const Expr &a) : id(i),arg(a) {}
+    std::string toString() const {
+      return "EXISTS_ANY(" + id + "," + arg->toString() + ")";
+    }
+  };
+
   //an exists other expression
   class EXOExpr : public Expression
   {

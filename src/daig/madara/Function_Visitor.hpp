@@ -145,6 +145,18 @@ namespace daig
     virtual void exitCall(CallExpr &expr);
 
     /**
+     * Returns whether or not to visit a there exists any's subfields first
+     * @param  expr   the there exists any's expression
+     **/
+    virtual bool enterEXA(EXAExpr &expr);
+
+    /**
+     * Visits a there exists any
+     * @param  expr   the there exists any to visit
+     **/
+    virtual void exitEXA(EXAExpr &expr);
+
+    /**
      * Returns whether or not to visit a there exists other's subfields first
      * @param  expr   the there exists other's expression
      **/
@@ -350,6 +362,18 @@ namespace daig
      * @param  stmt   the LOG statement
      **/
     virtual void exitLOG(LOGStmt &stmt);
+
+    /**
+     * Returns whether or not to visit a LOCAL_ASSERT statement's subfields first.
+     * @param  stmt   the LOCAL_ASSERT statement
+     **/
+    virtual bool enterLocAsrt(LocAsrtStmt &stmt);
+
+    /**
+     * Visits a LOCAL_ASSERT statement.
+     * @param  stmt   the LOCAL_ASSERT statement
+     **/
+    virtual void exitLocAsrt(LocAsrtStmt &stmt);
     
     /**
      * Returns whether or not to visit a function call's subfields first.

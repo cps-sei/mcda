@@ -85,6 +85,9 @@ void daig::Visitor::visit(const daig::Expr &expr)
       BOOST_FOREACH(Expr &e,ex->args) visit(e);
     }
     hostExpr = expr; exitCall(*ex);
+  } else if(EXAExpr *ex = dynamic_cast<EXAExpr*>(&*expr)) {
+    hostExpr = expr; if(enterEXA(*ex)) visit(ex->arg);
+    hostExpr = expr; exitEXA(*ex);
   } else if(EXOExpr *ex = dynamic_cast<EXOExpr*>(&*expr)) {
     hostExpr = expr; if(enterEXO(*ex)) visit(ex->arg);
     hostExpr = expr; exitEXO(*ex);
@@ -155,6 +158,9 @@ void daig::Visitor::visit(const daig::Stmt &stmt)
   } else if(LOGStmt *st = dynamic_cast<LOGStmt*>(&*stmt)) {
     hostStmt = stmt; enterLOG(*st);
     hostStmt = stmt; exitLOG(*st);
+  } else if(LocAsrtStmt *st = dynamic_cast<LocAsrtStmt*>(&*stmt)) {
+    hostStmt = stmt; enterLocAsrt(*st);
+    hostStmt = stmt; exitLocAsrt(*st);
   } else if(CallStmt *st = dynamic_cast<CallStmt*>(&*stmt)) {
     hostStmt = stmt; if(enterCall(*st)) visit(st->data);
     hostStmt = stmt; exitCall(*st);

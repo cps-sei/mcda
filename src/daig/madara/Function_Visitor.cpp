@@ -251,6 +251,57 @@ daig::madara::Function_Visitor::exitCall (CallExpr & expression)
 
 
 bool
+daig::madara::Function_Visitor::enterEXA (EXAExpr & expression)
+{
+  return false;
+}
+
+
+void
+daig::madara::Function_Visitor::exitEXA (EXAExpr & expression)
+{
+  std::string spacer (indentation_, ' '), sub_spacer (indentation_ + 2, ' ');
+
+  unsigned int processes = builder_.program.processes.size ();
+
+  bool started_i = false;
+  for (unsigned int i = 0; i < processes; ++i)
+  {
+    if (started_i)
+    {
+      buffer_ << " || \n" << sub_spacer;
+    }
+
+    buffer_ << "(";
+    buffer_ << "*id == " << i << " && (";
+
+    bool started_j = false;
+    for (unsigned int j = 0; j < processes; ++j)
+    {
+      // we want to check all for existence
+
+      if (started_j)
+        buffer_ << " || ";
+
+      id_map_ [expression.id] = j;
+
+      visit (expression.arg);
+
+      id_map_.erase (expression.id);
+
+      if (!started_j)
+        started_j = true;
+    }
+
+    buffer_ << "))";
+
+    if (!started_i)
+      started_i = true;
+  }
+}
+
+
+bool
 daig::madara::Function_Visitor::enterEXO (EXOExpr & expression)
 {
   return false;
@@ -854,6 +905,24 @@ daig::madara::Function_Visitor::exitLOG (LOGStmt & statement)
   buffer_ << sub_spacer << "logger << " << data->var << "[i];\n";
   buffer_ << spacer << "}\n";
   buffer_ << spacer << "logger << std::endl;\n";
+}
+
+
+bool
+daig::madara::Function_Visitor::enterLocAsrt (LocAsrtStmt & statement)
+{
+  return false;
+}
+
+
+void
+daig::madara::Function_Visitor::exitLocAsrt (LocAsrtStmt & statement)
+{
+  std::string spacer (indentation_, ' ');
+
+  buffer_ << spacer << "assert (";
+  visit (statement.cond);
+  buffer_ << ");\n";
 }
 
 

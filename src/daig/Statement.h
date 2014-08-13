@@ -350,6 +350,21 @@ namespace daig
     }
   };
 
+  //a LOCAL_ASSERT statement
+  class LocAsrtStmt : public Statement
+  {
+  public:
+    Expr cond;
+
+    LocAsrtStmt(const Expr &c) : cond(c) {}
+    std::string toString() const { return "LOCAL_ASSERT (" + cond->toString() + ");"; }
+    void print (std::ostream &os,unsigned int indent) const
+    {
+      std::string spacer (indent, ' ');
+      os << spacer << "LOCAL_ASSERT (" << cond->toString() << ");\n";
+    }
+  };
+
   //a function call statement whose return value is discarded
   class CallStmt : public Statement
   {
