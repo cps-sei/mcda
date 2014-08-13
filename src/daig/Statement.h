@@ -334,6 +334,22 @@ namespace daig
     }
   };
 
+  //a LOG statement
+  class LOGStmt : public Statement
+  {
+  public:
+    Expr data;
+
+    // d must be LvalExpr
+    LOGStmt(const Expr &d) : data(d) {}
+    std::string toString() const { return "LOG (" + data->toString() + ");"; }
+    void print (std::ostream &os,unsigned int indent) const
+    {
+      std::string spacer (indent, ' ');
+      os << spacer << "LOG (" << data->toString() << ");\n";
+    }
+  };
+
   //a function call statement whose return value is discarded
   class CallStmt : public Statement
   {

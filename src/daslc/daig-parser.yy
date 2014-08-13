@@ -76,7 +76,7 @@ std::string thunk;
 %token <token> TON_PRE_TIMEOUT TON_POST_TIMEOUT TON_RECV_FILTER
 %token <token> TTRACK_LOCATIONS TSEND_HEARTBEATS
 %token <token> TNODE_INIT TPERIODIC TONCE_EVERY
-%token <token> TEXIT
+%token <token> TEXIT TLOG
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -408,6 +408,9 @@ stmt : TATOMIC stmt { $$ = new daig::Stmt(new daig::AtomicStmt(*$2)); delete $2;
   delete $3; delete $5;
 }
 | TEXIT TSEMICOLON { $$ = new daig::Stmt(new daig::EXITStmt()); }
+| TLOG TLPAREN lval TRPAREN TSEMICOLON {
+  $$ = new daig::Stmt(new daig::LOGStmt(daig::Expr($3)));
+}
 ;
 
 lval : TIDENTIFIER { 

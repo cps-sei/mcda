@@ -338,6 +338,18 @@ namespace daig
      * @param  stmt   the EXIT statement
      **/
     virtual void exitEXIT(EXITStmt &stmt);
+
+    /**
+     * Returns whether or not to visit a LOG statement's subfields first.
+     * @param  stmt   the LOG statement
+     **/
+    virtual bool enterLOG(LOGStmt &stmt);
+
+    /**
+     * Visits a LOG statement.
+     * @param  stmt   the LOG statement
+     **/
+    virtual void exitLOG(LOGStmt &stmt);
     
     /**
      * Returns whether or not to visit a function call's subfields first.

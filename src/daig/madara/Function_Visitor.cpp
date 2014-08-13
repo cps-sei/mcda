@@ -518,47 +518,83 @@ daig::madara::Function_Visitor::exitAsgn (AsgnStmt & statement)
     }
     else if (lhs->indices.size () == 1)
     {
-      buffer_ << spacer;
-      buffer_ << lhs->var;
-      buffer_ << ".set (";
-      visit (*(lhs->indices.begin ()));
-      buffer_ << ", ";
-      visit (statement.rhs);
+      // MADARA container array assignment vs. C++ array assignment
+      if (function_.temps.find (lhs->var) == function_.temps.end ())
+      {
+        // MADARA container array
+        buffer_ << spacer;
+        buffer_ << lhs->var;
+        buffer_ << ".set (";
+        visit (*(lhs->indices.begin ()));
+        buffer_ << ", ";
+        visit (statement.rhs);
 
-      if (privatize_)
-        buffer_ << ", private_update";
+        if (privatize_)
+          buffer_ << ", private_update";
 
-      buffer_ << ");\n";
+        buffer_ << ");\n";
+      }
+      else
+      {
+        // C++ array
+        buffer_ << spacer;
+        buffer_ << lhs->var;
+        buffer_ << "[";
+        visit (*(lhs->indices.begin ()));
+        buffer_ << "] = ";
+        visit (statement.rhs);
+        buffer_ << ";\n";
+      }
     }
     else
     {
-      buffer_ << spacer;
-      buffer_ << "{\n";
-
-      buffer_ << sub_spacer;
-      buffer_ << "containers::Array_N::Index index (" << lhs->indices.size ();
-      buffer_ << ");\n";
-      
-      int i = 0;
-      BOOST_FOREACH (Expr & expression, lhs->indices)
+      // MADARA container array assignment vs. C++ array assignment
+      if (function_.temps.find (lhs->var) == function_.temps.end ())
       {
-        buffer_ << sub_spacer << "index[";
-        buffer_ << i;
-        buffer_ << "] = ";
-        visit (expression);
-        buffer_ << ";\n";
-        ++i;
+        // MADARA container multi-dimensional array
+        buffer_ << spacer;
+        buffer_ << "{\n";
+
+        buffer_ << sub_spacer;
+        buffer_ << "containers::Array_N::Index index (" << lhs->indices.size ();
+        buffer_ << ");\n";
+
+        int i = 0;
+        BOOST_FOREACH (Expr & expression, lhs->indices)
+        {
+          buffer_ << sub_spacer << "index[";
+          buffer_ << i;
+          buffer_ << "] = ";
+          visit (expression);
+          buffer_ << ";\n";
+          ++i;
+        }
+
+        buffer_ << sub_spacer << lhs->var;
+        buffer_ << ".set (index, ";
+        visit (statement.rhs);
+        buffer_ << ");\n";
+
+        if (privatize_)
+          buffer_ << ", private_update";
+
+        buffer_ << spacer << "}\n";
       }
-      
-      buffer_ << sub_spacer << lhs->var;
-      buffer_ << ".set (index, ";
-      visit (statement.rhs);
-      buffer_ << ");\n";
-
-      if (privatize_)
-        buffer_ << ", private_update";
-
-      buffer_ << spacer << "}\n";
+      else
+      {
+        // C++ multi-dimensional array
+        buffer_ << spacer;
+        buffer_ << lhs->var;
+        BOOST_FOREACH (Expr & expression, lhs->indices)
+        {
+          buffer_ << "[";
+          visit (expression);
+          buffer_ << "]";
+        }
+        buffer_ << " = ";
+        visit (statement.rhs);
+        buffer_ << ";\n";
+      }
     }
   }
 
@@ -788,6 +824,36 @@ daig::madara::Function_Visitor::exitEXIT (EXITStmt & statement)
 
   buffer_ << spacer << "pre_exit ();\n";
   buffer_ << spacer << "exit (EXIT_SUCCESS);\n";
+}
+
+
+bool
+daig::madara::Function_Visitor::enterLOG (LOGStmt & statement)
+{
+  return false;
+}
+
+
+void
+daig::madara::Function_Visitor::exitLOG (LOGStmt & statement)
+{
+  std::string spacer (indentation_, ' '), sub_spacer (indentation_ + 2, ' '),
+      sub_sub_spacer (indentation_ + 4, ' ');
+
+  LvalExpr * data  = dynamic_cast<LvalExpr*> (statement.data.get ());
+
+  std::list<int> dims = function_.temps.find (data->var)->second.type->dims;
+  int size = *(dims.begin ());
+
+  buffer_ << spacer << "for (int i = 0; i < " << size << "; i++)\n";
+  buffer_ << spacer << "{\n";
+  buffer_ << sub_spacer << "if (i > 0)\n";
+  buffer_ << sub_spacer << "{\n";
+  buffer_ << sub_sub_spacer << "logger << \'\\t\';\n";
+  buffer_ << sub_spacer << "}\n";
+  buffer_ << sub_spacer << "logger << " << data->var << "[i];\n";
+  buffer_ << spacer << "}\n";
+  buffer_ << spacer << "logger << std::endl;\n";
 }
 
 

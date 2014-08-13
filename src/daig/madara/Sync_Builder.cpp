@@ -56,6 +56,7 @@
 #include "Sync_Builder.hpp"
 #include "Function_Visitor.hpp"
 #include <boost/algorithm/string.hpp>
+#include <boost/foreach.hpp>
 #include <vector>
 #include "daslc/daig-parser.hpp"
 
@@ -624,7 +625,7 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "      if (i + 1 < argc)\n";
   buffer_ << "      {\n";
   buffer_ << "        std::stringstream buffer (argv[i + 1]);\n";
-  buffer_ << "        logger.open (buffer.str (), std::ofstream::app);\n";
+  buffer_ << "        logger.open (buffer.str ().c_str (), std::ofstream::app);\n";
   buffer_ << "      }\n";
   buffer_ << "      \n";
   buffer_ << "      ++i;\n";
@@ -925,25 +926,31 @@ daig::madara::Sync_Builder::build_function (
   buffer_ << "  Integer result (0);\n";
   BOOST_FOREACH (Variables::value_type & variable, function.temps)
   {
-    if (variable.second.type->type == TINT)
+    Variable & var = variable.second;
+
+    if (var.type->type == TINT)
     {
       buffer_ << "  Integer ";
-      buffer_ << variable.second.name;
-      buffer_ << ";\n";
     }
-    else if (variable.second.type->type == TDOUBLE_TYPE)
+    else if (var.type->type == TDOUBLE_TYPE)
     {
       buffer_ << "  double ";
-      buffer_ << variable.second.name;
-      buffer_ << ";\n";
     }
     else
     {
-      // Default to integer
+      // Default to Integer
       buffer_ << "  Integer ";
-      buffer_ << variable.second.name;
-      buffer_ << ";\n";
     }
+
+    buffer_ << var.name;
+
+    // if var is an array, declare dimension(s)
+    BOOST_FOREACH (int d, var.type->dims)
+    {
+      buffer_ << "[" << d << "]";
+    }
+
+    buffer_ << ";\n";
   }
   
   buffer_ << "\n";
