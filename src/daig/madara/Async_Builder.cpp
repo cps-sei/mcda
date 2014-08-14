@@ -56,6 +56,7 @@
 #include "Async_Builder.hpp"
 #include "Function_Visitor.hpp"
 #include <boost/algorithm/string.hpp>
+#include <boost/foreach.hpp>
 #include <vector>
 #include "daslc/daig-parser.hpp"
 
@@ -998,13 +999,12 @@ daig::madara::Async_Builder::build_main_function ()
             << '\n';
   }
 
-  buffer_ << "    // Call periodic functions, if any\n";
-  for (std::map <std::string, int>::iterator it = node.periodic_func_names.begin ();
-       it != node.periodic_func_names.end();
-       ++it)
+  buffer_ << "    // Call periodic functions in the order they appear in dasl program\n";
+  BOOST_FOREACH (std::string func_name, node.periodic_func_names)
   {
-    buffer_ << "    knowledge.evaluate (\"(.round > 0 && .round % " << it->second << " == 0)";
-    buffer_ << " => " << it->first << " ()\", wait_settings);\n";
+    int period = node.periods[func_name];
+    buffer_ << "    knowledge.evaluate (\"(.round_count > 0 && .round_count % " << period << " == 0)";
+    buffer_ << " => " << func_name << " ()\", wait_settings);\n";
   }
   buffer_ << '\n';
 

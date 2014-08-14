@@ -105,10 +105,11 @@ namespace daig
      **/
 
     /**
-     * A map of names of periodic functions to their periods
-     * (note: the actual functions are in funcs)
+     * Periodic function names and periods (actual functions are in funcs)
+     * Preserve the order of the functions as they appear in dasl program
      */
-    std::map <std::string, int> periodic_func_names;
+    std::vector<std::string> periodic_func_names;
+    std::map<std::string, int> periods;
 
     ///constructors
     Node() {}
@@ -148,7 +149,8 @@ namespace daig
     void addPeriodicFunction(const Function &f, int T)
     {
       addFunction(f);
-      periodic_func_names[f.name] = T;
+      periodic_func_names.push_back(f.name);
+      periods[f.name] = T;
     }
 
     /**

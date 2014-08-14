@@ -264,6 +264,10 @@ daig::madara::Function_Visitor::exitEXA (EXAExpr & expression)
 
   unsigned int processes = builder_.program.processes.size ();
 
+  // Add parentheses around exists_any expression
+  // so that it works with unary operation
+  buffer_ << "(";
+
   bool started_i = false;
   for (unsigned int i = 0; i < processes; ++i)
   {
@@ -298,6 +302,8 @@ daig::madara::Function_Visitor::exitEXA (EXAExpr & expression)
     if (!started_i)
       started_i = true;
   }
+
+  buffer_ << ")";
 }
 
 
@@ -315,6 +321,10 @@ daig::madara::Function_Visitor::exitEXO (EXOExpr & expression)
 
   unsigned int processes = builder_.program.processes.size ();
   
+  // Add parentheses around exists_other expression
+  // so that it works with unary operation
+  buffer_ << "(";
+
   bool started_i = false;
   for (unsigned int i = 0; i < processes; ++i)
   {
@@ -351,6 +361,8 @@ daig::madara::Function_Visitor::exitEXO (EXOExpr & expression)
     if (!started_i)
       started_i = true;
   }
+
+  buffer_ << ")";
 }
 
 
@@ -368,6 +380,10 @@ daig::madara::Function_Visitor::exitEXH (EXHExpr & expression)
 
   unsigned int processes = builder_.program.processes.size ();
   
+  // Add parentheses around exists_higher expression
+  // so that it works with unary operation
+  buffer_ << "(";
+
   bool started_i = false;
   for (unsigned int i = 0; i + 1 < processes; ++i)
   {
@@ -400,6 +416,8 @@ daig::madara::Function_Visitor::exitEXH (EXHExpr & expression)
     if (!started_i)
       started_i = true;
   }
+
+  buffer_ << ")";
 }
 
 
@@ -417,6 +435,10 @@ daig::madara::Function_Visitor::exitEXL (EXLExpr & expression)
 
   unsigned int processes = builder_.program.processes.size ();
   
+  // Add parentheses around exists_lower expression
+  // so that it works with unary operation
+  buffer_ << "(";
+
   bool started_i = false;
   for (unsigned int i = 1; i < processes; ++i)
   {
@@ -449,6 +471,8 @@ daig::madara::Function_Visitor::exitEXL (EXLExpr & expression)
     if (!started_i)
       started_i = true;
   }
+
+  buffer_ << ")";
 }
 
 
