@@ -61,8 +61,8 @@
 #include "daslc/daig-parser.hpp"
 
 daig::madara::Async_Builder::Async_Builder (daig::DaigBuilder & builder,
-                                            const std::string &target,
-                                            const bool do_vrep)
+                                          const std::string &target,
+                                          const bool do_vrep)
   : Madara_Builder(builder,target,do_vrep) {}
 
 void
@@ -84,6 +84,7 @@ daig::madara::Async_Builder::build ()
   build_common_global_variables ();
   build_program_variables ();
   build_common_filters ();
+  build_pre_exit ();
   // build target thunk WITHOUT includes
   build_target_thunk ();
   build_parse_args ();
@@ -133,7 +134,8 @@ daig::madara::Async_Builder::build_common_global_variables ()
   buffer_ << "std::string host (\"\");\n";
   buffer_ << "const std::string default_multicast (\"239.255.0.1:4150\");\n";
   buffer_ << "Madara::Transport::QoS_Transport_Settings settings;\n";
-  buffer_ << "int write_fd (-1);\n";
+  buffer_ << "// Application-specific logger\n";
+  buffer_ << "std::ofstream logger;\n";
   buffer_ << "\n";
 
   //-- only generate this code if heartbeats are used
@@ -141,7 +143,7 @@ daig::madara::Async_Builder::build_common_global_variables ()
     buffer_ << "// Whether the current broadcast sends global updates\n";
     buffer_ << "bool send_global_updates (true);\n\n";
   }
-  
+
   if (do_vrep_)
   {
     buffer_ << "//vrep IP address and port\n";
@@ -165,15 +167,6 @@ daig::madara::Async_Builder::build_common_global_variables ()
   }
 
   buffer_ << "// Containers for commonly used variables\n";
-  buffer_ << "// Global variables\n";
-
-  //-- only generate this code if heartbeats are used
-  if(builder_.program.sendHeartbeats) {
-    buffer_ << "// Local variables\n";
-    buffer_ << "containers::Integer round_count;\n";
-    buffer_ << "containers::Integer_Array last_global_updates_round;\n";
-  }
-
   buffer_ << "containers::Integer id;\n";
   buffer_ << "containers::Integer num_processes;\n";
   buffer_ << "engine::Knowledge_Update_Settings private_update (true);\n";
@@ -192,7 +185,7 @@ daig::madara::Async_Builder::build_target_thunk (void)
   // we use target_ as a key to all related thunks
   Program::TargetType::const_iterator it =
     builder_.program.targets.find (target_);
-  
+
   // if there was any such target, print it
   if (it != builder_.program.targets.end ())
   {
@@ -212,7 +205,7 @@ daig::madara::Async_Builder::build_common_filters (void)
     set_heartbeat << "  if (records[\"send_global_updates\"].is_true ())\n";
     set_heartbeat << "  {\n";
     set_heartbeat << "    Integer sender_id = records[\"id\"].to_integer ();\n";
-    set_heartbeat << "    last_global_updates_round.set (sender_id, *round_count);\n";
+    set_heartbeat << "    heartbeats.set (sender_id, *round_count);\n";
     set_heartbeat << "  }\n";
     build_common_filters_helper ("set_heartbeat", set_heartbeat);
 
@@ -316,7 +309,7 @@ void
 daig::madara::Async_Builder::build_program_variables ()
 {
   buffer_ << "// Defining program-specific constants\n";
-  
+
   Program::ConstDef & consts = builder_.program.constDef;
   for (Program::ConstDef::iterator i = consts.begin (); i != consts.end (); ++i)
   {
@@ -328,7 +321,7 @@ daig::madara::Async_Builder::build_program_variables ()
   }
 
   buffer_ << "\n";
-  
+
   Nodes & nodes = builder_.program.nodes;
   for (Nodes::iterator n = nodes.begin (); n != nodes.end (); ++n)
   {
@@ -339,7 +332,7 @@ daig::madara::Async_Builder::build_program_variables ()
       Variable & var = i->second;
       build_program_variable (var);
     }
-    
+
     buffer_ << "\n// Defining program-specific local variables\n";
     Variables & locals = n->second.locVars;
     for (Variables::iterator i = locals.begin (); i != locals.end (); ++i)
@@ -431,16 +424,8 @@ daig::madara::Async_Builder::build_program_variable (const Variable & var)
 
 void
 daig::madara::Async_Builder::build_program_variables_bindings ()
-{ 
+{
   buffer_ << "  // Binding common variables\n";
-
-  //-- only generate this code if heartbeats are used
-  if(builder_.program.sendHeartbeats) {
-    buffer_ << "  round_count.set_name (\".round\", knowledge);\n";
-    buffer_ << "  last_global_updates_round.set_name (\".last_global_updates_round\", knowledge, ";
-    buffer_ << builder_.program.processes.size () << ");\n";
-  }
-
   buffer_ << "  id.set_name (\".id\", knowledge);\n";
   buffer_ << "  num_processes.set_name (\".processes\", knowledge);\n";
   buffer_ << "\n";
@@ -455,7 +440,7 @@ daig::madara::Async_Builder::build_program_variables_bindings ()
       Variable & var = i->second;
       build_program_variable_binding (var);
     }
-    
+
     buffer_ << "\n  // Binding program-specific local variables\n";
     Variables & locals = n->second.locVars;
     for (Variables::iterator i = locals.begin (); i != locals.end (); ++i)
@@ -619,12 +604,12 @@ daig::madara::Async_Builder::build_parse_args ()
   buffer_ << "    {\n";
   buffer_ << "      settings.send_reduced_message_header = true;\n";
   buffer_ << "    }\n";
-  buffer_ << "    else if (arg1 == \"--write-fd\")\n";
+  buffer_ << "    else if (arg1 == \"--app-logfile\")\n";
   buffer_ << "    {\n";
   buffer_ << "      if (i + 1 < argc)\n";
   buffer_ << "      {\n";
   buffer_ << "        std::stringstream buffer (argv[i + 1]);\n";
-  buffer_ << "        buffer >> write_fd;\n";
+  buffer_ << "        logger.open (buffer.str ().c_str (), std::ofstream::app);\n";
   buffer_ << "      }\n";
   buffer_ << "      \n";
   buffer_ << "      ++i;\n";
@@ -640,7 +625,7 @@ daig::madara::Async_Builder::build_parse_args ()
       Variable & var = i->second;
       variable_help << build_parse_args (var);
     }
-    
+
     buffer_ << "\n    // Providing init for local variables\n";
     Variables & locals = n->second.locVars;
     for (Variables::iterator i = locals.begin (); i != locals.end (); ++i)
@@ -718,7 +703,7 @@ std::string
 daig::madara::Async_Builder::build_parse_args (const Variable & var)
 {
   std::stringstream return_value;
-  
+
   // we do not allow setting multi-dimensional vars from command line
   if (var.type->dims.size () <= 1)
   {
@@ -755,7 +740,7 @@ daig::madara::Async_Builder::build_functions_declarations ()
   {
     build_function_declaration (Node (), i->second);
   }
-  
+
   buffer_ << "\n// Forward declaring node functions\n\n";
   Nodes & nodes = builder_.program.nodes;
   for (Nodes::iterator n = nodes.begin (); n != nodes.end (); ++n)
@@ -771,8 +756,27 @@ daig::madara::Async_Builder::build_functions_declarations ()
 }
 
 void
+daig::madara::Async_Builder::build_update_true_locs ()
+{
+  buffer_ << "Madara::Knowledge_Record\n";
+  buffer_ << "UPDATE_TRUE_LOCS (engine::Function_Arguments & args, engine::Variables & vars)\n";
+  buffer_ << "{\n";
+  buffer_ << "  Madara::Knowledge_Record result;\n";
+  buffer_ << "  true_x.set (*id, x[*id]);\n";
+  buffer_ << "  true_y.set (*id, y[*id]);\n";
+  buffer_ << "  true_z.set (*id, z[*id]);\n";
+  buffer_ << "  return result;\n";
+  buffer_ << "}\n\n";
+}
+
+void
 daig::madara::Async_Builder::build_functions (void)
 {
+  if (builder_.program.trackLocations)
+  {
+    build_update_true_locs ();
+  }
+
   buffer_ << "// Defining global functions\n\n";
   Functions & funcs = builder_.program.funcs;
   for (Functions::iterator i = funcs.begin (); i != funcs.end (); ++i)
@@ -818,31 +822,37 @@ daig::madara::Async_Builder::build_function (
   buffer_ << " (engine::Function_Arguments & args, engine::Variables & vars)\n";
   buffer_ << "{\n";
   buffer_ << "  // Declare local variables\n";
-  
+
   buffer_ << "  Integer result (0);\n";
   BOOST_FOREACH (Variables::value_type & variable, function.temps)
   {
-    if (variable.second.type->type == TINT)
+    Variable & var = variable.second;
+
+    if (var.type->type == TINT)
     {
       buffer_ << "  Integer ";
-      buffer_ << variable.second.name;
-      buffer_ << ";\n";
     }
-    else if (variable.second.type->type == TDOUBLE_TYPE)
+    else if (var.type->type == TDOUBLE_TYPE)
     {
       buffer_ << "  double ";
-      buffer_ << variable.second.name;
-      buffer_ << ";\n";
     }
     else
     {
-      // Default to integer
+      // Default to Integer
       buffer_ << "  Integer ";
-      buffer_ << variable.second.name;
-      buffer_ << ";\n";
     }
+
+    buffer_ << var.name;
+
+    // if var is an array, declare dimension(s)
+    BOOST_FOREACH (int d, var.type->dims)
+    {
+      buffer_ << "[" << d << "]";
+    }
+
+    buffer_ << ";\n";
   }
-  
+
   buffer_ << "\n";
 
   Function_Visitor visitor (function, node, builder_, buffer_, do_vrep_);
@@ -856,6 +866,28 @@ daig::madara::Async_Builder::build_function (
   buffer_ << "\n  // Insert return statement, in case user program did not\n";
   buffer_ << "  return result;\n";
   buffer_ << "}\n\n";
+}
+
+void
+daig::madara::Async_Builder::build_special_variables_init ()
+{
+  buffer_ << "  // Initialize special variables\n";
+
+  if (builder_.program.trackLocations) {
+    buffer_ << "  true_x.set (settings.id, x[settings.id]);\n";
+    buffer_ << "  true_y.set (settings.id, y[settings.id]);\n";
+    buffer_ << "  true_z.set (settings.id, z[settings.id]);\n";
+  }
+
+  if (builder_.program.sendHeartbeats) {
+    buffer_ << "  round_count = Integer (0);\n";
+    buffer_ << "  for (Integer i = 0; i < processes; i++)\n";
+    buffer_ << "  {\n";
+    buffer_ << "    heartbeats.set (i, -1);\n";
+    buffer_ << "  }\n";
+  }
+
+  buffer_ << '\n';
 }
 
 
@@ -874,7 +906,7 @@ daig::madara::Async_Builder::build_main_function ()
   buffer_ << "    // setup default transport as multicast\n";
   buffer_ << "    settings.hosts.push_back (default_multicast);\n";
   buffer_ << "  }\n\n";
-  
+
   buffer_ << "  settings.queue_length = 100000;\n\n";
 
 
@@ -902,30 +934,26 @@ daig::madara::Async_Builder::build_main_function ()
 
   buffer_ << "  // create the knowledge base with the transport settings\n";
   buffer_ << "  Madara::Knowledge_Engine::Knowledge_Base knowledge (host, settings);\n\n";
-  
+
   build_program_variables_bindings ();
   build_main_define_functions ();
-  
+
   // set the values for id and processes
-  buffer_ << "  // Initialize commonly used local variables\n";  
+  buffer_ << "  // Initialize commonly used local variables\n";
   buffer_ << "  id = Integer (settings.id);\n";
   buffer_ << "  num_processes = processes;\n";
-  if(builder_.program.sendHeartbeats) {
-    buffer_ << "  round_count = Integer (0);\n";
-    buffer_ << "  for (Integer i = 0; i < processes; i++)\n";
-    buffer_ << "  {\n";
-    buffer_ << "    last_global_updates_round.set (i, -1);\n";
-    buffer_ << "  }\n\n";
-  }
+  buffer_ << '\n';
+
+  build_special_variables_init ();
 
   buffer_ << "  // Compile frequently used expressions\n";
   buffer_ << "  engine::Compiled_Expression round_logic = knowledge.compile (\n";
 
-  if(builder_.program.sendHeartbeats)
-    buffer_ << "    knowledge.expand_statement (\"++.round; ROUND ()\"));\n";
+  if (builder_.program.sendHeartbeats)
+    buffer_ << "    knowledge.expand_statement (\"++.round_count; ROUND (); UPDATE_TRUE_LOCS ()\"));\n";
   else
-    buffer_ << "    knowledge.expand_statement (\"ROUND ()\"));\n";
-    
+    buffer_ << "    knowledge.expand_statement (\"ROUND (); UPDATE_TRUE_LOCS ()\"));\n";
+
   if (do_vrep_)
   {
     buffer_ << "  // SETUP VREP HERE\n";
@@ -962,7 +990,6 @@ daig::madara::Async_Builder::build_main_function ()
   if (node.funcs.find ("NODE_INIT") != node.funcs.end ())
   {
     buffer_ << "  // Call node initialization function\n";
-    buffer_ << "  wait_settings.delay_sending_modifieds = true;\n";
     buffer_ << "  knowledge.evaluate (\"NODE_INIT ()\", wait_settings);\n";
     buffer_ << '\n';
   }
@@ -978,7 +1005,7 @@ daig::madara::Async_Builder::build_main_function ()
 
   buffer_ << "  while (1)\n";
   buffer_ << "  {\n";
-  
+
   //-- for periodic nodes
   if(builder_.program.period) {
     std::string period = boost::lexical_cast<std::string>(builder_.program.period);
@@ -1010,7 +1037,6 @@ daig::madara::Async_Builder::build_main_function ()
 
   buffer_ << "    // Execute main user logic\n";
   buffer_ << "    knowledge.evaluate (round_logic, wait_settings);\n\n";
-
   buffer_ << "  }\n\n";
 
   if (do_vrep_)
@@ -1022,15 +1048,43 @@ daig::madara::Async_Builder::build_main_function ()
 }
 
 void
+daig::madara::Async_Builder::build_pre_exit ()
+{
+  buffer_ << "void pre_exit ()\n";
+  buffer_ << "{\n";
+  buffer_ << "  if (logger.is_open ())\n";
+  buffer_ << "  {\n";
+  buffer_ << "    logger.close ();\n";
+  buffer_ << "  }\n";
+
+  if (do_vrep_)
+  {
+    buffer_ << "\n  delete vrep_interface;\n";
+  }
+
+  buffer_ << "}\n\n";
+}
+
+void
 daig::madara::Async_Builder::build_main_define_functions ()
 {
+  buffer_ << "  // Defining common functions\n\n";
+
+  if (builder_.program.trackLocations)
+  {
+    buffer_ << "  knowledge.define_function (\"UPDATE_TRUE_LOCS\", ";
+    buffer_ << "UPDATE_TRUE_LOCS);\n";
+  }
+
+  buffer_ << '\n';
+
   buffer_ << "  // Defining global functions for MADARA\n\n";
   Functions & funcs = builder_.program.funcs;
   for (Functions::iterator i = funcs.begin (); i != funcs.end (); ++i)
   {
     build_main_define_function (Node (), i->second);
   }
-  
+
   buffer_ << "\n";
 
   buffer_ << "  // Defining node functions for MADARA\n\n";

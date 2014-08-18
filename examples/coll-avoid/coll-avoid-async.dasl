@@ -1,5 +1,5 @@
-//a correct synchronous collision avoidance protocol
-MOC_SYNC;
+// asynchronous collision avoidance protocol
+MOC_ASYNC;
 
 TARGET GNU_CPP,WIN_CPP %%{
 #define GNU_WIN
@@ -8,6 +8,12 @@ TARGET GNU_CPP,WIN_CPP %%{
 #include <unistd.h>
 #include <boost/lexical_cast.hpp>
 #include "madara/utility/Utility.h"
+
+
+int GO_APPROACH ()
+{
+  return rand () < (RAND_MAX / 2);
+}
 
 int MOVE_TO(unsigned char x,unsigned char y)
 {
@@ -236,61 +242,46 @@ void basic_node_init()
 @SEND_HEARTBEATS;
 @TRACK_LOCATIONS;
 @ON_RECEIVE_FILTER(prob_distance_drop);
-//@PERIODIC(2000);
+@PERIODIC(2000);
 
 //number of X and Y coordinates
 CONST X = 20;
 CONST Y = 20;
 
-//states of each node
+// Node states
 CONST INITS = 0;
-CONST NEXT = 1;
-CONST REQUEST = 2;
-CONST WAITING = 3;
-CONST MOVE = 4;
-CONST FINISHED = 5;
-CONST COLLIDED = 6;
-CONST FINISHED_AND_COLLIDED = 7;
+CONST CHECK_MOVE = 1;
+CONST NEXT = 2;
 
-// Protocol to avoid deadlock
-CONST MAX_REQ = 10;
-CONST MAX_WAIT = 20;
+CONST TCL_LENGTH = 3;
 
-CONST CRITICAL_RADIUS = 3;
-
-EXTERN int MOVE_TO(unsigned char x,unsigned char y);
 EXTERN int my_sleep(int seconds);
 EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
 EXTERN void print_global_state(int local_state);
 EXTERN void basic_node_init();
+EXTERN int abs(int x);
 
 NODE uav (id)
 {
-  //shared variables -- visible across nodes. 
-  //must be accessed via R() and W()
-  GLOBAL _Bool lock [X][Y][#N];
+  // Current x-y coordinates of each node
+  GLOBAL int x [#N];
+  GLOBAL int y [#N];
 
-  // Velocity in unit/round
-  GLOBAL double velocity_x [#N];
-  GLOBAL double velocity_y [#N];
+  // Trajectory Cells List (TCL) of each node
+  // 1st element is current location
+  GLOBAL int x_TCLs [TCL_LENGTH][#N];
+  GLOBAL int y_TCLs [TCL_LENGTH][#N];
 
-  // These global variables will always be up-to-date
-  GLOBAL _Bool done [#N]; // for termination
+  GLOBAL _Bool done [#N];
 
-  //private variables -- local to the node.
-  //preserved across rounds
-  LOCAL unsigned char state; //the state
-  LOCAL int xp,yp; //next coordinates
-  LOCAL int xf,yf; //final coordinates
+  // Final x-y coordinates
+  LOCAL int xf;
+  LOCAL int yf;
 
-  LOCAL int prev_x, prev_y; // To calculate velocity
-  LOCAL _Bool hover;
+  // Local state
+  LOCAL int state;
+
   LOCAL int num_rounds;
-
-  // Protocol to avoid deadlock
-  LOCAL int req_count;
-  LOCAL int wait_count;
-  LOCAL _Bool move_x_first;
 
   void NODE_INIT () {
     basic_node_init(); //do basic initialization
@@ -305,192 +296,84 @@ NODE uav (id)
     num_rounds = round_count;
   }
 
-  @ONCE_EVERY(10)
-  void CALCULATE_VELOCITY () {
-    // Calculate velocity in unit/round
-    double dx, dy;
-    double vx, vy;
-    dx = x[id] - prev_x;
-    dy = y[id] - prev_y;
-    vx = dx / PERIOD;
-    vy = dy / PERIOD;
-    velocity_x[id] = vx;
-    velocity_y[id] = vy;
+  void COMPUTE_TCL () {
+    int i; // for-loop variable
 
-    prev_x = x[id];
-    prev_y = y[id];
-  }
+    // Fill in 1st element in TCL (current x,y)
+    x_TCLs[0][id] = x[id];
+    y_TCLs[0][id] = y[id];
 
-  void NEXT_XY () {
-    ATOMIC {
-      xp = x[id];
-      yp = y[id];
-
-      if (move_x_first) {
-        if (x[id] < xf)
-          xp = x[id] + 1;
-        else if (x[id] > xf)
-          xp = x[id] - 1;
-        else if (y[id] < yf)
-          yp = y[id] + 1;
-        else
-          yp = y[id] - 1;
-      } else {
-        if (y[id] < yf)
-          yp = y[id] + 1;
-        else if (y[id] > yf)
-          yp = y[id] - 1;
-        else if (x[id] < xf)
-          xp = x[id] + 1;
-        else
-          xp = x[id] - 1;
-      }
+    for (i = 1; i < TCL_LENGTH; i = i + 1) {
+      NEXT_XY(i);
     }
   }
 
-  // Protocol to avoid deadlock
-  void NEXT_XY_ALT () {
-    ATOMIC {
-      if (xp != x[id]) {
-        // Moving in x-axis
-        // Change to moving in y-axis
-        xp = x[id];
+  void UPDATE_TCL () {
+    int i; // for-loop variable
 
-        if (y[id] == 0 || y[id] < yf) {
-          yp = y[id] + 1;
-        } else {
-          yp = y[id] - 1;
-        }
-
-        // Move in x-axis first in the next round
-        move_x_first = 1;
-      } else {
-        // Moving in y-axis
-        // Change to moving in x-axis
-        yp = y[id];
-
-        if (x[id] == 0 || x[id] < xf) {
-          xp = x[id] + 1;
-        } else {
-          xp = x[id] - 1;
-        }
-
-        // Move in y-axis first in the next round
-        move_x_first = 0;
-      }
+    // Shift current elements in TCL to the left
+    for (i = 0; i < TCL_LENGTH - 1; i = i + 1) {
+      x_TCLs[i][id] = x_TCLs[i + 1][id];
+      y_TCLs[i][id] = y_TCLs[i + 1][id];
     }
+
+    NEXT_XY(TCL_LENGTH - 1);
   }
 
-  void CONSERVATIVE_METHOD () {
-    if (EXISTS_OTHER (i, round_count - heartbeats[i] > 1)) {
-      // No heartbeat from node i
-      hover = 1;
+  void NEXT_XY (int TCL_index) {
+    int prev_x, prev_y, next_x, next_y;
+
+    prev_x = x_TCLs[TCL_index - 1];
+    prev_y = y_TCLs[TCL_index - 1];
+    next_x = prev_x;
+    next_y = prev_y;
+
+    // Find next point
+    if (xf > prev_x) {
+      next_x = next_x + 1;
+    } else if (xf < prev_x) {
+      next_x = next_x - 1;
+    } else if (yf > prev_y) {
+      next_y = prev_y + 1;
+    } else if (yf < prev_y) {
+      next_y = prev_y - 1;
     } else {
-      hover = 0;
+      next_x = -1;
+      next_y = -1;
     }
+
+    // Fill TCL_index with next point
+    x_TCLs[TCL_index][id] = next_x;
+    y_TCLs[TCL_index][id] = next_y;
   }
 
-  void DISC_METHOD () {
-    int heartbeat;
-    int dx, dy;
-    double dr;
+  int CDAI (int other) {
+    int i, j; // for-loop variables
 
-    FORALL_OTHER (i) {
-      heartbeat = heartbeats[i];
-
-      if (heartbeat == -1) {
-        // Never received heartbeat from node i
-        // Assume node i is far away
-        continue;
-      }
-
-      if (round_count - heartbeat > 1) {
-        // No heartbeat from node i
-        // Check if last known location of node i
-        // is at least some distance away
-        dx = xp - x[i];
-        dy = yp - y[i];
-        dr = sqrt(dx * dx + dy * dy);
-
-        if (dr < CRITICAL_RADIUS)
-        {
-          hover = 1;
-          return;
+    for (i = 0; i < TCL_LENGTH; i = i + 1) {
+      for (j = 0; j < TCL_LENGTH; j = j + 1) {
+        if (x_TCLs[i][id] != -1 && x_TCLs[i][id] == x_TCLs[j][other]
+            && y_TCLs[i][id] == y_TCLs[j][other]) {
+          // Index of the TIC in this node's TCL
+          return i;
         }
       }
     }
-
-    hover = 0;
+    // No TIC
+    return -1;
   }
 
-  void APPROX_LOC_METHOD () {
-    int last_known_xi, last_known_yi;
-    int heartbeat;
-    int dround;
-    double approx_xi, approx_yi;
-    int ri; // critical radius
-    double dxi, dyi;
-    double dx, dy, dr;
-
-    FORALL_OTHER (i) {
-      heartbeat = heartbeats[i];
-      if (heartbeat == -1) {
-        // Never received heartbeat from node i
-        // Assume node i is far away
-        continue;
-      }
-
-      // Number of rounds passed since last heartbeat from node i
-      dround = round_count - heartbeat;
-      if (dround <= 1) {
-        // We received updates in the previous round
-        continue;
-      }
-
-      // Last known location of node i
-      last_known_xi = x[i];
-      last_known_yi = y[i];
-
-      if (isnan(velocity_x[i])) {
-        // No last known velocity
-        // Use last known location, but critical radius depends on how many rounds have passed
-        approx_xi = last_known_xi;
-        approx_yi = last_known_yi;
-        ri = dround;
-      } else {
-        // Approximate current location of node i
-        // Use default critical radius
-        dxi = velocity_x[i] * dround;
-        dyi = velocity_y[i] * dround;
-        approx_xi = last_known_xi + dxi;
-        approx_yi = last_known_yi + dyi;
-        ri = CRITICAL_RADIUS;
-      }
-
-      // Check if (xp, yp) is in critical area of node i
-      dx = xp - approx_xi;
-      dy = yp - approx_yi;
-      dr = sqrt(dx * dx + dy * dy);
-
-      if (dr < ri)
-      {
-        // (xp, yp) in critical area of node i
-        hover = 1;
-        return;
-      }
-    }
-
-    // (xp, yp) not in critical area of any other node
-    hover = 0;
+  int MANHATTAN_DISTANCE (int xi, int yi, int xj, int yj) {
+    return abs(xi - xj) + abs(yi - yj);
   }
 
   void ROUND () {
-    //print_global_state(state);
+    int first_TIC_index; // 1st TIC in this node's TCL
+    int other; // 1st potentially colliding node
+    int TIC_index; // TIC for each other node
+    int d1, d2;
 
-    // Check safety property
-    FORALL_OTHER (i) {
-      LOCAL_ASSERT (true_x[i] != x[id] || true_y[i] != y[id]);
-    }
+    //print_global_state(state);
 
     if (done[id] == 0) {
       // Not at destination and not collided
@@ -500,101 +383,59 @@ NODE uav (id)
     }
 
     if (state == INITS) {
-      // Initial state
-      lock[x[id]][y[id]][id] = 1;
-      state = NEXT;
-    }
+      COMPUTE_TCL();
+      state = CHECK_MOVE;
+    } else if (state == CHECK_MOVE) {
+      first_TIC_index = TCL_LENGTH;
+      other = -1;
 
-    if (state == NEXT) {
-      if (x[id] == xf && y[id] == yf) {
-        // At destination
-        state = FINISHED;
-        done[id] = 1;
-      } else {
-        // Compute next point on route
-        NEXT_XY();
-        state = REQUEST;
+      // Check for TIC
+      FORALL_OTHER (i) {
+        TIC_index = CDAI(i);
+
+        if (TIC_index < first_TIC_index) {
+          first_TIC_index = TIC_index;
+          other = i;
+        }
       }
-    } else if (state == REQUEST) {
 
-      //-- no deadlock protocol
-      if(NO_DEADLOCK == 1) {
-        req_count = req_count + 1;
+      // If first_TIC_index == 0,
+      // this node has highest priority
 
-        if (req_count > MAX_REQ) {
-          NEXT_XY_ALT();
-          req_count = 0;
-          state = REQUEST;
+      if (first_TIC_index == 1) {
+        // Priority policy:
+        // - distance to TIC (closer -> higher priority)
+        // - node id (lower id -> higher priority)
+        d1 = MANHATTAN_DISTANCE(x[id], y[id], x_TCLs[first_TIC_index][id], y_TCLs[first_TIC_index][id]);
+        d2 = MANHATTAN_DISTANCE(x[other], y[other], x_TCLs[first_TIC_index][id], y_TCLs[first_TIC_index][id]);
+
+        if (d2 < d1 || (d2 == d1 && other < id)) {
+          // Other node has higher priority
+          // This node cannot move to next point yet
           return;
         }
       }
 
-      if (USE_DISC_METHOD == 1) {
-        DISC_METHOD();
-      } else {
-        CONSERVATIVE_METHOD();
-      }
-
-      if (hover) {
-        // do not grab lock
-        return;
-      }
-
-      // Request the lock (i.e., grab it) if no lower-id nodes
-      // holding the lock
-      if (EXISTS_LOWER(idp,lock[xp][yp][idp] != 0)) {
-        return;
-      }
-
-      if (NO_DEADLOCK == 1) {
-        req_count = 0;
-      }
-
-      // Grab the lock and wait
-      lock[xp][yp][id] = 1;
-      state = WAITING;
-    } else if (state == WAITING) {
-
-      //-- no deadlock protocol
-      if (NO_DEADLOCK == 1) {
-        wait_count = wait_count + 1;
-
-        if (wait_count > MAX_WAIT) {
-          // Release old lock
-          lock[xp][yp][id] = 0;
-          NEXT_XY_ALT();
-          wait_count = 0;
-          state = REQUEST;
-          return;
-        }
-      }
-
-      // Set to move to (x',y') if no higher-id nodes
-      // holding the lock
-      if (EXISTS_HIGHER(idp, lock[xp][yp][idp] != 0)) {
-        return;
-      }
-
-      if (NO_DEADLOCK == 1) {
-        wait_count = 0;
-      }
-
-      // Set to move to (x',y')
-      state = MOVE;
-    } else if (state == MOVE) {
-      // Try to move to (x’,y’)
-      if (MOVE_TO(xp,yp)) {
-        return;
-      }
-
-      // Release lock on old location
-      // Move to new location
-      lock[x[id]][y[id]][id] = 0;
-      x[id] = xp; y[id] = yp;
+      // One of the following:
+      // - no TIC
+      // - next point is not TIC
+      // - next point is TIC, but this node has higher priority
+      // Move to next point in TCL
+      x[id] = x_TCLs[1][id];
+      y[id] = y_TCLs[1][id];
       state = NEXT;
+    } else if (state == NEXT) {
+      UPDATE_TCL();
+      state = CHECK_MOVE;
     }
-    // state == FINISHED || state == FINISHED_AND_COLLIDED || state == COLLIDED
-    // do nothing
+  }
+
+  // Check safety property
+  @ONCE_EVERY (1)
+  void NODE_ASSERT () {
+    FORALL_OTHER (i) {
+      LOCAL_ASSERT (true_x[i] != x[id] || true_y[i] != y[id]);
+    }
   }
 
   @ONCE_EVERY (10)

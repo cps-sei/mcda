@@ -167,7 +167,6 @@ daig::madara::Sync_Builder::build_common_global_variables ()
   }
 
   buffer_ << "// Containers for commonly used variables\n";
-  buffer_ << "// Global variables\n";
   buffer_ << "containers::Integer_Array barrier;\n";
   buffer_ << "containers::Integer id;\n";
   buffer_ << "containers::Integer num_processes;\n";
