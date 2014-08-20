@@ -160,7 +160,8 @@ daig::madara::Function_Visitor::exitLval (LvalExpr & expression)
     // otherwise, we need to determine if this is a MADARA container or not
     else
     {
-      if (function_.temps.find (expression.var) == function_.temps.end ())
+      if (function_.temps.find (expression.var) == function_.temps.end () &&
+          function_.params.find (expression.var) == function_.params.end ())
       {
         buffer_ << "*";
       }
@@ -228,25 +229,121 @@ daig::madara::Function_Visitor::enterCall (CallExpr & expression)
 void
 daig::madara::Function_Visitor::exitCall (CallExpr & expression)
 {
+  std::string spacer (indentation_, ' '), sub_spacer (indentation_ + 2, ' ');
+
   std::string func_name = expression.func->toString ();
   if (do_vrep_ && func_name == "MOVE_TO") func_name = "VREP_MOVE_TO";
 
-  buffer_ << func_name;
-  buffer_ << " (";
-
-  bool started = false;
-  BOOST_FOREACH (Expr & expr, expression.args)
+  if (assignment_)
   {
-    if (started)
-      buffer_ << ", ";
-
-    visit (expr);
-
-    if (!started)
-      started = true;
+    // complete the assignment and redo it later;
+    buffer_ << "0;\n";
   }
 
-  buffer_ << ")";
+  buffer_ << spacer << "{\n";
+
+  buffer_ << sub_spacer;
+  buffer_ << "engine::Function_Arguments args";
+  if (expression.args.size () > 0)
+  {
+    buffer_ << " (";
+    buffer_ << expression.args.size ();
+    buffer_ << ")";
+  }
+  buffer_ << ";\n";
+
+  unsigned int i = 0;
+  BOOST_FOREACH (Expr & expr, expression.args)
+  {
+    buffer_ << sub_spacer;
+    buffer_ << "args [" << i << "] = ";
+    buffer_ << "Madara::Knowledge_Record (";
+    visit (expr);
+    buffer_ << ");\n";
+    ++i;
+  }
+
+  buffer_ << "\n";
+
+  if (assignment_)
+  {
+    buffer_ << sub_spacer;
+
+    LvalExpr * lhs  = dynamic_cast<LvalExpr*>(assignment_->lhs.get ());
+
+    if (lhs)
+    {
+      if (lhs->indices.size () == 0)
+      {
+        bool is_private = false;
+        if (privatize_ &&
+            node_.globVars.find (lhs->var) != node_.globVars.end ())
+        {
+          is_private = true;
+          buffer_ << spacer;
+          buffer_ << "// treat global variable change as a local update\n";
+          buffer_ << spacer;
+          buffer_ << "engine::Knowledge_Update_Settings old_update_settings (\n";
+          buffer_ << sub_spacer;
+          buffer_ << lhs->var;
+          buffer_ << ".set_settings (private_update));\n";
+        }
+
+        buffer_ << lhs->var;
+        buffer_ << " = ";
+      }
+    }
+  }
+  else
+  {
+    buffer_ << sub_spacer;
+  }
+
+  if (node_.funcs.find (func_name) != node_.funcs.end ())
+  {
+    buffer_ << node_.name << "_";
+  }
+  buffer_ << func_name << " (args, vars)";
+
+  if (assignment_)
+  {
+    LvalExpr * lhs  = dynamic_cast<LvalExpr*>(assignment_->lhs.get ());
+
+    Variables::const_iterator temp_it = function_.temps.find (lhs->var);
+    Variables::const_iterator locVars_it = node_.locVars.find (lhs->var);
+    Variables::const_iterator globVars_it = node_.globVars.find (lhs->var);
+    Variable v;
+
+    if (temp_it != function_.temps.end ())
+    {
+      v = temp_it->second;
+    }
+    else if (locVars_it != node_.locVars.end ())
+    {
+      v = locVars_it->second;
+    }
+    else if (globVars_it != node_.globVars.end ())
+    {
+      v = globVars_it->second;
+    }
+
+    if (v.type->type == TINT)
+    {
+      buffer_ << ".to_integer ();\n";
+    }
+    else if (v.type->type == TDOUBLE_TYPE)
+    {
+      buffer_ << ".to_double ();\n";
+    }
+    else
+    {
+      // FIXME
+      // Default to integer
+      buffer_ << ".to_integer ();\n";
+    }
+  }
+
+  buffer_ << spacer << "}\n";
 }
 
 
@@ -561,6 +658,8 @@ daig::madara::Function_Visitor::exitAsgn (AsgnStmt & statement)
   {
     if (lhs->indices.size () == 0)
     {
+      // lhs is not an array
+
       bool is_private = false;
       if (privatize_ &&
           node_.globVars.find (lhs->var) != node_.globVars.end ())
@@ -593,6 +692,8 @@ daig::madara::Function_Visitor::exitAsgn (AsgnStmt & statement)
     }
     else if (lhs->indices.size () == 1)
     {
+      // lhs is a 1-dimensional array
+
       // MADARA container array assignment vs. C++ array assignment
       if (function_.temps.find (lhs->var) == function_.temps.end ())
       {
@@ -623,6 +724,8 @@ daig::madara::Function_Visitor::exitAsgn (AsgnStmt & statement)
     }
     else
     {
+      // lhs is a multi-dimensional array
+
       // MADARA container array assignment vs. C++ array assignment
       if (function_.temps.find (lhs->var) == function_.temps.end ())
       {
@@ -765,20 +868,12 @@ daig::madara::Function_Visitor::exitFor (ForStmt & statement)
     visit (init);
   }
 
-  // FIX: should not have extra ; here
-  // buffer_ << "; ";
-
   BOOST_FOREACH (const Expr & expr, statement.test)
   {
     visit (expr);
   }
   
   buffer_ << "; ";
-  
-  BOOST_FOREACH (const Stmt & update, statement.update)
-  {
-    visit (update);
-  }
   
   buffer_ << ")\n";
 
@@ -787,6 +882,11 @@ daig::madara::Function_Visitor::exitFor (ForStmt & statement)
   buffer_ << spacer << "{\n";
   
   visit (statement.body);
+
+  BOOST_FOREACH (const Stmt & update, statement.update)
+  {
+    visit (update);
+  }
 
   buffer_ << spacer << "}\n";
   indentation_ -= 2;
@@ -1223,7 +1323,7 @@ daig::madara::Function_Visitor::exitFAO (FAOStmt & statement)
   buffer_ << "// FORALL_OTHER\n";
   buffer_ << spacer;
   buffer_ << "for (";
-  buffer_ << "unsigned int ";
+  buffer_ << "Integer ";
   buffer_ << statement.id;
   buffer_ << " = 0; ";
   buffer_ << statement.id;
@@ -1273,7 +1373,7 @@ daig::madara::Function_Visitor::exitFAOL (FAOLStmt & statement)
   buffer_ << "// FORALL_OTHER_LOWER\n";
   buffer_ << spacer;
   buffer_ << "for (";
-  buffer_ << "unsigned int ";
+  buffer_ << "Integer ";
   buffer_ << statement.id;
   buffer_ << " = 0; ";
   buffer_ << statement.id;
@@ -1320,7 +1420,7 @@ daig::madara::Function_Visitor::exitFAOH (FAOHStmt & statement)
   buffer_ << "// FORALL_OTHER_HIGHER\n";
   buffer_ << spacer;
   buffer_ << "for (";
-  buffer_ << "unsigned int ";
+  buffer_ << "Integer ";
   buffer_ << statement.id;
   buffer_ << " = *id + 1; ";
   buffer_ << statement.id;

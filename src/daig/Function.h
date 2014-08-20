@@ -91,6 +91,11 @@ namespace daig
      * The function parameters
      **/
     Variables params;
+
+    /**
+     * Ordered function parameters
+     */
+    std::vector<Variable> ordered_params;
     
     ///function local variables -- we call them temporary variables
     ///since their scope is only the function body
@@ -108,6 +113,7 @@ namespace daig
       : retType(rt),name(n),body(b)
     {
       BOOST_FOREACH(const Variable &v,p) params[v.name] = v;
+      BOOST_FOREACH(const Variable &v,p) ordered_params.push_back(v);
       BOOST_FOREACH(const Variable &v,t) temps[v.name] = v;
     }
     

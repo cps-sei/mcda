@@ -836,6 +836,9 @@ daig::madara::Async_Builder::build_function (
     {
       buffer_ << "  double ";
     }
+    else if (var.type->type == TBOOL) {
+      buffer_ << "  bool ";
+    }
     else
     {
       // Default to Integer
@@ -854,6 +857,36 @@ daig::madara::Async_Builder::build_function (
   }
 
   buffer_ << "\n";
+
+  buffer_ << "  // Function arguments\n";
+  for (int i = 0; i < function.ordered_params.size (); i++)
+  {
+    Variable & param = function.ordered_params[i];
+
+    if (param.type->type == TINT)
+    {
+      buffer_ << "  Integer ";
+      buffer_ << param.name;
+      buffer_ << " = args[" << i << "].to_integer ();\n";
+    }
+    else if (param.type->type == TDOUBLE_TYPE)
+    {
+      buffer_ << "  double ";
+      buffer_ << param.name;
+      buffer_ << " = args[" << i << "].to_double ();\n";
+    }
+    else
+    {
+      // Default to Integer
+      buffer_ << "  Integer ";
+      buffer_ << param.name;
+      buffer_ << " = args[" << i << "].to_integer ();\n";
+    }
+
+    // Note: no support for array arguments yet
+  }
+
+  buffer_ << '\n';
 
   Function_Visitor visitor (function, node, builder_, buffer_, do_vrep_);
 

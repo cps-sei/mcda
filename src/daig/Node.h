@@ -136,7 +136,7 @@ namespace daig
     void addLocalVar(const std::list<Variable> &vl)
     {
       BOOST_FOREACH(const Variable &v,vl) {
-        assert(locVars.count(v.name) == 0 && "ERROR: loc variable redeclared!!");
+        assert(locVars.count(v.name) == 0 && "ERROR: local variable redeclared!!");
         locVars[v.name] = v;
         locVars[v.name].scope = Variable::LOCAL;
       }

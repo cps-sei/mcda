@@ -252,6 +252,9 @@ CONST Y = 20;
 CONST INITS = 0;
 CONST CHECK_MOVE = 1;
 CONST NEXT = 2;
+CONST FINISHED = 3;
+CONST COLLIDED = 4;
+CONST FINISHED_AND_COLLIDED = 5;
 
 CONST TCL_LENGTH = 3;
 
@@ -272,11 +275,18 @@ NODE uav (id)
   GLOBAL int x_TCLs [TCL_LENGTH][#N];
   GLOBAL int y_TCLs [TCL_LENGTH][#N];
 
+  // Velocity of each node in unit/round
+  GLOBAL double velocity_x [#N];
+  GLOBAL double velocity_y [#N];
+
   GLOBAL _Bool done [#N];
 
   // Final x-y coordinates
   LOCAL int xf;
   LOCAL int yf;
+
+  // Helper variables for calculating velocity
+  LOCAL int prev_x, prev_y;
 
   // Local state
   LOCAL int state;
@@ -290,7 +300,6 @@ NODE uav (id)
     velocity_y[id] = NAN;
     prev_x = x[id];
     prev_y = y[id];
-    move_x_first = 1;
     done[id] = 0;
     // Note: round_count is initialized to 0
     num_rounds = round_count;
@@ -323,8 +332,8 @@ NODE uav (id)
   void NEXT_XY (int TCL_index) {
     int prev_x, prev_y, next_x, next_y;
 
-    prev_x = x_TCLs[TCL_index - 1];
-    prev_y = y_TCLs[TCL_index - 1];
+    prev_x = x_TCLs[TCL_index - 1][id];
+    prev_y = y_TCLs[TCL_index - 1][id];
     next_x = prev_x;
     next_y = prev_y;
 
