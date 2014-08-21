@@ -61,7 +61,7 @@ std::string thunk;
  */
 %token <string> TIDENTIFIER TINTEGER TDOUBLE TNAMESPACE
 %token <token> TMOCSYNC TMOCASYNC TMOCPSYNC TSEMICOLON TCONST TNODE
-%token <token> TGLOBAL TLOCAL TTARGET TTHUNK
+%token <token> TGLOBAL TLOCAL TTARGET TTHUNK TTRACK
 %token <token> TBOOL TINT TDOUBLE_TYPE TVOID TCHAR TSIGNED TUNSIGNED
 %token <token> TNODENUM TATOMIC TPRIVATE TEXTERN
 %token <token> TIF TELSE TFOR TWHILE
@@ -85,7 +85,7 @@ std::string thunk;
  */
 %type <token> program moc const_list constant node node_body
 %type <token> node_body_elem_list node_body_elem
-%type <token> global_var local_var dimension
+%type <token> global_var local_var dimension track_global_var
 %type <strList> target_id_list
 %type <type> simp_type type
 %type <lvalExpr> lval
@@ -225,6 +225,7 @@ node_body_elem_list :
 
 node_body_elem :
   global_var {}
+| track_global_var {}
 | local_var {}
 | node_init {}
 | periodic_procedure {}
@@ -233,6 +234,13 @@ node_body_elem :
 
 global_var : TGLOBAL var_decl TSEMICOLON {
   currNode.addGlobalVar(*$2); delete $2;
+}
+;
+
+track_global_var : TTRACK TGLOBAL var_decl TSEMICOLON {
+  currNode.addGlobalVar(*$3);
+  currNode.trackGlobalVar(*$3);
+  delete $3;
 }
 ;
 
@@ -251,7 +259,8 @@ var_decl : type var_list {
     $$->push_back(newVar);
   }
   delete $1; delete $2;
-};
+}
+;
 
 var_list : var {
   $$ = new daig::VarList(); $$->push_back(*$1); delete $1;

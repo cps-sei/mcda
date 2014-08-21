@@ -123,9 +123,11 @@ namespace daig
       void build_special_variables_init ();
 
       /**
-       * Builds UPDATE_TRUE_LOCS function
+       * Builds UPDATE_TRUE_VARS function
        */
-      void build_update_true_locs ();
+      void build_update_true_vars ();
+
+      void build_update_true_vars (const Variable & var);
       
       /**
        * Builds the program's MADARA generated variable bindings in main

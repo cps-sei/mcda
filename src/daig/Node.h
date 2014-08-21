@@ -111,6 +111,11 @@ namespace daig
     std::vector<std::string> periodic_func_names;
     std::map<std::string, int> periods;
 
+    /**
+     * Trackd global variables, i.e., variables that have qualifier "TRACK"
+     */
+    Variables trackedGlobVars;
+
     ///constructors
     Node() {}
 
@@ -140,6 +145,31 @@ namespace daig
         locVars[v.name] = v;
         locVars[v.name].scope = Variable::LOCAL;
       }
+    }
+
+    ///track a global variable
+    void trackGlobalVar(const std::list<Variable> &vl)
+    {
+      // These "true" variables can be used in local assertions
+      std::list<Variable> true_vars;
+
+      BOOST_FOREACH(const Variable &v, vl) {
+        assert(globVars.count(v.name) == 1 && "ERROR: track undeclared global variable!!");
+        assert(trackedGlobVars.count(v.name) == 0 && "ERROR: track global variable twice!!");
+
+        // add var to tracked vars
+        trackedGlobVars[v.name] = v;
+        trackedGlobVars[v.name].scope = Variable::GLOBAL;
+
+        // create "true" var
+        std::string true_var_name = "true_";
+        true_var_name += v.name;
+        Variable * true_var = new Variable(true_var_name, v.type);
+        true_vars.push_back(*true_var);
+      }
+
+      // add "true" vars to global vars
+      addGlobalVar(true_vars);
     }
 
     ///add a function

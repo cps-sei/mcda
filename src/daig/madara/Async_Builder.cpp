@@ -756,26 +756,87 @@ daig::madara::Async_Builder::build_functions_declarations ()
 }
 
 void
-daig::madara::Async_Builder::build_update_true_locs ()
+daig::madara::Async_Builder::build_update_true_vars ()
 {
   buffer_ << "Madara::Knowledge_Record\n";
-  buffer_ << "UPDATE_TRUE_LOCS (engine::Function_Arguments & args, engine::Variables & vars)\n";
+  buffer_ << "UPDATE_TRUE_VARS (engine::Function_Arguments & args, engine::Variables & vars)\n";
   buffer_ << "{\n";
   buffer_ << "  Madara::Knowledge_Record result;\n";
-  buffer_ << "  true_x.set (*id, x[*id]);\n";
-  buffer_ << "  true_y.set (*id, y[*id]);\n";
-  buffer_ << "  true_z.set (*id, z[*id]);\n";
+
+  Nodes & nodes = builder_.program.nodes;
+  for (Nodes::iterator n = nodes.begin (); n != nodes.end (); ++n)
+  {
+    Variables & tracked_vars = n->second.trackedGlobVars;
+    for (Variables::iterator it = tracked_vars.begin (); it != tracked_vars.end (); ++it)
+    {
+      Variable & var = it->second;
+      build_update_true_vars(var);
+    }
+  }
+
   buffer_ << "  return result;\n";
   buffer_ << "}\n\n";
 }
 
 void
+daig::madara::Async_Builder::build_update_true_vars (const Variable & var)
+{
+  if (var.type->dims.size () == 1)
+  {
+    // 1-dimensional array
+
+    buffer_ << "  true_" << var.name;
+    buffer_ << ".set (*id, ";
+    buffer_ << var.name;
+    buffer_ << "[*id]);\n";
+  }
+  else if (var.type->dims.size () > 1)
+  {
+    // n-dimensional array
+
+    //by convention, a node owns all array elements where the last
+    //index equals its id. we will create a set of nested for loops to
+    //remodify all such elements
+    std::vector<int> dims;
+    BOOST_FOREACH(int i,var.type->dims) dims.push_back(i);
+
+    //open for loops
+    std::string index_str = "";
+    for(int i = 0;i < dims.size () - 1;++i) {
+      std::string spacer(2*i+2,' ');
+      buffer_ << spacer << "for(Integer i" << i << " = 0;i" << i <<" < "
+              << dims[i] << "; ++i" << i << ") {\n";
+      index_str += "i" + boost::lexical_cast<std::string>(i) + ", ";
+    }
+
+    std::string spacer(2*dims.size(),' ');
+    buffer_ << spacer << "containers::Array_N::Index index (" << dims.size() << ");\n";
+    for(int i = 0;i < dims.size () - 1;++i)
+      buffer_ << spacer << "index[" << i << "] = i" << i << ";\n";
+    buffer_ << spacer << "index[" << dims.size() << "] = *id;\n";
+    buffer_ << spacer << "true_" << var.name << ".set (index, " << var.name << "(" << index_str << "*id).to_integer ());\n";
+
+    //close for loops
+    for(int i = dims.size () - 2;i >= 0;--i) {
+      std::string spacer(2*i+2,' ');
+      buffer_ << spacer << "}\n";
+    }
+  }
+  else
+  {
+    // non-array
+
+    buffer_ << "  true_" << var.name;
+    buffer_ << " = *";
+    buffer_ << var.name;
+    buffer_ << ";\n";
+  }
+}
+
+void
 daig::madara::Async_Builder::build_functions (void)
 {
-  if (builder_.program.trackLocations)
-  {
-    build_update_true_locs ();
-  }
+  build_update_true_vars ();
 
   buffer_ << "// Defining global functions\n\n";
   Functions & funcs = builder_.program.funcs;
@@ -983,9 +1044,9 @@ daig::madara::Async_Builder::build_main_function ()
   buffer_ << "  engine::Compiled_Expression round_logic = knowledge.compile (\n";
 
   if (builder_.program.sendHeartbeats)
-    buffer_ << "    knowledge.expand_statement (\"++.round_count; ROUND (); UPDATE_TRUE_LOCS ()\"));\n";
+    buffer_ << "    knowledge.expand_statement (\"++.round_count; ROUND (); UPDATE_TRUE_VARS ()\"));\n";
   else
-    buffer_ << "    knowledge.expand_statement (\"ROUND (); UPDATE_TRUE_LOCS ()\"));\n";
+    buffer_ << "    knowledge.expand_statement (\"ROUND (); UPDATE_TRUE_VARS ()\"));\n";
 
   if (do_vrep_)
   {
@@ -1103,11 +1164,8 @@ daig::madara::Async_Builder::build_main_define_functions ()
 {
   buffer_ << "  // Defining common functions\n\n";
 
-  if (builder_.program.trackLocations)
-  {
-    buffer_ << "  knowledge.define_function (\"UPDATE_TRUE_LOCS\", ";
-    buffer_ << "UPDATE_TRUE_LOCS);\n";
-  }
+  buffer_ << "  knowledge.define_function (\"UPDATE_TRUE_VARS\", ";
+  buffer_ << "UPDATE_TRUE_VARS);\n";
 
   buffer_ << '\n';
 
