@@ -1043,11 +1043,15 @@ daig::madara::Function_Visitor::enterLocAsrt (LocAsrtStmt & statement)
 void
 daig::madara::Function_Visitor::exitLocAsrt (LocAsrtStmt & statement)
 {
-  std::string spacer (indentation_, ' ');
+  // Only generate local assert code if this is a simulation
+  if (builder_.is_sim)
+  {
+    std::string spacer (indentation_, ' ');
 
-  buffer_ << spacer << "assert (";
-  visit (statement.cond);
-  buffer_ << ");\n";
+    buffer_ << spacer << "assert (";
+    visit (statement.cond);
+    buffer_ << ");\n";
+  }
 }
 
 

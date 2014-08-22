@@ -14,7 +14,7 @@
 #include <math.h>
 #
 
-extern daig::DaigBuilder *builder; /* the dag builder */
+extern daig::DaigBuilder *builder; /* the daig builder */
 
 extern int yylex();
 void yyerror(const char *s) {
@@ -239,7 +239,9 @@ global_var : TGLOBAL var_decl TSEMICOLON {
 
 track_global_var : TTRACK TGLOBAL var_decl TSEMICOLON {
   currNode.addGlobalVar(*$3);
-  currNode.trackGlobalVar(*$3);
+  if (builder->is_sim) {
+    currNode.trackGlobalVar(*$3);
+  }
   delete $3;
 }
 ;

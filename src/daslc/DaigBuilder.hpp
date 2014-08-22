@@ -72,11 +72,15 @@ namespace daig {
   
     std::string fileName;
     bool debug;
+
+    // Whether this is a simulation
+    // If true, TRACK GLOBAL and LOCAL_ASSERT are allowed
+    bool is_sim;
   
   public:
     DaigBuilder() : debug(0) {}
     DaigBuilder(const std::string &fn,const std::map<std::string,std::string> &constDef,
-                const bool d);
+                const bool d, const bool sim);
 
     void run();
     void printProgram(std::ostream &os);

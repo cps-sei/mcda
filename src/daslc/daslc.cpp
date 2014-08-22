@@ -78,6 +78,7 @@ bool debug = false, seq_sem = false, seq_dbl = false;
 bool seq_no_array = false, init_globals = false;
 size_t nodes = 0;
 int round_num = -1;
+bool is_sim = false;
 
 //constant definitions supplied via command line
 std::map<std::string, std::string> const_def;
@@ -96,7 +97,7 @@ int main (int argc, char **argv)
   parse_options (argc, argv);
 
   //create the program
-  daig::DaigBuilder builder (file_name, const_def, debug);
+  daig::DaigBuilder builder (file_name, const_def, debug, is_sim);
   builder.run ();
 
   //print the program
@@ -319,6 +320,10 @@ void parse_options (int argc, char **argv)
     {
       seq_sem = true;
     }
+    else if (arg1 == "-sim" || arg1 == "--simulation")
+    {
+      is_sim = true;
+    }
     else if (arg1 == "-g" || arg1 == "--init-globals")
     {
       init_globals = true;
@@ -382,6 +387,7 @@ void usage (char *cmd)
   std::cerr << "  --seq-dbl                use double buffering during verification\n";
   std::cerr << "  --seq-no-array           do not use arrays during verification\n";
   std::cerr << "  --seq-sem                use variable copying during verification\n";
+  std::cerr << "  -sim|--simulation        enable TRACK GLOBAL and LOCAL_ASSERTn";
   std::cerr << "  -g|--init-globals        initialize global variables\n";
   std::cerr << "  --D<const_name> value    set a const to a value\n";
   exit (0);

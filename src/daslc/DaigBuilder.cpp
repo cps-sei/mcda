@@ -78,8 +78,9 @@ extern FILE *yyin;
 /*********************************************************************/
 daig::DaigBuilder::DaigBuilder(const std::string &fn,
                                const std::map<std::string,std::string> &constDef,
-                               const bool d)
-  : fileName(fn),debug(d) 
+                               const bool d,
+                               const bool sim)
+  : fileName(fn),debug(d),is_sim(sim)
 {
   program.constDef = constDef;
 }
