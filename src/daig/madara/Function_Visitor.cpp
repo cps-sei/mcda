@@ -234,116 +234,143 @@ daig::madara::Function_Visitor::exitCall (CallExpr & expression)
   std::string func_name = expression.func->toString ();
   if (do_vrep_ && func_name == "MOVE_TO") func_name = "VREP_MOVE_TO";
 
-  if (assignment_)
+  daig::Functions & externs = builder_.program.externalFuncs;
+
+  if (externs.find (func_name) != externs.end ())
   {
-    // complete the assignment and redo it later;
-    buffer_ << "0;\n";
-  }
+    // External function call
 
-  buffer_ << spacer << "{\n";
+    buffer_ << spacer;
+    buffer_ << func_name << " (";
 
-  buffer_ << sub_spacer;
-  buffer_ << "engine::Function_Arguments args";
-  if (expression.args.size () > 0)
-  {
-    buffer_ << " (";
-    buffer_ << expression.args.size ();
-    buffer_ << ")";
-  }
-  buffer_ << ";\n";
-
-  unsigned int i = 0;
-  BOOST_FOREACH (Expr & expr, expression.args)
-  {
-    buffer_ << sub_spacer;
-    buffer_ << "args [" << i << "] = ";
-    buffer_ << "Madara::Knowledge_Record (";
-    visit (expr);
-    buffer_ << ");\n";
-    ++i;
-  }
-
-  buffer_ << "\n";
-
-  if (assignment_)
-  {
-    buffer_ << sub_spacer;
-
-    LvalExpr * lhs  = dynamic_cast<LvalExpr*>(assignment_->lhs.get ());
-
-    if (lhs)
+    bool started = false;
+    BOOST_FOREACH (Expr & expr, expression.args)
     {
-      if (lhs->indices.size () == 0)
-      {
-        bool is_private = false;
-        if (privatize_ &&
-            node_.globVars.find (lhs->var) != node_.globVars.end ())
-        {
-          is_private = true;
-          buffer_ << spacer;
-          buffer_ << "// treat global variable change as a local update\n";
-          buffer_ << spacer;
-          buffer_ << "engine::Knowledge_Update_Settings old_update_settings (\n";
-          buffer_ << sub_spacer;
-          buffer_ << lhs->var;
-          buffer_ << ".set_settings (private_update));\n";
-        }
+      if (started)
+        buffer_ << ", ";
 
-        buffer_ << lhs->var;
-        buffer_ << " = ";
-      }
+      visit (expr);
+
+      if (!started)
+        started = true;
     }
+
+    buffer_ << ")";
   }
   else
   {
+    // Node function call
+
+    if (assignment_)
+    {
+      // complete the assignment and redo it later;
+      buffer_ << "0;\n";
+    }
+
+    buffer_ << spacer << "{\n";
+
     buffer_ << sub_spacer;
-  }
-
-  if (node_.funcs.find (func_name) != node_.funcs.end ())
-  {
-    buffer_ << node_.name << "_";
-  }
-  buffer_ << func_name << " (args, vars)";
-
-  if (assignment_)
-  {
-    LvalExpr * lhs  = dynamic_cast<LvalExpr*>(assignment_->lhs.get ());
-
-    Variables::const_iterator temp_it = function_.temps.find (lhs->var);
-    Variables::const_iterator locVars_it = node_.locVars.find (lhs->var);
-    Variables::const_iterator globVars_it = node_.globVars.find (lhs->var);
-    Variable v;
-
-    if (temp_it != function_.temps.end ())
+    buffer_ << "engine::Function_Arguments args";
+    if (expression.args.size () > 0)
     {
-      v = temp_it->second;
+      buffer_ << " (";
+      buffer_ << expression.args.size ();
+      buffer_ << ")";
     }
-    else if (locVars_it != node_.locVars.end ())
+    buffer_ << ";\n";
+
+    unsigned int i = 0;
+    BOOST_FOREACH (Expr & expr, expression.args)
     {
-      v = locVars_it->second;
-    }
-    else if (globVars_it != node_.globVars.end ())
-    {
-      v = globVars_it->second;
+      buffer_ << sub_spacer;
+      buffer_ << "args [" << i << "] = ";
+      buffer_ << "Madara::Knowledge_Record (";
+      visit (expr);
+      buffer_ << ");\n";
+      ++i;
     }
 
-    if (v.type->type == TINT)
+    buffer_ << "\n";
+
+    if (assignment_)
     {
-      buffer_ << ".to_integer ();\n";
-    }
-    else if (v.type->type == TDOUBLE_TYPE)
-    {
-      buffer_ << ".to_double ();\n";
+      buffer_ << sub_spacer;
+
+      LvalExpr * lhs  = dynamic_cast<LvalExpr*>(assignment_->lhs.get ());
+
+      if (lhs)
+      {
+        if (lhs->indices.size () == 0)
+        {
+          bool is_private = false;
+          if (privatize_ &&
+              node_.globVars.find (lhs->var) != node_.globVars.end ())
+          {
+            is_private = true;
+            buffer_ << spacer;
+            buffer_ << "// treat global variable change as a local update\n";
+            buffer_ << spacer;
+            buffer_ << "engine::Knowledge_Update_Settings old_update_settings (\n";
+            buffer_ << sub_spacer;
+            buffer_ << lhs->var;
+            buffer_ << ".set_settings (private_update));\n";
+          }
+
+          buffer_ << lhs->var;
+          buffer_ << " = ";
+        }
+      }
     }
     else
     {
-      // FIXME
-      // Default to integer
-      buffer_ << ".to_integer ();\n";
+      buffer_ << sub_spacer;
     }
-  }
 
-  buffer_ << spacer << "}\n";
+    if (node_.funcs.find (func_name) != node_.funcs.end ())
+    {
+      buffer_ << node_.name << "_";
+    }
+    buffer_ << func_name << " (args, vars)";
+
+    if (assignment_)
+    {
+      LvalExpr * lhs  = dynamic_cast<LvalExpr*>(assignment_->lhs.get ());
+
+      Variables::const_iterator temp_it = function_.temps.find (lhs->var);
+      Variables::const_iterator locVars_it = node_.locVars.find (lhs->var);
+      Variables::const_iterator globVars_it = node_.globVars.find (lhs->var);
+      Variable v;
+
+      if (temp_it != function_.temps.end ())
+      {
+        v = temp_it->second;
+      }
+      else if (locVars_it != node_.locVars.end ())
+      {
+        v = locVars_it->second;
+      }
+      else if (globVars_it != node_.globVars.end ())
+      {
+        v = globVars_it->second;
+      }
+
+      if (v.type->type == TINT)
+      {
+        buffer_ << ".to_integer ();\n";
+      }
+      else if (v.type->type == TDOUBLE_TYPE)
+      {
+        buffer_ << ".to_double ();\n";
+      }
+      else
+      {
+        // For now, default to integer
+        buffer_ << ".to_integer ();\n";
+      }
+    }
+
+    buffer_ << spacer << "}\n";
+  }
 }
 
 
