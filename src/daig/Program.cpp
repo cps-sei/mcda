@@ -241,13 +241,6 @@ daig::Program::sanityCheck()
   // if sendHeartbeats is set, add round_count and heartbeats as local variables
   if (sendHeartbeats)
   {
-    // round_count (int) : current round of this node
-
-    daig::BaseType *round_type = new daig::BaseType(TINT);
-    daig::Variable round_var ("round_count", daig::Type(round_type));
-    round_var.scope = Variable::LOCAL;
-    node.locVars[round_var.name] = round_var;
-
     // heartbeats (int array): last (local) rounds that this node received updates from other nodes
 
     daig::BaseType *heartbeats_type = new daig::BaseType(TINT);

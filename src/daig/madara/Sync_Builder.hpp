@@ -107,6 +107,11 @@ namespace daig
        **/
       void build_main_function (void);
 
+      /**
+       * Builds the program's MADARA generated variable bindings in main
+       **/
+      void build_program_variables_bindings (void);
+
     };
   } // namespace madara
 } //namespace daig

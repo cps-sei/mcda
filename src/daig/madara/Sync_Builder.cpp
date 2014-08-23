@@ -83,58 +83,11 @@ daig::madara::Sync_Builder::build ()
 void
 daig::madara::Sync_Builder::build_common_global_variables ()
 {
-  buffer_ << "// typedefs\n";
-  buffer_ << "typedef   Madara::Knowledge_Record::Integer   Integer;\n\n";
-  buffer_ << "// namespace shortcuts\n";
-  buffer_ << "namespace engine = Madara::Knowledge_Engine;\n";
-  buffer_ << "namespace containers = engine::Containers;\n\n";
-  buffer_ << "// default transport variables\n";
-  buffer_ << "std::string host (\"\");\n";
-  buffer_ << "const std::string default_multicast (\"239.255.0.1:4150\");\n";
-  buffer_ << "Madara::Transport::QoS_Transport_Settings settings;\n";
-  buffer_ << "// Application-specific logger\n";
-  buffer_ << "std::ofstream logger;\n";
-  buffer_ << "\n";
+  Madara_Builder::build_common_global_variables ();
 
-  //-- only generate this code if heartbeats are used
-  if(builder_.program.sendHeartbeats) {
-    buffer_ << "// Whether the current broadcast sends global updates\n";
-    buffer_ << "bool send_global_updates (false);\n\n";
-  }
-  
-  if (do_vrep_)
-  {
-    buffer_ << "//vrep IP address and port\n";
-    buffer_ << "std::string vrep_host (\"\");\n";
-    buffer_ << "int vrep_port (-1);\n";
-    buffer_ << "//vrep model: 1 = quad, 2 = ant\n";
-    buffer_ << "int vrep_model (1);\n";
-    buffer_ << '\n';
-    buffer_ << "//the DaslVrep interface object\n";
-    buffer_ << "DaslVrep *vrep_interface = NULL;\n";
-    buffer_ << '\n';
-    buffer_ << "//the node handle for vrep\n";
-    buffer_ << "simxInt vrep_node_id = -1;\n";
-    buffer_ << '\n';
-    buffer_ << "//the VREP MOVE_TO () function\n";
-    buffer_ << "int VREP_MOVE_TO (unsigned char x,unsigned char y)\n";
-    buffer_ << "{\n";
-    buffer_ << "  return vrep_interface->moveNodeTo (vrep_node_id,x,y,1);\n";
-    buffer_ << "}\n";
-    buffer_ << '\n';
-  }
-
-  buffer_ << "// Containers for commonly used variables\n";
   buffer_ << "containers::Integer_Array barrier;\n";
-  buffer_ << "containers::Integer id;\n";
-  buffer_ << "containers::Integer num_processes;\n";
   buffer_ << "double max_barrier_time (-1);\n";
-  buffer_ << "engine::Knowledge_Update_Settings private_update (true);\n";
-  buffer_ << "\n";
-  buffer_ << "// number of participating processes\n";
-  buffer_ << "Integer processes (";
-  buffer_ << builder_.program.processes.size ();
-  buffer_ << ");\n\n";
+  buffer_ << '\n';
 }
 
 void
@@ -427,58 +380,11 @@ daig::madara::Sync_Builder::build_refresh_modify_global (const Variable & var)
 void
 daig::madara::Sync_Builder::build_main_function ()
 {
-  buffer_ << "int main (int argc, char ** argv)\n";
-  buffer_ << "{\n";
-  buffer_ << "  settings.type = Madara::Transport::MULTICAST;\n";
-  buffer_ << "\n";
-  buffer_ << "  // handle any command line arguments\n";
-  buffer_ << "  handle_arguments (argc, argv);\n";
-  buffer_ << "\n";
-  buffer_ << "  if (settings.hosts.size () == 0)\n";
-  buffer_ << "  {\n";
-  buffer_ << "    // setup default transport as multicast\n";
-  buffer_ << "    settings.hosts.push_back (default_multicast);\n";
-  buffer_ << "  }\n\n";
-  
-  buffer_ << "  settings.queue_length = 100000;\n\n";
-
-
-  //-- if either callbacks or heartbeats
-  if(!builder_.program.callbacks.empty() || builder_.program.sendHeartbeats) {
-    buffer_ << "  // add commonly used filters\n";
-    buffer_ << "  settings.add_send_filter (add_auxiliaries);\n";
-
-    if (builder_.program.callbackExists ("on_receive_filter"))
-      {
-        buffer_ << "  // add user-defined receive filter\n";
-        std::string usr_filter =
-          builder_.program.getCallback ("on_receive_filter");
-        buffer_ << "  settings.add_receive_filter (" <<
-          usr_filter << ");\n";
-      }
-
-    buffer_ << "  settings.add_receive_filter (set_heartbeat);\n";
-    buffer_ << "  settings.add_receive_filter (remove_auxiliaries);\n";
-    buffer_ << "\n";
-  }
+  Madara_Builder::build_top_main_function ();
 
   buffer_ << "  Madara::Knowledge_Engine::Wait_Settings wait_settings;\n";
   buffer_ << "  wait_settings.max_wait_time = max_barrier_time;\n";
   buffer_ << "  wait_settings.poll_frequency = .1;\n\n";
-
-  buffer_ << "  // create the knowledge base with the transport settings\n";
-  buffer_ << "  Madara::Knowledge_Engine::Knowledge_Base knowledge (host, settings);\n\n";
-  
-  build_program_variables_bindings ();
-  build_main_define_functions ();
-  
-  // set the values for id and processes
-  buffer_ << "  // Initialize commonly used local variables\n";  
-  buffer_ << "  id = Integer (settings.id);\n";
-  buffer_ << "  num_processes = processes;\n";
-  buffer_ << '\n';
-
-  build_special_variables_init ();
 
   // build the barrier string  
   buffer_ << "  std::map <std::string, bool>  barrier_send_list;\n";
@@ -565,12 +471,14 @@ daig::madara::Sync_Builder::build_main_function ()
 
   buffer_ << "  // Compile frequently used expressions\n";
   buffer_ << "  engine::Compiled_Expression round_logic = knowledge.compile (\n";
+  buffer_ << "    knowledge.expand_statement (\"++.round_count; ROUND (); ";
 
-  if (builder_.program.sendHeartbeats)
-    buffer_ << "    knowledge.expand_statement (\"++.round_count; ROUND (); UPDATE_TRUE_LOCS (); ++mbarrier.{.id}\"));\n";
-  else
-    buffer_ << "    knowledge.expand_statement (\"ROUND (); UPDATE_TRUE_LOCS (); ++mbarrier.{.id}\"));\n";
-    
+  if (builder_.is_sim)
+  {
+    buffer_ << "UPDATE_TRUE_VARS (); ";
+  }
+
+  buffer_ << "++mbarrier.{.id}\"));\n";
 
   buffer_ << "  engine::Compiled_Expression barrier_logic = \n";
   buffer_ << "    knowledge.compile (barrier_string.str ());\n";
@@ -624,38 +532,8 @@ daig::madara::Sync_Builder::build_main_function ()
     buffer_ << '\n';
   }
 
-  //-- for periodic nodes
-  if(builder_.program.period) {
-    std::string period = boost::lexical_cast<std::string>(builder_.program.period);
-    buffer_ << "  ACE_Time_Value current = ACE_OS::gettimeofday ();\n"
-            << "  ACE_Time_Value next_epoch = current;\n"
-            << "  ACE_Time_Value period; period.msec(" << period << ");\n"
-            << '\n';
-  }
-
   buffer_ << "  while (1)\n";
   buffer_ << "  {\n";
-  
-  //-- for periodic nodes
-  if(builder_.program.period) {
-    std::string period = boost::lexical_cast<std::string>(builder_.program.period);
-    buffer_ << "    // wait for next period\n"
-            << "    current = ACE_OS::gettimeofday ();\n"
-            << "    if(current < next_epoch) {\n"
-            << "      Madara::Utility::sleep (next_epoch - current);\n"
-            << "      next_epoch += period;\n"
-            << "    } else {\n"
-            << "      unsigned long current_msec = current.msec();\n"
-            << "      unsigned long next_epoch_msec = next_epoch.msec();\n"
-            << "      unsigned long diff_msec = current_msec - next_epoch_msec;\n"
-            << "      next_epoch_msec += (diff_msec / " << period << " + 1) * " << period << ";\n"
-            << "      next_epoch.msec(next_epoch_msec);\n"
-            << "      Madara::Utility::sleep (next_epoch - current);\n"
-            << "      next_epoch += period;\n"
-            << "    }\n"
-            << '\n';
-  }
-
   buffer_ << "    // Pre-round barrier increment\n";
   buffer_ << "    wait_settings.delay_sending_modifieds = true;\n";
   buffer_ << "    knowledge.evaluate (\"++mbarrier.{.id}\", wait_settings);\n\n";
@@ -664,8 +542,16 @@ daig::madara::Sync_Builder::build_main_function ()
   BOOST_FOREACH (std::string func_name, node.periodic_func_names)
   {
     int period = node.periods[func_name];
-    buffer_ << "    knowledge.evaluate (\"(.round_count > 0 && .round_count % " << period << " == 0)";
-    buffer_ << " => " << func_name << " ()\", wait_settings);\n";
+
+    if (period == 1)
+    {
+      buffer_ << "    knowledge.evaluate (\"" << func_name << " ()\", wait_settings);\n";
+    }
+    else
+    {
+      buffer_ << "    knowledge.evaluate (\"(.round_count > 0 && .round_count % " << period << " == 0)";
+      buffer_ << " => " << func_name << " ()\", wait_settings);\n";
+    }
   }
   buffer_ << '\n';
 
@@ -700,4 +586,16 @@ daig::madara::Sync_Builder::build_main_function ()
   }
   buffer_ << "  return 0;\n";
   buffer_ << "}\n";
+}
+
+void
+daig::madara::Sync_Builder::build_program_variables_bindings ()
+{
+  Madara_Builder::build_program_common_variables_bindings ();
+  buffer_ << "  barrier.set_name (\"mbarrier\", knowledge, ";
+  buffer_ << builder_.program.processes.size ();
+  buffer_ << ");\n";
+  buffer_ << '\n';
+  Madara_Builder::build_program_specific_variables_bindings ();
+  buffer_ << '\n';
 }

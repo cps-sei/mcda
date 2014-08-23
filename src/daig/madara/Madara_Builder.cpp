@@ -182,12 +182,6 @@ daig::madara::Madara_Builder::build_common_global_variables ()
   buffer_ << "std::ofstream logger;\n";
   buffer_ << "\n";
 
-  //-- only generate this code if heartbeats are used
-  if (builder_.program.sendHeartbeats) {
-    buffer_ << "// Whether the current broadcast sends global updates\n";
-    buffer_ << "bool send_global_updates (true);\n\n";
-  }
-
   if (do_vrep_)
   {
     buffer_ << "//vrep IP address and port\n";
@@ -213,12 +207,19 @@ daig::madara::Madara_Builder::build_common_global_variables ()
   buffer_ << "// Containers for commonly used variables\n";
   buffer_ << "containers::Integer id;\n";
   buffer_ << "containers::Integer num_processes;\n";
+  buffer_ << "containers::Integer round_count;\n";
   buffer_ << "engine::Knowledge_Update_Settings private_update (true);\n";
   buffer_ << "\n";
   buffer_ << "// number of participating processes\n";
   buffer_ << "Integer processes (";
   buffer_ << builder_.program.processes.size ();
   buffer_ << ");\n\n";
+
+  //-- only generate this code if heartbeats are used
+  if (builder_.program.sendHeartbeats) {
+    buffer_ << "// Whether the current broadcast sends global updates\n";
+    buffer_ << "bool send_global_updates (true);\n\n";
+  }
 }
 
 void
@@ -356,45 +357,46 @@ daig::madara::Madara_Builder::build_common_filters (void)
   {
     buffer_ << "// Set heartbeat when receive global updates from other node\n";
     std::stringstream set_heartbeat;
-    set_heartbeat << "  // Record round of receiving global updates\n";
-    set_heartbeat << "  if (records[\"send_global_updates\"].is_true ())\n";
+    set_heartbeat << "  if (incoming_records[\"send_global_updates\"].is_true ())\n";
     set_heartbeat << "  {\n";
-    set_heartbeat << "    Integer sender_id = records[\"id\"].to_integer ();\n";
+    set_heartbeat << "    // Record round of receiving global updates\n";
+    set_heartbeat << "    Integer sender_id = incoming_records[\"id\"].to_integer ();\n";
     set_heartbeat << "    heartbeats.set (sender_id, *round_count);\n";
     set_heartbeat << "  }\n";
-    build_common_filter ("set_heartbeat", set_heartbeat);
+    build_common_filter ("set_heartbeat", set_heartbeat, "incoming_records");
 
     buffer_ << "// Add auxiliary variables to the outgoing records\n";
     std::stringstream add_auxiliaries;
     add_auxiliaries << "  // Node id\n";
-    add_auxiliaries << "  records[\"id\"] = vars.get (\".id\");\n";
+    add_auxiliaries << "  outgoing_records[\"id\"] = vars.get (\".id\");\n";
     add_auxiliaries << "  // Whether the outgoing records contain global updates\n";
     add_auxiliaries << "  if (send_global_updates)\n";
     add_auxiliaries << "  {\n";
-    add_auxiliaries << "    records[\"send_global_updates\"] = Integer (1);\n";
+    add_auxiliaries << "    outgoing_records[\"send_global_updates\"] = Integer (1);\n";
     add_auxiliaries << "  }\n";
     add_auxiliaries << "  else\n";
     add_auxiliaries << "  {\n";
-    add_auxiliaries << "    records[\"send_global_updates\"] = Integer (0);\n";
+    add_auxiliaries << "    outgoing_records[\"send_global_updates\"] = Integer (0);\n";
     add_auxiliaries << "  }\n";
-    build_common_filter ("add_auxiliaries", add_auxiliaries);
+    build_common_filter ("add_auxiliaries", add_auxiliaries, "outgoing_records");
 
     buffer_ << "// Strip auxiliary variables from incoming records\n";
     std::stringstream remove_auxiliaries;
     remove_auxiliaries << "  // erase auxiliary variables before the context tries to apply it locally\n";
-    remove_auxiliaries << "  records.erase (\"id\");\n";
-    remove_auxiliaries << "  records.erase (\"send_global_updates\");\n";
-    build_common_filter ("remove_auxiliaries", remove_auxiliaries);
+    remove_auxiliaries << "  incoming_records.erase (\"id\");\n";
+    remove_auxiliaries << "  incoming_records.erase (\"send_global_updates\");\n";
+    build_common_filter ("remove_auxiliaries", remove_auxiliaries, "incoming_records");
   }
 }
 
 void
 daig::madara::Madara_Builder::build_common_filter (
     const std::string filter_name,
-    std::stringstream & filter_content)
+    std::stringstream & filter_content,
+    std::string records)
 {
   buffer_ << "Madara::Knowledge_Record\n";
-  buffer_ << filter_name << " (Madara::Knowledge_Map & records,\n";
+  buffer_ << filter_name << " (Madara::Knowledge_Map & " << records << ",\n";
   buffer_ << "  const Madara::Transport::Transport_Context & context,\n";
   buffer_ << "  Madara::Knowledge_Engine::Variables & vars)\n";
   buffer_ << "{\n";
@@ -511,7 +513,13 @@ daig::madara::Madara_Builder::build_function_declaration (
 void
 daig::madara::Madara_Builder::build_functions (void)
 {
-  build_update_true_vars_function ();
+  if (builder_.is_sim)
+  {
+    // Update "true" variables to the values of
+    // the variables they track
+    buffer_ << "// Defining special functions\n\n";
+    build_update_true_vars_function ();
+  }
 
   buffer_ << "// Defining global functions\n\n";
   Functions & funcs = builder_.program.funcs;
@@ -706,12 +714,13 @@ daig::madara::Madara_Builder::build_update_true_var (const Variable & var)
 void
 daig::madara::Madara_Builder::build_main_define_functions ()
 {
-  buffer_ << "  // Defining common functions\n\n";
+  if (builder_.is_sim)
+  {
+    buffer_ << "  // Defining special functions for MADARA\n\n";
 
-  buffer_ << "  knowledge.define_function (\"UPDATE_TRUE_VARS\", ";
-  buffer_ << "UPDATE_TRUE_VARS);\n";
-
-  buffer_ << '\n';
+    buffer_ << "  knowledge.define_function (\"UPDATE_TRUE_VARS\", UPDATE_TRUE_VARS);\n";
+    buffer_ << '\n';
+  }
 
   buffer_ << "  // Defining global functions for MADARA\n\n";
   Functions & funcs = builder_.program.funcs;
@@ -751,29 +760,17 @@ daig::madara::Madara_Builder::build_main_define_function (const Node & node,
 }
 
 void
-daig::madara::Madara_Builder::build_special_variables_init ()
-{
-  buffer_ << "  // Initialize special variables\n";
-
-  if (builder_.program.sendHeartbeats) {
-    buffer_ << "  round_count = Integer (0);\n\n";
-    buffer_ << "  for (Integer i = 0; i < processes; i++)\n";
-    buffer_ << "  {\n";
-    buffer_ << "    heartbeats.set (i, -1);\n";
-    buffer_ << "  }\n";
-  }
-
-  buffer_ << '\n';
-}
-
-void
-daig::madara::Madara_Builder::build_program_variables_bindings ()
+daig::madara::Madara_Builder::build_program_common_variables_bindings ()
 {
   buffer_ << "  // Binding common variables\n";
   buffer_ << "  id.set_name (\".id\", knowledge);\n";
   buffer_ << "  num_processes.set_name (\".processes\", knowledge);\n";
-  buffer_ << "\n";
+  buffer_ << "  round_count.set_name (\".round_count\", knowledge);\n";
+}
 
+void
+daig::madara::Madara_Builder::build_program_specific_variables_bindings ()
+{
   Nodes & nodes = builder_.program.nodes;
   for (Nodes::iterator n = nodes.begin (); n != nodes.end (); ++n)
   {
@@ -793,8 +790,6 @@ daig::madara::Madara_Builder::build_program_variables_bindings ()
       build_program_variable_binding (var);
     }
   }
-
-  buffer_ << "\n";
 }
 
 void
@@ -843,6 +838,65 @@ daig::madara::Madara_Builder::build_program_variable_assignment (const Variable 
     buffer_ << "var_init_";
     buffer_ << var.name;
     buffer_ << ";\n";
+  }
+}
+
+void
+daig::madara::Madara_Builder::build_top_main_function ()
+{
+  // Top part of main()
+
+  buffer_ << "int main (int argc, char ** argv)\n";
+  buffer_ << "{\n";
+  buffer_ << "  settings.type = Madara::Transport::MULTICAST;\n";
+  buffer_ << "\n";
+  buffer_ << "  // handle any command line arguments\n";
+  buffer_ << "  handle_arguments (argc, argv);\n";
+  buffer_ << "\n";
+  buffer_ << "  if (settings.hosts.size () == 0)\n";
+  buffer_ << "  {\n";
+  buffer_ << "    // setup default transport as multicast\n";
+  buffer_ << "    settings.hosts.push_back (default_multicast);\n";
+  buffer_ << "  }\n\n";
+
+  buffer_ << "  settings.queue_length = 100000;\n\n";
+
+  //-- if either callbacks or heartbeats
+  if (!builder_.program.callbacks.empty() || builder_.program.sendHeartbeats) {
+    buffer_ << "  // add filters\n";
+    buffer_ << "  settings.add_send_filter (add_auxiliaries);\n";
+
+    if (builder_.program.callbackExists ("on_receive_filter"))
+      {
+        std::string usr_filter =
+          builder_.program.getCallback ("on_receive_filter");
+        buffer_ << "  settings.add_receive_filter (" <<
+          usr_filter << ");\n";
+      }
+
+    buffer_ << "  settings.add_receive_filter (set_heartbeat);\n";
+    buffer_ << "  settings.add_receive_filter (remove_auxiliaries);\n";
+    buffer_ << "\n";
+  }
+
+  buffer_ << "  // create the knowledge base with the transport settings\n";
+  buffer_ << "  Madara::Knowledge_Engine::Knowledge_Base knowledge (host, settings);\n\n";
+
+  build_program_variables_bindings ();
+  build_main_define_functions ();
+
+  // Initialize common variables
+  buffer_ << "  // Initialize commonly used local variables\n";
+  buffer_ << "  id = Integer (settings.id);\n";
+  buffer_ << "  num_processes = processes;\n";
+  buffer_ << "  round_count = Integer (0);\n";
+  buffer_ << '\n';
+
+  if (builder_.program.sendHeartbeats) {
+    buffer_ << "  for (Integer i = 0; i < processes; i++)\n";
+    buffer_ << "  {\n";
+    buffer_ << "    heartbeats.set (i, -1);\n";
+    buffer_ << "  }\n";
   }
 }
 

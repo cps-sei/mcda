@@ -83,11 +83,6 @@ namespace daig
       void build (void);
 
       /**
-       * Builds the common global MADARA generated variables
-       **/
-      void build_common_global_variables (void);
-
-      /**
        * Builds the arguments parser
        **/
       void build_parse_args (void);
@@ -96,6 +91,11 @@ namespace daig
        * Builds the main function
        **/
       void build_main_function (void);
+
+      /**
+       * Builds the program's MADARA generated variable bindings in main
+       **/
+      void build_program_variables_bindings (void);
 
     };
   } // namespace madara

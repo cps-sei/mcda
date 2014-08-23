@@ -124,7 +124,8 @@ namespace daig
        * Helper function of build_common_filters
        */
       virtual void build_common_filter (const std::string filter_name,
-                                         std::stringstream & filter_content);
+                                        std::stringstream & filter_content,
+                                        std::string records);
 
       /**
        * Builds a function which will be called before node exits
@@ -185,14 +186,18 @@ namespace daig
       virtual void build_main_function (void) = 0;
 
       /**
-       * Initializes special variables if sendHeartbeats is set
-       */
-      virtual void build_special_variables_init ();
+       * Builds the top part (common in Sync and Async MOC) of the main function
+       **/
+      virtual void build_top_main_function (void);
 
       /**
        * Builds the program's MADARA generated variable bindings in main
        **/
-      virtual void build_program_variables_bindings (void);
+      virtual void build_program_variables_bindings (void) = 0;
+
+      virtual void build_program_common_variables_bindings (void);
+
+      virtual void build_program_specific_variables_bindings (void);
 
       /**
        * Builds a MADARA generated variable binding in main
