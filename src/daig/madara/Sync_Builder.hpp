@@ -81,16 +81,6 @@ namespace daig
        * Builds the underlying character stream that can then be printed
        **/
       void build (void);
-      
-      /**
-       * Builds the header includes
-       **/
-      void build_header_includes (void);
-
-      /**
-       * Builds the target thunk includes
-       */
-      void build_target_thunk_includes (void);
 
       /**
        * Builds the common global MADARA generated variables
@@ -98,65 +88,9 @@ namespace daig
       void build_common_global_variables (void);
 
       /**
-       * Builds the target-specific thunk from the DASL program
-       */
-      void build_target_thunk (void);
-      
-      /**
-       * Builds the program's MADARA generated variables
-       **/
-      void build_program_variables (void);
-      
-      /**
-       * Builds the program's MADARA generated variables
-       **/
-      void build_program_variable (const Variable & var);
-      
-      /**
-       * Builds the program's MADARA generated variables
-       **/
-      void build_program_variable_init (const Variable & var);
-
-      /**
-       * Initializes special variables if trackLocations and/or sendHeartbeats are set
-       */
-      void build_special_variables_init ();
-
-      /**
-       * Builds UPDATE_TRUE_LOCS function
-       */
-      void build_update_true_locs ();
-
-      /**
-       * Builds the program's MADARA generated variable bindings in main
-       **/
-      void build_program_variables_bindings (void);
-      
-      /**
-       * Builds a MADARA generated variable binding in main
-       **/
-      void build_program_variable_binding (const Variable & var);
-      
-      /**
-       * Builds a MADARA generated variable binding in main
-       **/
-      void build_program_variable_assignment (const Variable & var);
-
-      /**
        * Builds the arguments parser
        **/
       void build_parse_args (void);
-      
-      /**
-       * Builds variable value parsing
-       * @return help printout for variable
-       **/
-      std::string build_parse_args (const Variable & var);
-
-      /**
-       * Builds all function declarations to prevent undefined references
-       **/
-      void build_functions_declarations (void);
       
       /**
        * Builds a function for refreshing modification flag on globals
@@ -169,98 +103,10 @@ namespace daig
       void build_refresh_modify_global (const Variable & var);
 
       /**
-       * Builds a function
-       * @param  function  a defined function in the parsed program
-       **/
-      void build_function_declaration (const daig::Node & node, daig::Function & function);
-
-      /**
        * Builds the main function
        **/
       void build_main_function (void);
 
-      /**
-       * Builds the section of main that defines MADARA callable functions
-       **/
-      void build_main_define_functions (void);
-      
-      /**
-       * Builds a function definition for MADARA
-       * @param  function  a defined function in the parsed program
-       **/
-      void build_main_define_function (const daig::Node & node,
-        daig::Function & function);
-
-      /**
-       * Builds all functions
-       **/
-      void build_functions (void);
-
-      /**
-       * Builds a function
-       * @param  function  a defined function in the parsed program
-       **/
-      void build_function (const daig::Node & node, daig::Function & function);
-      
-      /**
-       * Builds commonly used filters
-       */
-      void build_common_filters (void);
-      
-      /**
-       * Builds the main logic loop for execution of ROUND
-       **/
-      void build_main_logic (void);
-
-      /**
-       * Builds a function which will be called before node exits
-       */
-      void build_pre_exit (void);
-
-      /**
-       * Clears the underlying buffer
-       **/
-      void clear_buffer (void);
-
-      /**
-       * Prints the MADARA program to a stream
-       * @param  os  the stream to print to
-       **/
-      void print (std::ostream & os);
-
-
-    private:
-      /// character buffer for holding results of build
-      std::stringstream buffer_;
-
-      /**
-       * Begins daig namespace
-       */
-      void open_daig_namespace (void);
-
-      /**
-       * Ends daig namespace
-       */
-      void close_daig_namespace (void);
-
-      /**
-       * Helper function of build_common_filters
-       */
-      void build_common_filters_helper (const std::string filter_name,
-                                        std::stringstream & filter_content);
-
-      /**
-       * Removes #include lines from target thunk and returns them
-       */
-      std::string remove_include_lines_from_target_thunk (void);
-
-      /**
-       * Splits target_str into 2 blocks of code;
-       * first block contains lines starting with #include;
-       * second block contains lines not starting with #include
-       */
-      std::pair<std::string, std::string>
-      split_include_and_non_include_blocks (const std::string target_str);
     };
   } // namespace madara
 } //namespace daig

@@ -83,13 +83,158 @@ namespace daig
       /**
        * Builds the underlying character stream that can then be printed
        **/
-      virtual void build (void) = 0;
+      virtual void build (void);
+
+      /**
+       * Builds the header includes
+       **/
+      virtual void build_header_includes (void);
+
+      /**
+       * Builds the target thunk includes
+       */
+      virtual void build_target_thunk_includes (void);
+
+      /**
+       * Builds the common global MADARA generated variables
+       **/
+      virtual void build_common_global_variables (void);
+
+      /**
+       * Builds the program's MADARA generated variables
+       **/
+      virtual void build_program_variables (void);
+
+      /**
+       * Builds the program's MADARA generated variables
+       **/
+      virtual void build_program_variable (const Variable & var);
+
+      /**
+       * Builds the program's MADARA generated variables
+       **/
+      virtual void build_program_variable_init (const Variable & var);
+
+      /**
+       * Builds commonly used filters
+       */
+      virtual void build_common_filters (void);
+
+      /**
+       * Helper function of build_common_filters
+       */
+      virtual void build_common_filter (const std::string filter_name,
+                                         std::stringstream & filter_content);
+
+      /**
+       * Builds a function which will be called before node exits
+       */
+      virtual void build_pre_exit (void);
+
+      /**
+       * Builds the target-specific thunk from the DASL program
+       */
+      virtual void build_target_thunk (void);
+
+      /**
+       * Builds the arguments parser
+       **/
+      virtual void build_parse_args (void) = 0;
+
+      /**
+       * Builds variable value parsing
+       * @return help printout for variable
+       **/
+      virtual std::string build_parse_args (const Variable & var);
+
+      /**
+       * Builds all function declarations to prevent undefined references
+       **/
+      virtual void build_functions_declarations (void);
+
+      /**
+       * Builds a function
+       * @param  function  a defined function in the parsed program
+       **/
+      virtual void build_function_declaration (const daig::Node & node, daig::Function & function);
+
+      /**
+       * Builds all functions
+       **/
+      virtual void build_functions (void);
+
+      /**
+       * Builds a function
+       * @param  function  a defined function in the parsed program
+       **/
+      virtual void build_function (const daig::Node & node, daig::Function & function);
+
+      /**
+       * Builds UPDATE_TRUE_VARS function
+       */
+      virtual void build_update_true_vars_function ();
+
+      /**
+       * Builds true variable update
+       */
+      virtual void build_update_true_var (const Variable & var);
+
+      /**
+       * Builds the main function
+       **/
+      virtual void build_main_function (void) = 0;
+
+      /**
+       * Initializes special variables if sendHeartbeats is set
+       */
+      virtual void build_special_variables_init ();
+
+      /**
+       * Builds the program's MADARA generated variable bindings in main
+       **/
+      virtual void build_program_variables_bindings (void);
+
+      /**
+       * Builds a MADARA generated variable binding in main
+       **/
+      virtual void build_program_variable_binding (const Variable & var);
+
+      /**
+       * Builds a MADARA generated variable binding in main
+       **/
+      virtual void build_program_variable_assignment (const Variable & var);
+
+      /**
+       * Builds the section of main that defines MADARA callable functions
+       **/
+      virtual void build_main_define_functions (void);
+
+      /**
+       * Builds a function definition for MADARA
+       * @param  function  a defined function in the parsed program
+       **/
+      virtual void build_main_define_function (const daig::Node & node, daig::Function & function);
+
+      /**
+       * Begins daig namespace
+       */
+      virtual void open_daig_namespace (void);
+
+      /**
+       * Ends daig namespace
+       */
+      virtual void close_daig_namespace (void);
+
+      /**
+       * Clears the underlying buffer
+       **/
+      virtual void clear_buffer (void);
 
       /**
        * Prints the MADARA program to a stream
        * @param  os  the stream to print to
        **/
-      virtual void print (std::ostream & os) = 0;
+      virtual void print (std::ostream & os);
 
 
     protected:
@@ -97,11 +242,28 @@ namespace daig
       /// the result of the DASL parsing function
       DaigBuilder & builder_;
 
-      ///the target to build against
+      /// the target to build against
       std::string target_;
 
-      ///whether to generate VREP code
+      /// whether to generate VREP code
       bool do_vrep_;
+
+      /// character buffer for holding results of build
+      std::stringstream buffer_;
+
+      /**
+       * Removes #include lines from target thunk and returns them
+       */
+      std::string remove_include_lines_from_target_thunk (void);
+
+      /**
+       * Splits target_str into 2 blocks of code;
+       * first block contains lines starting with #include;
+       * second block contains lines not starting with #include
+       */
+      std::pair<std::string, std::string>
+      split_include_and_non_include_blocks (const std::string target_str);
+
     };
   } // namespace madara
 } //namespace daig
