@@ -392,39 +392,22 @@ daig::madara::Function_Visitor::exitEXA (EXAExpr & expression)
   // so that it works with unary operation
   buffer_ << "(";
 
-  bool started_i = false;
+  bool started = false;
   for (unsigned int i = 0; i < processes; ++i)
   {
-    if (started_i)
-    {
-      buffer_ << " || \n" << sub_spacer;
-    }
+    // we want to check all for existence
 
-    buffer_ << "(";
-    buffer_ << "*id == " << i << " && (";
+    if (started)
+      buffer_ << " || ";
 
-    bool started_j = false;
-    for (unsigned int j = 0; j < processes; ++j)
-    {
-      // we want to check all for existence
+    id_map_ [expression.id] = i;
 
-      if (started_j)
-        buffer_ << " || ";
+    visit (expression.arg);
 
-      id_map_ [expression.id] = j;
+    id_map_.erase (expression.id);
 
-      visit (expression.arg);
-
-      id_map_.erase (expression.id);
-
-      if (!started_j)
-        started_j = true;
-    }
-
-    buffer_ << "))";
-
-    if (!started_i)
-      started_i = true;
+    if (!started)
+      started = true;
   }
 
   buffer_ << ")";

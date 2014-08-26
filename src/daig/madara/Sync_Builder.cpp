@@ -296,6 +296,15 @@ daig::madara::Sync_Builder::build_parse_args ()
 }
 
 void
+daig::madara::Sync_Builder::build_functions ()
+{
+  buffer_ << "// Refresh all global variables\n";
+  build_refresh_modify_globals ();
+
+  Madara_Builder::build_functions ();
+}
+
+void
 daig::madara::Sync_Builder::build_refresh_modify_globals ()
 {
   buffer_ << "Madara::Knowledge_Record\n";

@@ -91,6 +91,11 @@ namespace daig
        * Builds the arguments parser
        **/
       void build_parse_args (void);
+
+      /**
+       * Builds all functions
+       **/
+      void build_functions (void);
       
       /**
        * Builds a function for refreshing modification flag on globals

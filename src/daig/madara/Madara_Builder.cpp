@@ -515,9 +515,8 @@ daig::madara::Madara_Builder::build_functions (void)
 {
   if (builder_.is_sim)
   {
-    // Update "true" variables to the values of
-    // the variables they track
-    buffer_ << "// Defining special functions\n\n";
+    buffer_ << "// Set \"true\" variables to the real values\n";
+    buffer_ << "// of the variables they track\n";
     build_update_true_vars_function ();
   }
 
