@@ -204,8 +204,7 @@ daig::madara::Sync_Builder::build_parse_args ()
   buffer_ << "    {\n";
   buffer_ << "      if (i + 1 < argc)\n";
   buffer_ << "      {\n";
-  buffer_ << "        std::stringstream buffer (argv[i + 1]);\n";
-  buffer_ << "        logger.open (buffer.str ().c_str (), std::ofstream::app);\n";
+  buffer_ << "        logger.open (argv[i + 1], std::ofstream::app);\n";
   buffer_ << "      }\n";
   buffer_ << "      \n";
   buffer_ << "      ++i;\n";
@@ -547,39 +546,40 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    wait_settings.delay_sending_modifieds = true;\n";
   buffer_ << "    knowledge.evaluate (\"++mbarrier.{.id}\", wait_settings);\n\n";
 
-  buffer_ << "    // Call periodic functions in the order they appear in dasl program\n";
-  BOOST_FOREACH (std::string func_name, node.periodic_func_names)
-  {
-    int period = node.periods[func_name];
-
-    if (period == 1)
-    {
-      buffer_ << "    knowledge.evaluate (\"" << func_name << " ()\", wait_settings);\n";
-    }
-    else
-    {
-      buffer_ << "    knowledge.evaluate (\"(.round_count > 0 && .round_count % " << period << " == 0)";
-      buffer_ << " => " << func_name << " ()\", wait_settings);\n";
-    }
-  }
-  buffer_ << '\n';
-
   buffer_ << "    // remodify our globals and send all updates\n";
   buffer_ << "    wait_settings.send_list.clear ();\n";
-  buffer_ << "    wait_settings.delay_sending_modifieds = false;\n";
-  if(builder_.program.sendHeartbeats)
+  buffer_ << "    wait_settings.delay_sending_modifieds = false;\n\n";
+
+  if (builder_.program.sendHeartbeats)
+  {
+    buffer_ << "    // Broadcast global variables\n";
     buffer_ << "    send_global_updates = true;\n\n";
+  }
 
   buffer_ << "    // first barrier for new data from previous round\n";
   buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n\n";
 
   buffer_ << "    // Send only barrier information\n";
   buffer_ << "    wait_settings.send_list = barrier_send_list;\n";
-  if(builder_.program.sendHeartbeats)
+  buffer_ << "    wait_settings.delay_sending_modifieds = true;\n\n";
+
+  if (builder_.program.sendHeartbeats)
+  {
+    buffer_ << "    // Not broadcast global variables\n";
     buffer_ << "    send_global_updates = false;\n\n";
+  }
   
+  buffer_ << "    // Call periodic functions in the order they appear in dasl program\n";
+  BOOST_FOREACH (std::string func_name, node.periodic_func_names)
+  {
+    int period = node.periods[func_name];
+    buffer_ << "    knowledge.evaluate (\"(.round_count > 0 && .round_count % " << period << " == 0)";
+    buffer_ << " => " << func_name << " ()\", wait_settings);\n";
+  }
+  buffer_ << '\n';
+
+
   buffer_ << "    // Execute main user logic\n";
-  buffer_ << "    wait_settings.delay_sending_modifieds = true;\n";
   buffer_ << "    knowledge.evaluate (round_logic, wait_settings);\n\n";
 
   buffer_ << "    // second barrier for waiting on others to finish round\n";

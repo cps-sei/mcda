@@ -184,8 +184,7 @@ daig::madara::Async_Builder::build_parse_args ()
   buffer_ << "    {\n";
   buffer_ << "      if (i + 1 < argc)\n";
   buffer_ << "      {\n";
-  buffer_ << "        std::stringstream buffer (argv[i + 1]);\n";
-  buffer_ << "        logger.open (buffer.str ().c_str (), std::ofstream::app);\n";
+  buffer_ << "        logger.open (argv[i + 1], std::ofstream::app);\n";
   buffer_ << "      }\n";
   buffer_ << "      \n";
   buffer_ << "      ++i;\n";
@@ -372,16 +371,8 @@ daig::madara::Async_Builder::build_main_function ()
   BOOST_FOREACH (std::string func_name, node.periodic_func_names)
   {
     int period = node.periods[func_name];
-
-    if (period == 1)
-    {
-      buffer_ << "    knowledge.evaluate (\"" << func_name << " ()\", wait_settings);\n";
-    }
-    else
-    {
-      buffer_ << "    knowledge.evaluate (\"(.round_count > 0 && .round_count % " << period << " == 0)";
-      buffer_ << " => " << func_name << " ()\", wait_settings);\n";
-    }
+    buffer_ << "    knowledge.evaluate (\"(.round_count > 0 && .round_count % " << period << " == 0)";
+    buffer_ << " => " << func_name << " ()\", wait_settings);\n";
   }
   buffer_ << '\n';
 
