@@ -85,9 +85,10 @@ daig::madara::Sync_Builder::build_common_global_variables ()
 {
   Madara_Builder::build_common_global_variables ();
 
+  buffer_ << "// Barrier used in synchronous model\n";
   buffer_ << "containers::Integer_Array barrier;\n";
-  buffer_ << "double max_barrier_time (-1);\n";
-  buffer_ << '\n';
+  buffer_ << "// Maximum barrier wait time\n";
+  buffer_ << "double max_barrier_time (-1);\n\n";
 }
 
 void
@@ -601,10 +602,8 @@ void
 daig::madara::Sync_Builder::build_program_variables_bindings ()
 {
   Madara_Builder::build_program_common_variables_bindings ();
-  buffer_ << "  barrier.set_name (\"mbarrier\", knowledge, ";
-  buffer_ << builder_.program.processes.size ();
-  buffer_ << ");\n";
-  buffer_ << '\n';
+  buffer_ << "  barrier.set_name (\"mbarrier\", knowledge, processes);\n";
+  buffer_ << "  barrier.set (settings.id, 0);\n\n";
+
   Madara_Builder::build_program_specific_variables_bindings ();
-  buffer_ << '\n';
 }

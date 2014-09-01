@@ -392,7 +392,5 @@ void
 daig::madara::Async_Builder::build_program_variables_bindings ()
 {
   Madara_Builder::build_program_common_variables_bindings ();
-  buffer_ << '\n';
   Madara_Builder::build_program_specific_variables_bindings ();
-  buffer_ << '\n';
 }

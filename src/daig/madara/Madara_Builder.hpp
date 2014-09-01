@@ -121,11 +121,16 @@ namespace daig
       virtual void build_common_filters (void);
 
       /**
+       * Builds filter for packet drop simulation
+       */
+      virtual void build_drop_filter (void);
+
+      /**
        * Helper function of build_common_filters
        */
       virtual void build_common_filter (const std::string filter_name,
                                         std::stringstream & filter_content,
-                                        std::string records);
+                                        bool is_receive_filter);
 
       /**
        * Builds a function which will be called before node exits

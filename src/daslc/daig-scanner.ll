@@ -79,6 +79,7 @@ extern "C" int yywrap() { return 1; }
 "@ON_PRE_ROUND_BARRIER_TIMEOUT"  PRINT_TOKEN; return TOKEN(TON_PRE_TIMEOUT);
 "@ON_POST_ROUND_BARRIER_TIMEOUT" PRINT_TOKEN; return TOKEN(TON_POST_TIMEOUT);
 "@ON_RECEIVE_FILTER"        PRINT_TOKEN; return TOKEN(TON_RECV_FILTER);
+"@DROP_SIMULATION"          PRINT_TOKEN; return TOKEN(TDROP_SIM);
 "NAN"                       SAVE_TOKEN; return TDOUBLE;
 [0-9]+\.[0-9]*              SAVE_TOKEN; return TDOUBLE;
 [0-9]+                      SAVE_TOKEN; return TINTEGER;

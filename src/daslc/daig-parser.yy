@@ -74,7 +74,7 @@ std::string thunk;
 %token <token> TPLUS TMINUS TMUL TDIV TMOD
 %token <token> TBWNOT TBWAND TBWOR TBWXOR TBWLSH TBWRSH
 %token <token> TON_PRE_TIMEOUT TON_POST_TIMEOUT TON_RECV_FILTER
-%token <token> TTRACK_LOCATIONS TSEND_HEARTBEATS
+%token <token> TTRACK_LOCATIONS TSEND_HEARTBEATS TDROP_SIM
 %token <token> TNODE_INIT TPERIODIC TONCE_EVERY
 %token <token> TEXIT TLOG TLOCAL_ASSERT
 
@@ -137,6 +137,10 @@ directive_list : {}
 }
 | directive_list TON_RECV_FILTER TLPAREN callback_name TRPAREN TSEMICOLON {
   builder->program.addCallback("on_receive_filter", *$4);
+  delete $4;
+}
+| directive_list TDROP_SIM TLPAREN TIDENTIFIER TRPAREN TSEMICOLON {
+  builder->program.setDropSimulation(*$4);
   delete $4;
 }
 | directive_list TPERIODIC TLPAREN TINTEGER TRPAREN TSEMICOLON {

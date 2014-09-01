@@ -138,6 +138,10 @@ namespace daig
     typedef std::map<std::string,std::string> Callbacks;
     Callbacks callbacks;
 
+    /// A drop simulation function name -- empty if no drop simulation
+    /// This function is defined in the thunk
+    std::string drop_simulation;
+
     ///period in milliseconds. 0 means no period.
     int period;
 
@@ -209,6 +213,12 @@ namespace daig
 
     ///set the period
     void setPeriod(int p) { period = p; }
+
+    /// Set the drop simulation
+    void setDropSimulation(const std::string drop_sim)
+    {
+      drop_simulation = drop_sim;
+    }
 
     ///check various sanity conditions on the program
     void sanityCheck();

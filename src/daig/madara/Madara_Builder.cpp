@@ -71,10 +71,11 @@ daig::madara::Madara_Builder::build ()
   open_daig_namespace ();
   build_common_global_variables ();
   build_program_variables ();
-  build_common_filters ();
-  build_pre_exit ();
   // build target thunk WITHOUT includes
   build_target_thunk ();
+  build_common_filters ();
+  build_drop_filter ();
+  build_pre_exit ();
   build_parse_args ();
   build_functions_declarations ();
   build_functions ();
@@ -214,6 +215,15 @@ daig::madara::Madara_Builder::build_common_global_variables ()
   buffer_ << "Integer processes (";
   buffer_ << builder_.program.processes.size ();
   buffer_ << ");\n\n";
+
+  // Only generate this code if this is a simulation
+  if (builder_.is_sim)
+  {
+    buffer_ << "// Global variable indicating whether nodes are done\n";
+    buffer_ << "// Each node waits until all nodes are done to terminate\n";
+    buffer_ << "// This variable is preserved in the drop filter\n";
+    buffer_ << "containers::Integer_Array done;\n\n";
+  }
 
   //-- only generate this code if heartbeats are used
   if (builder_.program.sendHeartbeats) {
@@ -363,7 +373,7 @@ daig::madara::Madara_Builder::build_common_filters (void)
     set_heartbeat << "    Integer sender_id = incoming_records[\"id\"].to_integer ();\n";
     set_heartbeat << "    heartbeats.set (sender_id, *round_count);\n";
     set_heartbeat << "  }\n";
-    build_common_filter ("set_heartbeat", set_heartbeat, "incoming_records");
+    build_common_filter ("set_heartbeat", set_heartbeat, true);
 
     buffer_ << "// Add auxiliary variables to the outgoing records\n";
     std::stringstream add_auxiliaries;
@@ -378,14 +388,54 @@ daig::madara::Madara_Builder::build_common_filters (void)
     add_auxiliaries << "  {\n";
     add_auxiliaries << "    outgoing_records[\"send_global_updates\"] = Integer (0);\n";
     add_auxiliaries << "  }\n";
-    build_common_filter ("add_auxiliaries", add_auxiliaries, "outgoing_records");
+    build_common_filter ("add_auxiliaries", add_auxiliaries, false);
 
     buffer_ << "// Strip auxiliary variables from incoming records\n";
     std::stringstream remove_auxiliaries;
     remove_auxiliaries << "  // erase auxiliary variables before the context tries to apply it locally\n";
     remove_auxiliaries << "  incoming_records.erase (\"id\");\n";
     remove_auxiliaries << "  incoming_records.erase (\"send_global_updates\");\n";
-    build_common_filter ("remove_auxiliaries", remove_auxiliaries, "incoming_records");
+    build_common_filter ("remove_auxiliaries", remove_auxiliaries, true);
+  }
+}
+
+void
+daig::madara::Madara_Builder::build_drop_filter ()
+{
+  if (!builder_.program.drop_simulation.empty ())
+  {
+    std::string drop_simulation = builder_.program.drop_simulation;
+    buffer_ << "// Drop incoming packets if " << drop_simulation << " returns true\n";
+    std::stringstream drop_filter;
+    drop_filter << "  bool drop = " << drop_simulation;
+    drop_filter << " (incoming_records, context, vars);\n\n";
+    drop_filter << "  if (drop)\n";
+    drop_filter << "  {\n";
+    drop_filter << "    Integer sid = incoming_records[\"id\"].to_integer ();\n";
+    drop_filter << "    std::string sender_id = boost::lexical_cast<std::string> (sid);\n";
+    drop_filter << "    // Preserve variable \"done\" for termination\n";
+    drop_filter << "    std::string done = \"done.\" + sender_id;\n\n";
+    drop_filter << "    Madara::Knowledge_Map::iterator it = incoming_records.begin();\n";
+    drop_filter << "    while (it != incoming_records.end())\n";
+    drop_filter << "    {\n";
+    drop_filter << "      std::string var = it->first;\n";
+    drop_filter << "      if (var.find(\"true_\") == 0 || var == done)\n";
+    drop_filter << "      {\n";
+    drop_filter << "        it++;\n";
+    drop_filter << "      }\n";
+    drop_filter << "      else\n";
+    drop_filter << "      {\n";
+    drop_filter << "        Madara::Knowledge_Map::iterator it2 = it;\n";
+    drop_filter << "        it++;\n";
+    drop_filter << "        incoming_records.erase(it2);\n";
+    drop_filter << "      }\n";
+    drop_filter << "    }\n\n";
+    drop_filter << "    // Since we use filter to simulate packet drop,\n";
+    drop_filter << "    // set send_global_updates flag to false so that set_heartbeat filter\n";
+    drop_filter << "    // will not record last global updates round\n";
+    drop_filter << "    incoming_records[\"send_global_updates\"] = Integer(0);\n";
+    drop_filter << "  }\n";
+    build_common_filter ("drop_filter", drop_filter, true);
   }
 }
 
@@ -393,8 +443,9 @@ void
 daig::madara::Madara_Builder::build_common_filter (
     const std::string filter_name,
     std::stringstream & filter_content,
-    std::string records)
+    bool is_receive_filter)
 {
+  std::string records = is_receive_filter ? "incoming_records" : "outgoing_records";
   buffer_ << "Madara::Knowledge_Record\n";
   buffer_ << filter_name << " (Madara::Knowledge_Map & " << records << ",\n";
   buffer_ << "  const Madara::Transport::Transport_Context & context,\n";
@@ -763,8 +814,19 @@ daig::madara::Madara_Builder::build_program_common_variables_bindings ()
 {
   buffer_ << "  // Binding common variables\n";
   buffer_ << "  id.set_name (\".id\", knowledge);\n";
+  buffer_ << "  id = Integer (settings.id);\n\n";
+
   buffer_ << "  num_processes.set_name (\".processes\", knowledge);\n";
+  buffer_ << "  num_processes = processes;\n\n";
+
   buffer_ << "  round_count.set_name (\".round_count\", knowledge);\n";
+  buffer_ << "  round_count = Integer (0);\n\n";
+
+  if (builder_.is_sim)
+  {
+    buffer_ << "  done.set_name (\"done\", knowledge, processes);\n";
+    buffer_ << "  done.set (settings.id, 0);\n\n";
+  }
 }
 
 void
@@ -866,12 +928,15 @@ daig::madara::Madara_Builder::build_top_main_function ()
     buffer_ << "  settings.add_send_filter (add_auxiliaries);\n";
 
     if (builder_.program.callbackExists ("on_receive_filter"))
-      {
-        std::string usr_filter =
-          builder_.program.getCallback ("on_receive_filter");
-        buffer_ << "  settings.add_receive_filter (" <<
-          usr_filter << ");\n";
-      }
+    {
+      std::string filter_name = builder_.program.getCallback ("on_receive_filter");
+      buffer_ << "  settings.add_receive_filter (" << filter_name << ");\n";
+    }
+
+    if (!builder_.program.drop_simulation.empty ())
+    {
+      buffer_ << "  settings.add_receive_filter (drop_filter);\n";
+    }
 
     buffer_ << "  settings.add_receive_filter (set_heartbeat);\n";
     buffer_ << "  settings.add_receive_filter (remove_auxiliaries);\n";
@@ -882,21 +947,16 @@ daig::madara::Madara_Builder::build_top_main_function ()
   buffer_ << "  Madara::Knowledge_Engine::Knowledge_Base knowledge (host, settings);\n\n";
 
   build_program_variables_bindings ();
-  build_main_define_functions ();
-
-  // Initialize common variables
-  buffer_ << "  // Initialize commonly used local variables\n";
-  buffer_ << "  id = Integer (settings.id);\n";
-  buffer_ << "  num_processes = processes;\n";
-  buffer_ << "  round_count = Integer (0);\n";
-  buffer_ << '\n';
 
   if (builder_.program.sendHeartbeats) {
+    buffer_ << "  // Initialize heartbeats\n";
     buffer_ << "  for (Integer i = 0; i < processes; i++)\n";
     buffer_ << "  {\n";
     buffer_ << "    heartbeats.set (i, -1);\n";
-    buffer_ << "  }\n";
+    buffer_ << "  }\n\n";
   }
+
+  build_main_define_functions ();
 }
 
 void
