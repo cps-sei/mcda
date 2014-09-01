@@ -118,11 +118,6 @@ namespace daig
      * Model of computation for the program
      **/
     Model_Of_Computation moc;
-
-    /**
-     * If true, track sender locations with x, y, z globals
-     **/
-    bool trackLocations;
     
     /**
      * If true, send heartbeats
@@ -134,7 +129,7 @@ namespace daig
     TargetType targets;
 
     /// callbacks : a map from callback types to callback names
-    /// callback types are "on_pre_round_barrier_timeout", "on_post_round_barrier_timeout", and "on_receive_filter"
+    /// callback types include "on_receive_filter"
     typedef std::map<std::string,std::string> Callbacks;
     Callbacks callbacks;
 

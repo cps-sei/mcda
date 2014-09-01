@@ -116,7 +116,7 @@ void daig::program::SanityChecker::exitFADNP(daig::FADNPStmt &stmt)
 }
 
 daig::Program::Program ()
-  : trackLocations (false), sendHeartbeats (false), period(0)
+  : sendHeartbeats (false), period(0)
 {}
 
 daig::Program::~Program () {}
@@ -211,31 +211,6 @@ daig::Program::sanityCheck()
     //last dimension of global variables must be #N
     assert(*(v.second.type->dims.rbegin()) == -1 &&
            "ERROR: last dimension of global variables must be #N");
-  }
-
-  // if trackLocations is set, add x, y, z as global variables
-  if (trackLocations)
-  {
-    std::vector<std::string> vars;
-    vars.push_back ("x");
-    vars.push_back ("y");
-    vars.push_back ("z");
-    // these variables are always up-to-date
-    vars.push_back ("true_x");
-    vars.push_back ("true_y");
-    vars.push_back ("true_z");
-    
-    // x, y, z are 1 dimensional arrays of length #N
-    BOOST_FOREACH(std::string & var_name, vars) {
-      // we blow away any existing var.name and prefer our version
-      daig::BaseType *t = new daig::BaseType(TINT);
-      //-- set the dimension to -1 since this will be replaced by the
-      //-- number of nodes later on
-      t->dims.push_back(-1);
-      daig::Variable var (var_name, daig::Type(t));
-      var.scope = Variable::GLOBAL;
-      node.globVars[var.name] = var;
-    }
   }
 
   // if sendHeartbeats is set, add round_count and heartbeats as local variables

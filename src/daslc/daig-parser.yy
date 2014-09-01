@@ -73,8 +73,7 @@ std::string thunk;
 %token <token> TLBRACKET TRBRACKET TCOMMA TDOT
 %token <token> TPLUS TMINUS TMUL TDIV TMOD
 %token <token> TBWNOT TBWAND TBWOR TBWXOR TBWLSH TBWRSH
-%token <token> TON_PRE_TIMEOUT TON_POST_TIMEOUT TON_RECV_FILTER
-%token <token> TTRACK_LOCATIONS TSEND_HEARTBEATS TDROP_SIM
+%token <token> TON_RECV_FILTER TSEND_HEARTBEATS TDROP_SIM
 %token <token> TNODE_INIT TPERIODIC TONCE_EVERY
 %token <token> TEXIT TLOG TLOCAL_ASSERT
 
@@ -125,16 +124,7 @@ program :
 ;
 
 directive_list : {}
-| directive_list TTRACK_LOCATIONS TSEMICOLON { builder->program.trackLocations = true; }
 | directive_list TSEND_HEARTBEATS TSEMICOLON { builder->program.sendHeartbeats = true; }
-| directive_list TON_PRE_TIMEOUT TLPAREN callback_name TRPAREN TSEMICOLON {
-  builder->program.addCallback("on_pre_round_barrier_timeout", *$4);
-  delete $4;
-}
-| directive_list TON_POST_TIMEOUT TLPAREN callback_name TRPAREN TSEMICOLON {
-  builder->program.addCallback("on_post_round_barrier_timeout", *$4);
-  delete $4;
-}
 | directive_list TON_RECV_FILTER TLPAREN callback_name TRPAREN TSEMICOLON {
   builder->program.addCallback("on_receive_filter", *$4);
   delete $4;
