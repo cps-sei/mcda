@@ -547,26 +547,27 @@ daig::madara::Sync_Builder::build_main_function ()
   buffer_ << "    wait_settings.delay_sending_modifieds = true;\n";
   buffer_ << "    knowledge.evaluate (\"++mbarrier.{.id}\", wait_settings);\n\n";
 
-  buffer_ << "    // remodify our globals and send all updates\n";
+  buffer_ << "    // Set send_list to send all updates\n";
   buffer_ << "    wait_settings.send_list.clear ();\n";
   buffer_ << "    wait_settings.delay_sending_modifieds = false;\n\n";
 
   if (builder_.program.sendHeartbeats)
   {
-    buffer_ << "    // Broadcast global variables\n";
+    buffer_ << "    // This broadcast includes global variables\n";
     buffer_ << "    send_global_updates = true;\n\n";
   }
 
-  buffer_ << "    // first barrier for new data from previous round\n";
+  buffer_ << "    // Remodify globals (and send all updates)\n";
+  buffer_ << "    // First barrier for new data from previous round\n";
   buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n\n";
 
-  buffer_ << "    // Send only barrier information\n";
+  buffer_ << "    // Set send_list to send only barrier update\n";
   buffer_ << "    wait_settings.send_list = barrier_send_list;\n";
   buffer_ << "    wait_settings.delay_sending_modifieds = true;\n\n";
 
   if (builder_.program.sendHeartbeats)
   {
-    buffer_ << "    // Not broadcast global variables\n";
+    buffer_ << "    // This broadcast does not include global variables\n";
     buffer_ << "    send_global_updates = false;\n\n";
   }
   
@@ -581,10 +582,11 @@ daig::madara::Sync_Builder::build_main_function ()
 
 
   buffer_ << "    // Execute main user logic\n";
+  buffer_ << "    // Post-round barrier increment\n";
   buffer_ << "    knowledge.evaluate (round_logic, wait_settings);\n\n";
 
-  buffer_ << "    // second barrier for waiting on others to finish round\n";
-  buffer_ << "    // Increment barrier and only send barrier update\n";
+  buffer_ << "    // Remodify globals (and send only barrier update)\n";
+  buffer_ << "    // Second barrier for waiting on others to finish round\n";
   buffer_ << "    wait_settings.delay_sending_modifieds = false;\n";
   buffer_ << "    knowledge.wait (barrier_logic, wait_settings);\n\n";
 
