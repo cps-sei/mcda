@@ -279,6 +279,7 @@ daig::madara::Async_Builder::build_main_function ()
   Madara_Builder::build_top_main_function ();
 
   buffer_ << "  Madara::Knowledge_Engine::Wait_Settings wait_settings;\n";
+  buffer_ << "  wait_settings.delay_sending_modifieds = false;\n";
   buffer_ << "  wait_settings.poll_frequency = .1;\n\n";
 
 
@@ -324,13 +325,52 @@ daig::madara::Async_Builder::build_main_function ()
   }
   buffer_ << '\n';
 
+  if (builder_.is_sim)
+  {
+    buffer_ << "  // This barrier is for updating initial true variables only\n";
+    buffer_ << "  containers::Integer_Array barrier;\n";
+    buffer_ << "  barrier.set_name (\"mbarrier\", knowledge, processes);\n";
+    buffer_ << "  barrier.set (settings.id, 0);\n\n";
+
+    buffer_ << "  // Building barrier for updating true variables\n";
+    buffer_ << "  std::stringstream true_vars_barrier;\n";
+    buffer_ << "  true_vars_barrier << \"++mbarrier.{.id} ; UPDATE_TRUE_VARS () ;> \";\n";
+    buffer_ << "  bool started = false;\n\n";
+
+    buffer_ << "  for (int i = 0; i < processes; ++i)\n";
+    buffer_ << "  {\n";
+    buffer_ << "    if (i == settings.id)\n";
+    buffer_ << "    {\n";
+    buffer_ << "      continue;\n";
+    buffer_ << "    }\n\n";
+    buffer_ << "    if (started)\n";
+    buffer_ << "    {\n";
+    buffer_ << "      true_vars_barrier << \" && \";\n";
+    buffer_ << "    }\n\n";
+    buffer_ << "    true_vars_barrier << \"mbarrier.\";\n";
+    buffer_ << "    true_vars_barrier << i;\n";
+    buffer_ << "    true_vars_barrier << \" >= mbarrier.\";\n";
+    buffer_ << "    true_vars_barrier << settings.id;\n";
+    buffer_ << "    if (!started)\n";
+    buffer_ << "    {\n";
+    buffer_ << "      started = true;\n";
+    buffer_ << "    }\n";
+    buffer_ << "  }\n\n";
+
+    buffer_ << "  // Update (and send) true variables\n";
+    buffer_ << "  // and wait until we receive all updates from other nodes\n";
+    buffer_ << "  knowledge.wait (true_vars_barrier.str (), wait_settings);\n\n";
+
+    buffer_ << "  // At this point, we guarantee that all elements in OUR true variables\n";
+    buffer_ << "  // are up-to-date\n\n";
+  }
+
   // For now, use the first node definition
   Node & node = builder_.program.nodes.begin()->second;
 
   if (node.funcs.find ("NODE_INIT") != node.funcs.end ())
   {
     buffer_ << "  // Call node initialization function\n";
-    buffer_ << "  wait_settings.delay_sending_modifieds = true;\n";
     buffer_ << "  knowledge.evaluate (\"NODE_INIT ()\", wait_settings);\n";
     buffer_ << '\n';
   }
