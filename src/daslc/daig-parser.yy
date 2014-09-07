@@ -413,8 +413,9 @@ stmt : TATOMIC stmt { $$ = new daig::Stmt(new daig::AtomicStmt(*$2)); delete $2;
   delete $3; delete $5;
 }
 | TEXIT TSEMICOLON { $$ = new daig::Stmt(new daig::EXITStmt()); }
-| TLOG TLPAREN lval TRPAREN TSEMICOLON {
-  $$ = new daig::Stmt(new daig::LOGStmt(daig::Expr($3)));
+| TLOG TLPAREN arg_list TRPAREN TSEMICOLON {
+  $$ = new daig::Stmt(new daig::LOGStmt(*$3));
+  delete $3;
 }
 | TLOCAL_ASSERT TLPAREN expr TRPAREN TSEMICOLON {
   $$ = new daig::Stmt(new daig::LocAsrtStmt(*$3));

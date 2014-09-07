@@ -338,15 +338,34 @@ namespace daig
   class LOGStmt : public Statement
   {
   public:
-    Expr data;
+    ExprList args;
 
-    // d must be LvalExpr
-    LOGStmt(const Expr &d) : data(d) {}
-    std::string toString() const { return "LOG (" + data->toString() + ");"; }
+    LOGStmt(const ExprList &a) : args(a) {}
+
+    std::string toString() const {
+      std::string res = "LOG (";
+      size_t count = 0;
+      BOOST_FOREACH(const Expr &a, args) {
+        if (count)
+          res += ",";
+        res += a->toString();
+        ++count;
+      }
+      return res + ");";
+    }
+
     void print (std::ostream &os,unsigned int indent) const
     {
       std::string spacer (indent, ' ');
-      os << spacer << "LOG (" << data->toString() << ");\n";
+      os << spacer << "LOG (";
+      size_t count = 0;
+      BOOST_FOREACH(const Expr &a, args) {
+        if (count)
+          os << ",";
+        os << a->toString();
+        ++count;
+      }
+      os << ");\n";
     }
   };
 

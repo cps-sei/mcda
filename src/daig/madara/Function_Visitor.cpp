@@ -1023,22 +1023,26 @@ daig::madara::Function_Visitor::enterLOG (LOGStmt & statement)
 void
 daig::madara::Function_Visitor::exitLOG (LOGStmt & statement)
 {
-  std::string spacer (indentation_, ' '), sub_spacer (indentation_ + 2, ' '),
-      sub_sub_spacer (indentation_ + 4, ' ');
+  std::string spacer (indentation_, ' ');
 
-  LvalExpr * data  = dynamic_cast<LvalExpr*> (statement.data.get ());
+  bool started = false;
+  BOOST_FOREACH (Expr & expr, statement.args)
+  {
+    if (started)
+    {
+      buffer_ << spacer << "logger << \'\\t\';\n";
+    }
 
-  std::list<int> dims = function_.temps.find (data->var)->second.type->dims;
-  int size = *(dims.begin ());
+    buffer_ << spacer << "logger << ";
+    visit (expr);
+    buffer_ << ";\n";
 
-  buffer_ << spacer << "for (int i = 0; i < " << size << "; i++)\n";
-  buffer_ << spacer << "{\n";
-  buffer_ << sub_spacer << "if (i > 0)\n";
-  buffer_ << sub_spacer << "{\n";
-  buffer_ << sub_sub_spacer << "logger << \'\\t\';\n";
-  buffer_ << sub_spacer << "}\n";
-  buffer_ << sub_spacer << "logger << " << data->var << "[i];\n";
-  buffer_ << spacer << "}\n";
+    if (!started)
+    {
+      started = true;
+    }
+  }
+
   buffer_ << spacer << "logger << std::endl;\n";
 }
 
