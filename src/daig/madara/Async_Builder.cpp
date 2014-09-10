@@ -81,6 +81,48 @@ daig::madara::Async_Builder::build ()
 }
 
 void
+daig::madara::Async_Builder::build_drop_filter ()
+{
+  if (!builder_.program.drop_simulation.empty ())
+  {
+    std::string drop_simulation = builder_.program.drop_simulation;
+    buffer_ << "// Drop incoming packets if " << drop_simulation << " returns true\n";
+    std::stringstream drop_filter;
+    drop_filter << "  bool drop = " << drop_simulation;
+    drop_filter << " (incoming_records, context, vars);\n\n";
+    drop_filter << "  if (drop)\n";
+    drop_filter << "  {\n";
+    drop_filter << "    Integer sid = incoming_records[\"id\"].to_integer ();\n";
+    drop_filter << "    std::string sender_id = boost::lexical_cast<std::string> (sid);\n";
+    drop_filter << "    // Preserve \"done\" for termination\n";
+    drop_filter << "    std::string done = \"done.\" + sender_id;\n";
+    drop_filter << "    // Preserve \"init_barrier\" for initial true variables update\n";
+    drop_filter << "    std::string barrier = \"init_barrier.\" + sender_id;\n\n";
+    drop_filter << "    Madara::Knowledge_Map::iterator it = incoming_records.begin();\n";
+    drop_filter << "    while (it != incoming_records.end())\n";
+    drop_filter << "    {\n";
+    drop_filter << "      std::string var = it->first;\n";
+    drop_filter << "      if (var.find(\"true_\") == 0 || var == done || var == barrier)\n";
+    drop_filter << "      {\n";
+    drop_filter << "        it++;\n";
+    drop_filter << "      }\n";
+    drop_filter << "      else\n";
+    drop_filter << "      {\n";
+    drop_filter << "        Madara::Knowledge_Map::iterator it2 = it;\n";
+    drop_filter << "        it++;\n";
+    drop_filter << "        incoming_records.erase(it2);\n";
+    drop_filter << "      }\n";
+    drop_filter << "    }\n\n";
+    drop_filter << "    // Since we use filter to simulate packet drop,\n";
+    drop_filter << "    // set send_global_updates flag to false so that set_heartbeat filter\n";
+    drop_filter << "    // will not record last global updates round\n";
+    drop_filter << "    incoming_records[\"send_global_updates\"] = Integer(0);\n";
+    drop_filter << "  }\n";
+    Madara_Builder::build_common_filter ("drop_filter", drop_filter, true);
+  }
+}
+
+void
 daig::madara::Async_Builder::build_parse_args ()
 {
   std::stringstream variable_help;
@@ -329,12 +371,12 @@ daig::madara::Async_Builder::build_main_function ()
   {
     buffer_ << "  // This barrier is for updating initial true variables only\n";
     buffer_ << "  containers::Integer_Array barrier;\n";
-    buffer_ << "  barrier.set_name (\"mbarrier\", knowledge, processes);\n";
+    buffer_ << "  barrier.set_name (\"init_barrier\", knowledge, processes);\n";
     buffer_ << "  barrier.set (settings.id, 0);\n\n";
 
     buffer_ << "  // Building barrier for updating true variables\n";
     buffer_ << "  std::stringstream true_vars_barrier;\n";
-    buffer_ << "  true_vars_barrier << \"++mbarrier.{.id} ; UPDATE_TRUE_VARS () ;> \";\n";
+    buffer_ << "  true_vars_barrier << \"++init_barrier.{.id} ; UPDATE_TRUE_VARS () ;> \";\n";
     buffer_ << "  bool started = false;\n\n";
 
     buffer_ << "  for (int i = 0; i < processes; ++i)\n";
@@ -347,9 +389,9 @@ daig::madara::Async_Builder::build_main_function ()
     buffer_ << "    {\n";
     buffer_ << "      true_vars_barrier << \" && \";\n";
     buffer_ << "    }\n\n";
-    buffer_ << "    true_vars_barrier << \"mbarrier.\";\n";
+    buffer_ << "    true_vars_barrier << \"init_barrier.\";\n";
     buffer_ << "    true_vars_barrier << i;\n";
-    buffer_ << "    true_vars_barrier << \" >= mbarrier.\";\n";
+    buffer_ << "    true_vars_barrier << \" >= init_barrier.\";\n";
     buffer_ << "    true_vars_barrier << settings.id;\n";
     buffer_ << "    if (!started)\n";
     buffer_ << "    {\n";
