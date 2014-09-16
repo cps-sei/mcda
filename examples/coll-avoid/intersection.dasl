@@ -1,0 +1,433 @@
+// asynchronous collision avoidance protocol
+MOC_ASYNC;
+
+TARGET GNU_CPP,WIN_CPP %%{
+#define GNU_WIN
+#include <stdlib.h>
+#include <math.h>
+#include <unistd.h>
+#include <boost/lexical_cast.hpp>
+#include "madara/utility/Utility.h"
+
+
+int MOVE_TO (int x, int y)
+{
+  return rand() < (RAND_MAX / 10 * 6);
+}
+
+int round = 0;
+int xi,yi;
+
+void print_line(int _X)
+{
+  printf("-");
+  for(int i = 0;i < _X;++i) printf("--");
+  printf("\n");
+}
+
+void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf)
+{
+  if(round == 0) {
+    xi = x; yi = y;
+  }
+
+  for(int i = 0;i < 150;++i) printf("\n");
+  
+  printf("round = %d : id = %d\n", ++round, id);
+  printf("_X = %d _Y = %d\n",_X,_Y);
+  print_line(_X);
+  for(int i = 0;i < _Y;++i) {
+    printf("|");
+    for(int j = 0;j < _X;++j) {
+      //printf("i = %d j = %d\n", i, j);
+      if(j == xf && i == yf) printf("o|");        
+      else if(j == x && i == y) printf("%d|",id);
+      else printf(" |");
+    }
+    printf("\n");
+    print_line(_X);
+  }
+}
+
+void print_global_state(int local_state)
+{
+  for (int i = 0; i < 150; ++i)
+    printf("\n");
+
+  printf("round = %d : id = %d : state = %d\n", ++round, (int) *id, local_state);
+  printf("_X = %d _Y = %d\n", X, Y);
+  print_line(X);
+
+  for (int i = 0; i < Y; ++i) {
+    printf("|");
+
+    for (int j = 0; j < X; ++j) {
+      bool taken = false;
+
+      for (int k = 0; k < processes; ++k) {
+        if (j == true_x[k] && i == true_y[k]) {
+          printf("%d|", k);
+          taken = true;
+          break;
+        }
+      }
+
+      if (!taken) {
+        if (j == *xf && i == *yf)
+          printf("o|");
+        else printf(" |");
+      }
+    }
+    printf("\n");
+    print_line(X);
+  }
+}
+
+const int RADIUS_LEVEL_1 = 4;
+const int RADIUS_LEVEL_2 = 6;
+const int RADIUS_LEVEL_3 = 10;
+const double DROP_PROB_LEVEL_1 = 0.6;
+const double DROP_PROB_LEVEL_2 = 0.6;
+const double DROP_PROB_LEVEL_3 = 0.6;
+const double DROP_PROB_LEVEL_4 = 0.6;
+
+bool flip (double prob)
+{
+  return rand() < (RAND_MAX * prob);
+}
+
+// Drop simulation function must have this signature
+// MADARA-specific
+bool prob_distance_drop (Madara::Knowledge_Map & incoming_records,
+                         const Madara::Transport::Transport_Context & context,
+                         Madara::Knowledge_Engine::Variables & vars)
+{
+  Integer sid = incoming_records["id"].to_integer();
+  std::string sender_id = boost::lexical_cast<std::string>(sid);
+  std::string x_key = "x." + sender_id;
+  std::string y_key = "y." + sender_id;
+  Madara::Knowledge_Map::iterator it = incoming_records.find(x_key);
+
+  if (it != incoming_records.end()) {
+    // Assume x and y are always broadcasted together
+    Integer sender_x = it->second.to_integer();
+    Integer sender_y = incoming_records[y_key].to_integer();
+    Integer dx = x[*id] - sender_x;
+    Integer dy = y[*id] - sender_y;
+    double dr = sqrt(dx * dx + dy * dy);
+
+    return (dr > RADIUS_LEVEL_3 && flip(DROP_PROB_LEVEL_4)) ||
+        (dr <= RADIUS_LEVEL_3 && dr > RADIUS_LEVEL_2 && flip(DROP_PROB_LEVEL_3)) ||
+        (dr <= RADIUS_LEVEL_2 && dr > RADIUS_LEVEL_1 && flip(DROP_PROB_LEVEL_2)) ||
+        (dr <= RADIUS_LEVEL_1 && flip(DROP_PROB_LEVEL_1));
+  } else {
+    return false;
+  }
+}
+
+//do some basic initialization at the start of the node
+void basic_node_init()
+{
+  srand(getpid());
+}
+%%}
+
+//directives
+@SEND_HEARTBEATS;
+@DROP_SIMULATION(prob_distance_drop);
+@PERIODIC(2000);
+
+// Intersection configuration
+CONST X = 6;
+CONST Y = 6;
+CONST INTERSECTION_SIZE = 2;
+CONST X_LOWER_BOUND = 2;
+CONST X_UPPER_BOUND = 3;
+CONST Y_LOWER_BOUND = 2;
+CONST Y_UPPER_BOUND = 3;
+
+// Node states
+CONST INITS = 0;
+CONST OUTSIDE = 1;
+CONST APPROACH = 2;
+CONST CROSS = 3;
+CONST FAR = 4;
+CONST COLLIDED = 5;
+
+// Intersection protocol
+CONST TCL_LENGTH = 5;
+
+EXTERN int MOVE_TO (int x, int y);
+EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
+EXTERN void print_global_state(int local_state);
+EXTERN void basic_node_init();
+
+NODE uav (id)
+{
+  // State of each node
+  GLOBAL int state [#N];
+
+  // Current x-y coordinates of each node
+  TRACK GLOBAL int x [#N];
+  TRACK GLOBAL int y [#N];
+
+  // Trajectory Cells List (TCL) of each node
+  // 1st element is current location
+  GLOBAL int x_TCL [TCL_LENGTH][#N];
+  GLOBAL int y_TCL [TCL_LENGTH][#N];
+
+  // Trajectory Intersecting Cells (TIC)
+  // Each element indicates whether the corresponding (same index)
+  // element in TCL is a TIC
+  LOCAL int TIC [TCL_LENGTH];
+
+  // Trajectory Intersecting Node
+  // -1 means no intersecting node
+  LOCAL int TIN [TCL_LENGTH];
+
+  // Final x-y coordinates
+  LOCAL int xf;
+  LOCAL int yf;
+
+  // Number of rounds executed since started
+  LOCAL int num_rounds;
+
+  void NODE_INIT () {
+    int i;
+    basic_node_init(); // do basic initialization
+
+    // Initialize TIN
+    for (i = 0; i < TCL_LENGTH; i = i + 1) {
+      TIN[i] = -1;
+    }
+  }
+
+  void COMPUTE_TCL () {
+    int i; // for-loop variable
+
+    // Fill in 1st element in TCL (current x,y)
+    x_TCL[0][id] = x[id];
+    y_TCL[0][id] = y[id];
+
+    // Fill in the rest of TCL
+    for (i = 1; i < TCL_LENGTH; i = i + 1) {
+      NEXT_XY(i);
+    }
+  }
+
+  void UPDATE_TCL () {
+    int i; // for-loop variable
+
+    // Shift current elements in TCL to the left
+    for (i = 0; i < TCL_LENGTH - 1; i = i + 1) {
+      x_TCL[i][id] = x_TCL[i + 1][id];
+      y_TCL[i][id] = y_TCL[i + 1][id];
+    }
+
+    NEXT_XY(TCL_LENGTH - 1);
+  }
+
+  void NEXT_XY (int TCL_index) {
+    int prev_x, prev_y, next_x, next_y;
+
+    prev_x = x_TCL[TCL_index - 1][id];
+    prev_y = y_TCL[TCL_index - 1][id];
+    next_x = prev_x;
+    next_y = prev_y;
+
+    // Find next point
+    if (xf > prev_x) {
+      next_x = next_x + 1;
+    } else if (xf < prev_x) {
+      next_x = next_x - 1;
+    } else if (yf > prev_y) {
+      next_y = prev_y + 1;
+    } else if (yf < prev_y) {
+      next_y = prev_y - 1;
+    } else {
+      // no value
+      next_x = -1;
+      next_y = -1;
+    }
+
+    // Fill TCL_index with next point
+    x_TCL[TCL_index][id] = next_x;
+    y_TCL[TCL_index][id] = next_y;
+  }
+
+  int CDAI (int other) {
+    int i, j; // for-loop variables
+
+    for (i = 0; i < TCL_LENGTH; i = i + 1) {
+      for (j = 0; j < TCL_LENGTH; j = j + 1) {
+        if (x_TCL[i][id] != -1 && x_TCL[i][id] == x_TCL[j][other]
+            && y_TCL[i][id] == y_TCL[j][other]) {
+          // Index of the TIC in this node's TCL
+          return i;
+        }
+      }
+    }
+    // No TIC
+    return -1;
+  }
+
+  int MANHATTAN_DISTANCE (int xi, int yi, int xj, int yj) {
+    return abs(xi - xj) + abs(yi - yj);
+  }
+
+  void ROUND () {
+    int next_x, next_y;
+    int TIC_index;
+    int int_node; // intersecting node
+    int i; // for-loop variable
+
+    if (state[id] == INITS) {
+      // Assume valid initial and final locations
+      // Create initial TCL
+      COMPUTE_TCL();
+      state[id] = OUTSIDE;
+    } else if (state[id] == OUTSIDE) {
+      if (x[id] == xf && y[id] == yf) {
+        // Leaving intersection zone
+        state[id] = FAR;
+        done[id] = 1; // indicate that this node is done
+        return;
+      }
+
+      next_x = x_TCL[1][id];
+      next_y = y_TCL[1][id];
+
+      if (!EXISTS_ANY (n, x[n] == next_x && y[n] == next_y)) {
+        // Next point is unoccupied
+
+        if (MOVE_TO(next_x, next_y)) {
+          // Move to next point
+          x[id] = next_x;
+          y[id] = next_y;
+          UPDATE_TCL();
+
+          if ((x[id] == X_UPPER_BOUND && y[id] == Y_LOWER_BOUND - 1) ||
+              (x[id] == X_UPPER_BOUND + 1 && y[id] == Y_UPPER_BOUND) ||
+              (x[id] == X_LOWER_BOUND && y[id] == Y_UPPER_BOUND + 1) ||
+              (x[id] == X_LOWER_BOUND - 1 && y[id] == Y_LOWER_BOUND)) {
+            // Approaching intersection
+            state[id] = APPROACH;
+          }
+        }
+      }
+    } else if (state[id] == APPROACH) {
+      // Priority policy:
+      // 1. Crossing nodes > approaching nodes (FCFS)
+      // 2. Higher-id nodes > lower-id nodes
+
+      FORALL_OTHER (n) {
+        if ((state[n] == CROSS) || (state[n] == APPROACH && n > id)) {
+          // Get index of TIC in this node's TCL
+          TIC_index = CDAI(n);
+
+          if (TIC_index >= 0) {
+            // Keep track of all TICs and corresponding nodes
+            TIC[TIC_index] = 1;
+            TIN[TIC_index] = n;
+          }
+        }
+      }
+
+      state[id] = CROSS;
+    } else if (state[id] == CROSS) {
+      next_x = x_TCL[1][id];
+      next_y = y_TCL[1][id];
+
+      if (TIC[1] == 1) {
+        // Next cell is TIC
+        int_node = TIN[1];
+
+        for (i = 0; i < TCL_LENGTH; i = i + 1) {
+          if (x_TCL[i][int_node] == next_x && y_TCL[i][int_node] == next_y) {
+            // The other (higher priority) node has not gone pass the TIC yet
+            // Must wait
+            return;
+          }
+        }
+
+        if (MOVE_TO(next_x, next_y)) {
+          // Move to next point
+          x[id] = next_x;
+          y[id] = next_y;
+          UPDATE_TCL();
+
+          if (x[id] > X_UPPER_BOUND || x[id] < X_LOWER_BOUND ||
+              y[id] > Y_UPPER_BOUND || y[id] < Y_LOWER_BOUND) {
+            // Exiting intersection
+            state[id] = OUTSIDE;
+          }
+        }
+      }
+    }
+  }
+
+  // BELOW FUNCTIONS ARE CALLED BEFORE EACH ROUND
+  // IN THE ORDER THEY APPEAR
+
+  @ONCE_EVERY (10)
+  void LOG_STATUS () {
+    LOG(state[id], x[id], y[id]);
+  }
+
+  // Check safety property
+  // Terminate this node if property is violated
+  @ONCE_EVERY (1)
+  void NODE_ASSERT () {
+    // Not consider nodes that already left intersection zone
+    if (state[id] != FAR) {
+      FORALL_OTHER (i) {
+        // Assert no collision
+        LOCAL_ASSERT (true_x[i] != x[id] || true_y[i] != y[id]);
+      }
+    }
+  }
+
+  // Check if all nodes are done, i.e., either left intersection zone or collided
+  // If so, terminate this node
+  // IMPORTANT NOTE:
+  // If this node terminates before it successfully broadcasts its "done" flag,
+  // other nodes will wait indefinitely.
+  // To handle this, have the master process kill all other nodes if at least one node terminated.
+  @ONCE_EVERY (1)
+  void CHECK_ALL_DONE () {
+    if (!EXISTS_ANY (i, done[i] == 0)) {
+      // Terminate this node
+      EXIT;
+    }
+  }
+
+}
+
+//program has four nodes with ids 0, 1, 2, and 3
+PROGRAM = uav (0) || uav (1) || uav (2) || uav (3);
+
+//initial state
+void INIT () 
+{
+  ATOMIC {
+    FORALL_NODE(id) {
+      state.id = INITS;
+      ND(x.id); ND(y.id);
+      ASSUME(0 <= x.id && x.id < X && 0 <= y.id && y.id < Y);
+      ND(xf.id); ND(yf.id);
+      ASSUME(0 <= xf.id && xf.id < X && 0 <= yf.id && yf.id < Y);
+    }
+  }
+
+  FORALL_DISTINCT_NODE_PAIR (id1,id2) {
+    ASSUME(x.id1 != x.id2 || y.id1 != y.id2);
+  }
+}
+
+//the safety property checked at the beginning of each round
+void SAFETY ()
+{
+  FORALL_DISTINCT_NODE_PAIR (id1,id2) {
+    ASSERT(x.id1 != x.id2 || y.id1 != y.id2);
+  }
+}
