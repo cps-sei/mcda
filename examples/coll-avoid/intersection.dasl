@@ -6,19 +6,18 @@ TARGET GNU_CPP,WIN_CPP %%{
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
-#include <boost/lexical_cast.hpp>
 #include "madara/utility/Utility.h"
 
 const double MOVE_TO_PROB = 0.6;
 
-int MOVE_TO (int x, int y)
-{
-  return rand() < (RAND_MAX * MOVE_TO_PROB);
-}
-
 int flip (double prob)
 {
   return rand() < (RAND_MAX * prob);
+}
+
+int MOVE_TO (int x, int y)
+{
+  return flip(MOVE_TO_PROB);
 }
 
 // Drop simulation function must have this signature
@@ -52,14 +51,13 @@ CONST Y = 6;
 CONST NUM_INTS_X = 1;
 CONST NUM_INTS_Y = 1;
 
-// Intersection 1:
-// - Lane A moving N
-// - Lane B moving E
-// - Lane C moving W
-// - Lane D moving S
+// Lanes moving N
 CONST Ax = 3;
+// Lanes moving E
 CONST By = 2;
+// Lanes moving W
 CONST Cy = 3;
+// Lanes moving S
 CONST Dx = 2;
 
 // Node states
@@ -86,7 +84,7 @@ NODE uav (id)
   LOCAL int W_lanes [NUM_INTS_Y];
   LOCAL int S_lanes [NUM_INTS_X];
 
-  // Vector field
+  // Direction vector field
   LOCAL _Bool v_field_N [X][Y][#N];
   LOCAL _Bool v_field_E [X][Y][#N];
   LOCAL _Bool v_field_W [X][Y][#N];
@@ -95,7 +93,7 @@ NODE uav (id)
   // END CONSTANTS
 
   // State of each node
-  GLOBAL int state [#N];
+  TRACK GLOBAL int state [#N];
 
   // Current x-y coordinates of each node
   TRACK GLOBAL int x [#N];
@@ -109,15 +107,11 @@ NODE uav (id)
   // Trajectory Intersecting Cells (TIC)
   // Each element indicates whether the corresponding (same index)
   // element in TCL is a TIC
-  LOCAL int TIC [TCL_LENGTH];
+  LOCAL _Bool TIC [TCL_LENGTH];
 
   // Trajectory Intersecting Node
   // -1 means no intersecting node
   LOCAL int TIN [TCL_LENGTH];
-
-  // Final x-y coordinates
-  LOCAL int xf;
-  LOCAL int yf;
 
   void NODE_INIT () {
     int i, j; // for-loop variables
@@ -127,10 +121,11 @@ NODE uav (id)
 
     // Initialize TIN
     for (i = 0; i < TCL_LENGTH; i = i + 1) {
+      // No intersecting node
       TIN[i] = -1;
     }
 
-    // Lanes at intersection #0
+    // Define all lanes
     N_lanes[0] = Ax;
     E_lanes[0] = By;
     W_lanes[0] = Cy;
@@ -186,10 +181,10 @@ NODE uav (id)
     cur_x = x_TCL[TCL_index - 1][id];
     cur_y = y_TCL[TCL_index - 1][id];
 
-    // Choose next legal point at random
+    // Choose next legal point (randomly if 2 choices)
     b = flip(0.5);
 
-    if (v_field_N [cur_x][cur_y] == 1 && v_field_E [cur_x][cur_y]) {
+    if (v_field_N [cur_x][cur_y] == 1 && v_field_E [cur_x][cur_y] == 1) {
       // Go N or E
       if (b) {
         next_x = cur_x;
@@ -198,7 +193,7 @@ NODE uav (id)
         next_x = cur_x + 1;
         next_y = cur_y;
       }
-    } else if (v_field_N [cur_x][cur_y] == 1 && v_field_W [cur_x][cur_y]) {
+    } else if (v_field_N [cur_x][cur_y] == 1 && v_field_W [cur_x][cur_y] == 1) {
       // Go N or W
       if (b) {
         next_x = cur_x;
@@ -207,7 +202,7 @@ NODE uav (id)
         next_x = cur_x - 1;
         next_y = cur_y;
       }
-    } else if (v_field_S [cur_x][cur_y] == 1 && v_field_E [cur_x][cur_y]) {
+    } else if (v_field_S [cur_x][cur_y] == 1 && v_field_E [cur_x][cur_y] == 1) {
       // Go S or E
       if (b) {
         next_x = cur_x;
@@ -216,7 +211,7 @@ NODE uav (id)
         next_x = cur_x + 1;
         next_y = cur_y;
       }
-    } else if (v_field_S [cur_x][cur_y] == 1 && v_field_W [cur_x][cur_y]) {
+    } else if (v_field_S [cur_x][cur_y] == 1 && v_field_W [cur_x][cur_y] == 1) {
       // S or W
       if (b) {
         next_x = cur_x;
@@ -253,7 +248,8 @@ NODE uav (id)
 
     for (i = 0; i < TCL_LENGTH; i = i + 1) {
       for (j = 0; j < TCL_LENGTH; j = j + 1) {
-        if (x_TCL[i][id] != -1 && x_TCL[i][id] == x_TCL[j][other]
+        if (x_TCL[i][id] != -1 // -1 means no element at i in TCL
+            && x_TCL[i][id] == x_TCL[j][other]
             && y_TCL[i][id] == y_TCL[j][other]) {
           // Index of the TIC in this node's TCL
           return i;
@@ -271,18 +267,23 @@ NODE uav (id)
     int i, j; // for-loop variable
 
     if (state[id] == INITS) {
-      // Assume valid initial and final locations
+      // Assume valid initial location,
+      // i.e., on a lane and not approaching or crossing intersection
+
       // Create initial TCL
       COMPUTE_TCL();
       state[id] = OUTSIDE;
-    } else if (state[id] == OUTSIDE) {
-      if (x[id] == xf && y[id] == yf) {
-        // Leaving intersection zone
+    }
+
+    if (state[id] == OUTSIDE) {
+      if (x[id] < 0 || x[id] >= X || y[id] < 0 || y[id] >= Y) {
+        // Out of grid bound
         state[id] = FAR;
-        done[id] = 1; // indicate that this node is done
+        done[id] = 1; // this node is done and ready to terminate
         return;
       }
 
+      // Next point in TCL
       next_x = x_TCL[1][id];
       next_y = y_TCL[1][id];
 
@@ -315,15 +316,18 @@ NODE uav (id)
 
       FORALL_OTHER (n) {
         if ((state[n] == CROSS) || (state[n] == APPROACH && n > id)) {
-          // Get index of TIC in this node's TCL
+          // Node n has higher priority
+          // Get index of TIC in this node's TCL, if exists
           TIC_index = CDAI(n);
 
           if (TIC_index >= 0) {
+            // TIC exists
             // Keep track of all TICs and corresponding nodes
             TIC[TIC_index] = 1;
             TIN[TIC_index] = n;
           }
         }
+        // Not keep track of TICs of lower-priority nodes
       }
 
       state[id] = CROSS;
@@ -337,27 +341,27 @@ NODE uav (id)
 
         for (i = 0; i < TCL_LENGTH; i = i + 1) {
           if (x_TCL[i][int_node] == next_x && y_TCL[i][int_node] == next_y) {
-            // The other (higher priority) node has not gone pass the TIC yet
+            // The (higher-priority) intersecting node has not gone pass the TIC yet
             // Must wait
             return;
           }
         }
+      }
 
-        if (MOVE_TO(next_x, next_y)) {
-          // Move to next point
-          x[id] = next_x;
-          y[id] = next_y;
-          UPDATE_TCL();
+      if (MOVE_TO(next_x, next_y)) {
+        // Move to next point
+        x[id] = next_x;
+        y[id] = next_y;
+        UPDATE_TCL();
 
-          for (i = 0; i < NUM_INTS_X; i = i + 1) {
-            for (j = 0; j < NUM_INTS_Y; j = j + 1) {
-              if ((x[id] == N_lanes[i] - 1 && y[id] == E_lanes[j] - 1) || // next to A
-                  (y[id] == E_lanes[j] + 1 && x[id] == S_lanes[i] - 1) || // next to B
-                  (y[id] == W_lanes[j] - 1 && x[id] == N_lanes[i] + 1) || // next to C
-                  (x[id] == S_lanes[i] + 1 && y[id] == W_lanes[j] + 1)) { // next to D
-                // Exiting intersection
-                state[id] = OUTSIDE;
-              }
+        for (i = 0; i < NUM_INTS_X; i = i + 1) {
+          for (j = 0; j < NUM_INTS_Y; j = j + 1) {
+            if ((x[id] == N_lanes[i] - 1 && y[id] == E_lanes[j] - 1) || // next to A
+                (y[id] == E_lanes[j] + 1 && x[id] == S_lanes[i] - 1) || // next to B
+                (y[id] == W_lanes[j] - 1 && x[id] == N_lanes[i] + 1) || // next to C
+                (x[id] == S_lanes[i] + 1 && y[id] == W_lanes[j] + 1)) { // next to D
+              // Exiting intersection
+              state[id] = OUTSIDE;
             }
           }
         }
@@ -379,21 +383,20 @@ NODE uav (id)
   // Once any node terminated, the master process must kill all other nodes.
   @ONCE_EVERY (1)
   void NODE_ASSERT () {
-    // Not consider nodes that already left intersection zone
-    if (state[id] != FAR) {
-      FORALL_OTHER (i) {
+    FORALL_OTHER (i) {
+      if (true_state[i] != FAR) { // Not consider nodes that are out of grid boundary
         // Assert no collision
         LOCAL_ASSERT (true_x[i] != x[id] || true_y[i] != y[id]);
       }
     }
   }
 
-  // Check if all nodes are done, i.e., either left intersection zone or collided
-  // If so, terminate this node
+  // Check if all nodes are done, i.e., state == FAR,
+  // if so, terminate this node
   // IMPORTANT NOTE:
   // If this node terminates before it successfully broadcasts its "done" flag,
-  // other nodes will wait indefinitely.
-  // To handle this, have the master process kill all other nodes if at least one node terminated.
+  // other nodes will continue indefinitely.
+  // To handle this, have the master process kill all other nodes if any node terminated.
   @ONCE_EVERY (1)
   void CHECK_ALL_DONE () {
     if (!EXISTS_ANY (i, done[i] == 0)) {
