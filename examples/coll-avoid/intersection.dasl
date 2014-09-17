@@ -9,89 +9,14 @@ TARGET GNU_CPP,WIN_CPP %%{
 #include <boost/lexical_cast.hpp>
 #include "madara/utility/Utility.h"
 
+const double MOVE_TO_PROB = 0.6;
 
 int MOVE_TO (int x, int y)
 {
-  return rand() < (RAND_MAX / 10 * 6);
+  return rand() < (RAND_MAX * MOVE_TO_PROB);
 }
 
-int round = 0;
-int xi,yi;
-
-void print_line(int _X)
-{
-  printf("-");
-  for(int i = 0;i < _X;++i) printf("--");
-  printf("\n");
-}
-
-void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf)
-{
-  if(round == 0) {
-    xi = x; yi = y;
-  }
-
-  for(int i = 0;i < 150;++i) printf("\n");
-  
-  printf("round = %d : id = %d\n", ++round, id);
-  printf("_X = %d _Y = %d\n",_X,_Y);
-  print_line(_X);
-  for(int i = 0;i < _Y;++i) {
-    printf("|");
-    for(int j = 0;j < _X;++j) {
-      //printf("i = %d j = %d\n", i, j);
-      if(j == xf && i == yf) printf("o|");        
-      else if(j == x && i == y) printf("%d|",id);
-      else printf(" |");
-    }
-    printf("\n");
-    print_line(_X);
-  }
-}
-
-void print_global_state(int local_state)
-{
-  for (int i = 0; i < 150; ++i)
-    printf("\n");
-
-  printf("round = %d : id = %d : state = %d\n", ++round, (int) *id, local_state);
-  printf("_X = %d _Y = %d\n", X, Y);
-  print_line(X);
-
-  for (int i = 0; i < Y; ++i) {
-    printf("|");
-
-    for (int j = 0; j < X; ++j) {
-      bool taken = false;
-
-      for (int k = 0; k < processes; ++k) {
-        if (j == true_x[k] && i == true_y[k]) {
-          printf("%d|", k);
-          taken = true;
-          break;
-        }
-      }
-
-      if (!taken) {
-        if (j == *xf && i == *yf)
-          printf("o|");
-        else printf(" |");
-      }
-    }
-    printf("\n");
-    print_line(X);
-  }
-}
-
-const int RADIUS_LEVEL_1 = 4;
-const int RADIUS_LEVEL_2 = 6;
-const int RADIUS_LEVEL_3 = 10;
-const double DROP_PROB_LEVEL_1 = 0.6;
-const double DROP_PROB_LEVEL_2 = 0.6;
-const double DROP_PROB_LEVEL_3 = 0.6;
-const double DROP_PROB_LEVEL_4 = 0.6;
-
-bool flip (double prob)
+int flip (double prob)
 {
   return rand() < (RAND_MAX * prob);
 }
@@ -102,27 +27,8 @@ bool prob_distance_drop (Madara::Knowledge_Map & incoming_records,
                          const Madara::Transport::Transport_Context & context,
                          Madara::Knowledge_Engine::Variables & vars)
 {
-  Integer sid = incoming_records["id"].to_integer();
-  std::string sender_id = boost::lexical_cast<std::string>(sid);
-  std::string x_key = "x." + sender_id;
-  std::string y_key = "y." + sender_id;
-  Madara::Knowledge_Map::iterator it = incoming_records.find(x_key);
-
-  if (it != incoming_records.end()) {
-    // Assume x and y are always broadcasted together
-    Integer sender_x = it->second.to_integer();
-    Integer sender_y = incoming_records[y_key].to_integer();
-    Integer dx = x[*id] - sender_x;
-    Integer dy = y[*id] - sender_y;
-    double dr = sqrt(dx * dx + dy * dy);
-
-    return (dr > RADIUS_LEVEL_3 && flip(DROP_PROB_LEVEL_4)) ||
-        (dr <= RADIUS_LEVEL_3 && dr > RADIUS_LEVEL_2 && flip(DROP_PROB_LEVEL_3)) ||
-        (dr <= RADIUS_LEVEL_2 && dr > RADIUS_LEVEL_1 && flip(DROP_PROB_LEVEL_2)) ||
-        (dr <= RADIUS_LEVEL_1 && flip(DROP_PROB_LEVEL_1));
-  } else {
-    return false;
-  }
+  // TODO
+  return false;
 }
 
 //do some basic initialization at the start of the node
@@ -137,14 +43,24 @@ void basic_node_init()
 @DROP_SIMULATION(prob_distance_drop);
 @PERIODIC(2000);
 
-// Intersection configuration
+// Grid size
 CONST X = 6;
 CONST Y = 6;
-CONST INTERSECTION_SIZE = 2;
-CONST X_LOWER_BOUND = 2;
-CONST X_UPPER_BOUND = 3;
-CONST Y_LOWER_BOUND = 2;
-CONST Y_UPPER_BOUND = 3;
+
+// Number of intersections
+// in each axis
+CONST NUM_INTS_X = 1;
+CONST NUM_INTS_Y = 1;
+
+// Intersection 1:
+// - Lane A moving N
+// - Lane B moving E
+// - Lane C moving W
+// - Lane D moving S
+CONST Ax = 3;
+CONST By = 2;
+CONST Cy = 3;
+CONST Dx = 2;
 
 // Node states
 CONST INITS = 0;
@@ -152,18 +68,32 @@ CONST OUTSIDE = 1;
 CONST APPROACH = 2;
 CONST CROSS = 3;
 CONST FAR = 4;
-CONST COLLIDED = 5;
 
 // Intersection protocol
 CONST TCL_LENGTH = 5;
 
 EXTERN int MOVE_TO (int x, int y);
-EXTERN void print_state(int _X,int _Y,int id, int x, int y, int xf, int yf);
-EXTERN void print_global_state(int local_state);
+EXTERN int flip (double prob);
 EXTERN void basic_node_init();
 
 NODE uav (id)
 {
+  // CONSTANTS
+
+  // N/E/W/S lanes
+  LOCAL int N_lanes [NUM_INTS_X];
+  LOCAL int E_lanes [NUM_INTS_Y];
+  LOCAL int W_lanes [NUM_INTS_Y];
+  LOCAL int S_lanes [NUM_INTS_X];
+
+  // Vector field
+  LOCAL _Bool v_field_N [X][Y][#N];
+  LOCAL _Bool v_field_E [X][Y][#N];
+  LOCAL _Bool v_field_W [X][Y][#N];
+  LOCAL _Bool v_field_S [X][Y][#N];
+
+  // END CONSTANTS
+
   // State of each node
   GLOBAL int state [#N];
 
@@ -189,16 +119,38 @@ NODE uav (id)
   LOCAL int xf;
   LOCAL int yf;
 
-  // Number of rounds executed since started
-  LOCAL int num_rounds;
-
   void NODE_INIT () {
-    int i;
-    basic_node_init(); // do basic initialization
+    int i, j; // for-loop variables
+
+    // do basic initialization
+    basic_node_init();
 
     // Initialize TIN
     for (i = 0; i < TCL_LENGTH; i = i + 1) {
       TIN[i] = -1;
+    }
+
+    // Lanes at intersection #0
+    N_lanes[0] = Ax;
+    E_lanes[0] = By;
+    W_lanes[0] = Cy;
+    S_lanes[0] = Dx;
+
+    // Create vector field
+    for (i = 0; i < NUM_INTS_X; i = i + 1) {
+      // N & S
+      for (j = 0; j < Y; j = j + 1) {
+        v_field_N [N_lanes[i]][j] = 1;
+        v_field_S [S_lanes[i]][j] = 1;
+      }
+    }
+
+    for (i = 0; i < NUM_INTS_Y; i = i + 1) {
+      // E & W
+      for (j = 0; j < X; j = j + 1) {
+        v_field_E [j][E_lanes[i]] = 1;
+        v_field_W [j][W_lanes[i]] = 1;
+      }
     }
   }
 
@@ -228,26 +180,67 @@ NODE uav (id)
   }
 
   void NEXT_XY (int TCL_index) {
-    int prev_x, prev_y, next_x, next_y;
+    int cur_x, cur_y, next_x, next_y;
+    int b;
 
-    prev_x = x_TCL[TCL_index - 1][id];
-    prev_y = y_TCL[TCL_index - 1][id];
-    next_x = prev_x;
-    next_y = prev_y;
+    cur_x = x_TCL[TCL_index - 1][id];
+    cur_y = y_TCL[TCL_index - 1][id];
 
-    // Find next point
-    if (xf > prev_x) {
-      next_x = next_x + 1;
-    } else if (xf < prev_x) {
-      next_x = next_x - 1;
-    } else if (yf > prev_y) {
-      next_y = prev_y + 1;
-    } else if (yf < prev_y) {
-      next_y = prev_y - 1;
-    } else {
-      // no value
-      next_x = -1;
-      next_y = -1;
+    // Choose next legal point at random
+    b = flip(0.5);
+
+    if (v_field_N [cur_x][cur_y] == 1 && v_field_E [cur_x][cur_y]) {
+      // Go N or E
+      if (b) {
+        next_x = cur_x;
+        next_y = cur_y + 1;
+      } else {
+        next_x = cur_x + 1;
+        next_y = cur_y;
+      }
+    } else if (v_field_N [cur_x][cur_y] == 1 && v_field_W [cur_x][cur_y]) {
+      // Go N or W
+      if (b) {
+        next_x = cur_x;
+        next_y = cur_y + 1;
+      } else {
+        next_x = cur_x - 1;
+        next_y = cur_y;
+      }
+    } else if (v_field_S [cur_x][cur_y] == 1 && v_field_E [cur_x][cur_y]) {
+      // Go S or E
+      if (b) {
+        next_x = cur_x;
+        next_y = cur_y - 1;
+      } else {
+        next_x = cur_x + 1;
+        next_y = cur_y;
+      }
+    } else if (v_field_S [cur_x][cur_y] == 1 && v_field_W [cur_x][cur_y]) {
+      // S or W
+      if (b) {
+        next_x = cur_x;
+        next_y = cur_y - 1;
+      } else {
+        next_x = cur_x - 1;
+        next_y = cur_y;
+      }
+    } else if (v_field_N [cur_x][cur_y] == 1) {
+      // Go N
+      next_x = cur_x;
+      next_y = cur_y + 1;
+    } else if (v_field_E [cur_x][cur_y] == 1) {
+      // Go E
+      next_x = cur_x + 1;
+      next_y = cur_y;
+    } else if (v_field_W [cur_x][cur_y] == 1) {
+      // Go W
+      next_x = cur_x - 1;
+      next_y = cur_y;
+    } else if (v_field_S [cur_x][cur_y] == 1) {
+      // Go S
+      next_x = cur_x;
+      next_y = cur_y - 1;
     }
 
     // Fill TCL_index with next point
@@ -271,15 +264,11 @@ NODE uav (id)
     return -1;
   }
 
-  int MANHATTAN_DISTANCE (int xi, int yi, int xj, int yj) {
-    return abs(xi - xj) + abs(yi - yj);
-  }
-
   void ROUND () {
     int next_x, next_y;
     int TIC_index;
     int int_node; // intersecting node
-    int i; // for-loop variable
+    int i, j; // for-loop variable
 
     if (state[id] == INITS) {
       // Assume valid initial and final locations
@@ -306,12 +295,16 @@ NODE uav (id)
           y[id] = next_y;
           UPDATE_TCL();
 
-          if ((x[id] == X_UPPER_BOUND && y[id] == Y_LOWER_BOUND - 1) ||
-              (x[id] == X_UPPER_BOUND + 1 && y[id] == Y_UPPER_BOUND) ||
-              (x[id] == X_LOWER_BOUND && y[id] == Y_UPPER_BOUND + 1) ||
-              (x[id] == X_LOWER_BOUND - 1 && y[id] == Y_LOWER_BOUND)) {
-            // Approaching intersection
-            state[id] = APPROACH;
+          for (i = 0; i < NUM_INTS_X; i = i + 1) {
+            for (j = 0; j < NUM_INTS_Y; j = j + 1) {
+              if ((x[id] == N_lanes[i] && y[id] == E_lanes[j] - 1) || // A
+                  (y[id] == E_lanes[j] && x[id] == S_lanes[i] - 1) || // B
+                  (y[id] == W_lanes[j] && x[id] == N_lanes[i] + 1) || // C
+                  (x[id] == S_lanes[i] && y[id] == W_lanes[j] + 1)) { // D
+                // Approaching intersection
+                state[id] = APPROACH;
+              }
+            }
           }
         }
       }
@@ -356,10 +349,16 @@ NODE uav (id)
           y[id] = next_y;
           UPDATE_TCL();
 
-          if (x[id] > X_UPPER_BOUND || x[id] < X_LOWER_BOUND ||
-              y[id] > Y_UPPER_BOUND || y[id] < Y_LOWER_BOUND) {
-            // Exiting intersection
-            state[id] = OUTSIDE;
+          for (i = 0; i < NUM_INTS_X; i = i + 1) {
+            for (j = 0; j < NUM_INTS_Y; j = j + 1) {
+              if ((x[id] == N_lanes[i] - 1 && y[id] == E_lanes[j] - 1) || // next to A
+                  (y[id] == E_lanes[j] + 1 && x[id] == S_lanes[i] - 1) || // next to B
+                  (y[id] == W_lanes[j] - 1 && x[id] == N_lanes[i] + 1) || // next to C
+                  (x[id] == S_lanes[i] + 1 && y[id] == W_lanes[j] + 1)) { // next to D
+                // Exiting intersection
+                state[id] = OUTSIDE;
+              }
+            }
           }
         }
       }
@@ -376,6 +375,8 @@ NODE uav (id)
 
   // Check safety property
   // Terminate this node if property is violated
+  // IMP0RTANT NOTE:
+  // Once any node terminated, the master process must kill all other nodes.
   @ONCE_EVERY (1)
   void NODE_ASSERT () {
     // Not consider nodes that already left intersection zone
