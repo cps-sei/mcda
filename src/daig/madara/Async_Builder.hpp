@@ -83,11 +83,6 @@ namespace daig
       void build (void);
 
       /**
-       * Builds filter for packet drop simulation
-       */
-      void build_drop_filter (void);
-
-      /**
        * Builds the arguments parser
        **/
       void build_parse_args (void);
