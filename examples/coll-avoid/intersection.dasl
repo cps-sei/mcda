@@ -82,14 +82,24 @@ void print_global_state ()
   }
 }
 
+const int k = 0.01;
+const int M = 500;
+const int MPU = 3.7; // Meters per unit length
+
 // Drop simulation function must have this signature
 // MADARA-specific
 bool prob_distance_drop (Madara::Knowledge_Map & incoming_records,
                          const Madara::Transport::Transport_Context & context,
                          Madara::Knowledge_Engine::Variables & vars)
 {
-  // TODO
-  return false;
+  Integer sid = incoming_records["id"].to_integer();
+  std::string sender_id = boost::lexical_cast<std::string>(sid);
+  Integer dx = x[*id] - incoming_records["x." + sender_id].to_integer();
+  Integer dy = y[*id] - incoming_records["y." + sender_id].to_integer();
+  double dr = sqrt(dx * dx + dy * dy);
+  double d = dr * MPU;
+  double drop_prob = 1 - (1 / (1 + exp(-2 * k * (-d + M))));
+  return rand() < (RAND_MAX * drop_prob);
 }
 
 //do some basic initialization at the start of the node
@@ -105,22 +115,35 @@ void basic_node_init()
 @PERIODIC(2000);
 
 // Grid size
-CONST X = 6;
-CONST Y = 6;
+CONST X = 18;
+CONST Y = 12;
 
 // Number of intersections
 // in each axis
-CONST NUM_INTS_X = 1;
-CONST NUM_INTS_Y = 1;
+CONST NUM_INTS_X = 3;
+CONST NUM_INTS_Y = 2;
+
+// Number of lanes
+// in each direction
+CONST NUM_N_LANES = 3;
+CONST NUM_E_LANES = 2;
+CONST NUM_W_LANES = 2;
+CONST NUM_S_LANES = 3;
 
 // Lanes moving N
 CONST Ax = 3;
+CONST Bx = 9;
+CONST Cx = 15;
 // Lanes moving E
-CONST By = 2;
+CONST Dy = 2;
+CONST Ey = 8;
 // Lanes moving W
-CONST Cy = 3;
+CONST Fy = 3;
+CONST Gy = 9;
 // Lanes moving S
-CONST Dx = 2;
+CONST Hx = 2;
+CONST Ix = 8;
+CONST Jx = 14;
 
 // Node states
 CONST INITS = 0;
@@ -141,11 +164,17 @@ NODE uav (id)
 {
   // CONSTANTS
 
+  // Intersection boundaries
+  LOCAL int X_LOWER_BOUNDS [NUM_INTS_X];
+  LOCAL int X_UPPER_BOUNDS [NUM_INTS_X];
+  LOCAL int Y_LOWER_BOUNDS [NUM_INTS_Y];
+  LOCAL int Y_UPPER_BOUNDS [NUM_INTS_Y];
+
   // N/E/W/S lanes
-  LOCAL int N_lanes [NUM_INTS_X];
-  LOCAL int E_lanes [NUM_INTS_Y];
-  LOCAL int W_lanes [NUM_INTS_Y];
-  LOCAL int S_lanes [NUM_INTS_X];
+  LOCAL int N_lanes [NUM_N_LANES];
+  LOCAL int E_lanes [NUM_E_LANES];
+  LOCAL int W_lanes [NUM_W_LANES];
+  LOCAL int S_lanes [NUM_S_LANES];
 
   // Direction vector field
   LOCAL _Bool v_field_N [X][Y][#N];
@@ -188,25 +217,61 @@ NODE uav (id)
       TIN[i] = -1;
     }
 
-    // Define all lanes
+    // Define intersection boundaries
+    X_LOWER_BOUNDS[0] = Hx;
+    X_UPPER_BOUNDS[0] = Ax;
+    X_LOWER_BOUNDS[1] = Ix;
+    X_UPPER_BOUNDS[1] = Bx;
+    X_LOWER_BOUNDS[2] = Jx;
+    X_UPPER_BOUNDS[2] = Cx;
+    Y_LOWER_BOUNDS[0] = Dy;
+    Y_UPPER_BOUNDS[0] = Fy;
+    Y_LOWER_BOUNDS[1] = Ey;
+    Y_UPPER_BOUNDS[1] = Gy;
+
+    // Define N lanes
     N_lanes[0] = Ax;
-    E_lanes[0] = By;
-    W_lanes[0] = Cy;
-    S_lanes[0] = Dx;
+    N_lanes[1] = Bx;
+    N_lanes[2] = Cx;
+
+    // Define E lanes
+    E_lanes[0] = Dy;
+    E_lanes[1] = Ey;
+
+    // Define W lanes
+    W_lanes[0] = Fy;
+    W_lanes[1] = Gy;
+
+    // Define S lanes
+    S_lanes[0] = Hx;
+    S_lanes[1] = Ix;
+    S_lanes[2] = Jx;
 
     // Create vector field
-    for (i = 0; i < NUM_INTS_X; i = i + 1) {
-      // N & S
+    for (i = 0; i < NUM_N_LANES; i = i + 1) {
+      // N
       for (j = 0; j < Y; j = j + 1) {
         v_field_N [N_lanes[i]][j] = 1;
+      }
+    }
+
+    for (i = 0; i < NUM_S_LANES; i = i + 1) {
+      // S
+      for (j = 0; j < Y; j = j + 1) {
         v_field_S [S_lanes[i]][j] = 1;
       }
     }
 
-    for (i = 0; i < NUM_INTS_Y; i = i + 1) {
-      // E & W
+    for (i = 0; i < NUM_E_LANES; i = i + 1) {
+      // E
       for (j = 0; j < X; j = j + 1) {
         v_field_E [j][E_lanes[i]] = 1;
+      }
+    }
+
+    for (i = 0; i < NUM_W_LANES; i = i + 1) {
+      // W
+      for (j = 0; j < X; j = j + 1) {
         v_field_W [j][W_lanes[i]] = 1;
       }
     }
@@ -323,8 +388,22 @@ NODE uav (id)
     return -1;
   }
 
+  int in_intersection (int xp, int yp) {
+    int i, j;
+    for (i = 0; i < NUM_INTS_X; i++) {
+      for (j = 0; j < NUM_INTS_Y; j++) {
+        if (xp >= X_LOWER_BOUNDS[i] && xp <= X_UPPER_BOUNDS[i] &&
+            yp >= Y_LOWER_BOUNDS[j] && yp <= Y_UPPER_BOUNDS[j]) {
+          // Inside intersection
+          return 1;
+        }
+      }
+    }
+    return 0;
+  }
+
   void ROUND () {
-    int next_x, next_y;
+    int next_x, next_y, xp, yp;
     int TIC_index;
     int int_node; // intersecting node
     int i, j; // for-loop variable
@@ -361,16 +440,13 @@ NODE uav (id)
           y[id] = next_y;
           UPDATE_TCL();
 
-          for (i = 0; i < NUM_INTS_X; i = i + 1) {
-            for (j = 0; j < NUM_INTS_Y; j = j + 1) {
-              if ((x[id] == N_lanes[i] && y[id] == E_lanes[j] - 1) || // A
-                  (y[id] == E_lanes[j] && x[id] == S_lanes[i] - 1) || // B
-                  (y[id] == W_lanes[j] && x[id] == N_lanes[i] + 1) || // C
-                  (x[id] == S_lanes[i] && y[id] == W_lanes[j] + 1)) { // D
-                // Approaching intersection
-                state[id] = APPROACH;
-              }
-            }
+          // Check if approaching intersection
+          xp = x_TCL[1][id];
+          yp = y_TCL[1][id];
+
+          if (in_intersection (xp, yp)) {
+            // Approaching intersection
+            state[id] = APPROACH;
           }
         }
       }
@@ -419,16 +495,10 @@ NODE uav (id)
         y[id] = next_y;
         UPDATE_TCL();
 
-        for (i = 0; i < NUM_INTS_X; i = i + 1) {
-          for (j = 0; j < NUM_INTS_Y; j = j + 1) {
-            if ((x[id] == N_lanes[i] - 1 && y[id] == E_lanes[j] - 1) || // next to A
-                (y[id] == E_lanes[j] + 1 && x[id] == S_lanes[i] - 1) || // next to B
-                (y[id] == W_lanes[j] - 1 && x[id] == N_lanes[i] + 1) || // next to C
-                (x[id] == S_lanes[i] + 1 && y[id] == W_lanes[j] + 1)) { // next to D
-              // Exiting intersection
-              state[id] = OUTSIDE;
-            }
-          }
+        // Check if exiting intersection
+        if (!in_intersection (x[id], y[id])) {
+          // Exiting intersection
+          state[id] = OUTSIDE;
         }
       }
     }

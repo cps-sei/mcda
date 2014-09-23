@@ -26,14 +26,26 @@ bool is_crossing (int x, int y);
 //-- constants
 /*********************************************************************/
 const int MAX_WAIT_TIME = 60;
-const int X_SIZE = 6;
-const int Y_SIZE = 6;
-const int NUM_INTS_X = 1;
-const int NUM_INTS_Y = 1;
-const int N_lanes[] = {3};
-const int E_lanes[] = {2};
-const int W_lanes[] = {3};
-const int S_lanes[] = {2};
+
+// Grid size
+const int X_SIZE = 18;
+const int Y_SIZE = 12;
+
+// Number of intersections
+const int NUM_INTS_X = 3;
+const int NUM_INTS_Y = 2;
+
+// Intersection bounds
+std::vector<int> x_lower_bounds = {2, 8, 14};
+std::vector<int> x_upper_bounds = {3, 9, 15};
+std::vector<int> y_lower_bounds = {2, 8};
+std::vector<int> y_upper_bounds = {3, 9};
+
+// Lanes
+std::vector<int> N_lanes = {3, 9, 15};
+std::vector<int> E_lanes = {2, 8, 14};
+std::vector<int> W_lanes = {3, 9};
+std::vector<int> S_lanes = {2, 8};
 
 /*********************************************************************/
 //-- global variables
@@ -117,25 +129,25 @@ void run ()
 
       if (lane == 0) {
         // Choose N lane at random
-        x = N_lanes[rand() % NUM_INTS_X];
+        x = N_lanes[rand() % N_lanes.size()];
         do {
           y = rand() % Y_SIZE;
         } while (is_approaching(x, y) || is_crossing(x, y));
       } else if (lane == 1) {
         // Choose E lane at random
-        y = E_lanes[rand() % NUM_INTS_Y];
+        y = E_lanes[rand() % E_lanes.size()];
         do {
           x = rand() % X_SIZE;
         } while (is_approaching(x, y) || is_crossing(x, y));
       } else if (lane == 2) {
         // Choose W lane at random
-        y = W_lanes[rand() % NUM_INTS_Y];
+        y = W_lanes[rand() % W_lanes.size()];
         do {
           x = rand() % X_SIZE;
         } while (is_approaching(x, y) || is_crossing(x, y));
       } else {
         // Choose S lane at random
-        x = S_lanes[rand() % NUM_INTS_X];
+        x = S_lanes[rand() % S_lanes.size()];
         do {
           y = rand() % Y_SIZE;
         } while (is_approaching(x, y) || is_crossing(x, y));
@@ -255,26 +267,33 @@ void run ()
   alarm (0);
 }
 
-bool is_approaching (int x, int y) {
-  for (int i = 0; i < NUM_INTS_X; i++) {
-    for (int j = 0; j < NUM_INTS_Y; j++) {
-      if ((x == N_lanes[i] && y == E_lanes[j] - 1) || // A
-          (y == E_lanes[j] && x == S_lanes[i] - 1) || // B
-          (y == W_lanes[j] && x == N_lanes[i] + 1) || // C
-          (x == S_lanes[i] && y == W_lanes[j] + 1)) { // D
-        // Approaching intersection
-        return true;
+bool is_approaching (std::vector<int> lanes, int c1, int c2, std::vector<int> bounds, int s) {
+  BOOST_FOREACH (int l, lanes) {
+    if (c1 == l) {
+      BOOST_FOREACH (int b, bounds) {
+        if (c2 == b + s) {
+          // Approaching intersection
+          return true;
+        }
       }
+      return false;
     }
   }
   return false;
 }
 
-bool is_crossing (int x, int y) {
+bool is_approaching (int x, int y) {
+  return is_approaching(N_lanes, x, y, y_lower_bounds, -1) ||
+      is_approaching(S_lanes, x, y, y_upper_bounds, 1) ||
+      is_approaching(E_lanes, y, x, x_lower_bounds, -1) ||
+      is_approaching(W_lanes, y, x, x_upper_bounds, 1);
+}
+
+bool is_crossing(int x, int y) {
   for (int i = 0; i < NUM_INTS_X; i++) {
     for (int j = 0; j < NUM_INTS_Y; j++) {
-      if ((x == N_lanes[i] || x == S_lanes[i]) &&
-          (y == E_lanes[j] || y == W_lanes[j])) {
+      if (x >= x_lower_bounds[i] && x <= x_upper_bounds[i] &&
+          y >= y_lower_bounds[j] && y <= y_upper_bounds[j]) {
         // Crossing intersection
         return true;
       }
