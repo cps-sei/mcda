@@ -21,6 +21,28 @@ int MOVE_TO (int x, int y)
   return flip(MOVE_TO_PROB);
 }
 
+// Intersection bounds
+std::vector<int> x_lower_bounds = {2, 8, 14};
+std::vector<int> x_upper_bounds = {3, 9, 15};
+std::vector<int> y_lower_bounds = {2, 8};
+std::vector<int> y_upper_bounds = {3, 9};
+
+bool is_on_lane (int x, int y)
+{
+  for (int i = 0; i < NUM_INTS_X; i++)
+  {
+    for (int j = 0; j < NUM_INTS_Y; j++)
+    {
+      if ((x >= x_lower_bounds[i] && x <= x_upper_bounds[i]) ||
+          (y >= y_lower_bounds[j] && y <= y_upper_bounds[j]))
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void print_line(int _X)
 {
   printf("-");
@@ -42,9 +64,15 @@ void print_global_state ()
   print_line(X);
 
   for (int j = 0; j < Y; ++j) {
-    printf("|");
-
     for (int i = 0; i < X; ++i) {
+      if (!is_on_lane(i, j) && !is_on_lane(i + 1, j)) {
+        printf("   ");
+        continue;
+      } else if (!is_on_lane(i, j) && is_on_lane(i + 1, j)) {
+        printf("  |");
+        continue;
+      }
+
       bool taken = false;
 
       if (i == x[my_id] && j == y[my_id]) {
@@ -390,8 +418,8 @@ NODE uav (id)
 
   int in_intersection (int xp, int yp) {
     int i, j;
-    for (i = 0; i < NUM_INTS_X; i++) {
-      for (j = 0; j < NUM_INTS_Y; j++) {
+    for (i = 0; i < NUM_INTS_X; i = i + 1) {
+      for (j = 0; j < NUM_INTS_Y; j = j + 1) {
         if (xp >= X_LOWER_BOUNDS[i] && xp <= X_UPPER_BOUNDS[i] &&
             yp >= Y_LOWER_BOUNDS[j] && yp <= Y_UPPER_BOUNDS[j]) {
           // Inside intersection
@@ -407,6 +435,7 @@ NODE uav (id)
     int TIC_index;
     int int_node; // intersecting node
     int i, j; // for-loop variable
+    int res;
 
     print_global_state();
 
@@ -444,7 +473,9 @@ NODE uav (id)
           xp = x_TCL[1][id];
           yp = y_TCL[1][id];
 
-          if (in_intersection (xp, yp)) {
+          res = in_intersection (xp, yp);
+
+          if (res == 1) {
             // Approaching intersection
             state[id] = APPROACH;
           }
@@ -496,7 +527,8 @@ NODE uav (id)
         UPDATE_TCL();
 
         // Check if exiting intersection
-        if (!in_intersection (x[id], y[id])) {
+        res = in_intersection (x[id], y[id]);
+        if (res == 0) {
           // Exiting intersection
           state[id] = OUTSIDE;
         }
