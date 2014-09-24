@@ -334,27 +334,17 @@ daig::madara::Async_Builder::build_main_function ()
 
     buffer_ << "  // Building barrier for updating true variables\n";
     buffer_ << "  std::stringstream true_vars_barrier;\n";
-    buffer_ << "  true_vars_barrier << \"++init_barrier.{.id} ; UPDATE_TRUE_VARS () ;> \";\n";
-    buffer_ << "  bool started = false;\n\n";
+    buffer_ << "  true_vars_barrier << \"init_barrier.{.id} = 1 ;> UPDATE_TRUE_VARS () ;> \";\n\n";
 
     buffer_ << "  for (int i = 0; i < processes; ++i)\n";
     buffer_ << "  {\n";
-    buffer_ << "    if (i == settings.id)\n";
-    buffer_ << "    {\n";
-    buffer_ << "      continue;\n";
-    buffer_ << "    }\n\n";
-    buffer_ << "    if (started)\n";
+    buffer_ << "    if (i > 0)\n";
     buffer_ << "    {\n";
     buffer_ << "      true_vars_barrier << \" && \";\n";
     buffer_ << "    }\n\n";
     buffer_ << "    true_vars_barrier << \"init_barrier.\";\n";
     buffer_ << "    true_vars_barrier << i;\n";
-    buffer_ << "    true_vars_barrier << \" >= init_barrier.\";\n";
-    buffer_ << "    true_vars_barrier << settings.id;\n";
-    buffer_ << "    if (!started)\n";
-    buffer_ << "    {\n";
-    buffer_ << "      started = true;\n";
-    buffer_ << "    }\n";
+    buffer_ << "    true_vars_barrier << \" == 1\";\n";
     buffer_ << "  }\n\n";
 
     buffer_ << "  // Not sending global updates, just initial values of \"true\" variables\n";
