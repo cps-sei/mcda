@@ -976,7 +976,9 @@ daig::madara::Function_Visitor::exitRet (RetStmt & statement)
 {
   std::string spacer (indentation_, ' ');
 
-  buffer_ << spacer << "return result;\n";
+  buffer_ << spacer << "return ";
+  visit (statement.retVal);
+  buffer_ << ";\n";
 }
 
 

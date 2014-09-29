@@ -873,8 +873,12 @@ daig::madara::Madara_Builder::build_program_variable_binding (const Variable & v
   if (var.type->dims.size () == 1)
   {
     buffer_ << ", ";
-    buffer_ << builder_.program.processes.size ();
+    std::list<int>::iterator it = var.type->dims.begin ();
+    int size = *it == -1 ? builder_.program.processes.size () : *it;
+    buffer_ << size;
   }
+
+  // Note: no multi-dimensional array for now
 
   buffer_ << ");\n";
 
