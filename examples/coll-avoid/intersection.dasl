@@ -16,6 +16,11 @@ int flip (double prob)
   return rand() < (RAND_MAX * prob);
 }
 
+int rand_wrapper ()
+{
+  return rand();
+}
+
 int MOVE_TO (int x, int y)
 {
   return flip(MOVE_TO_PROB);
@@ -31,15 +36,20 @@ bool is_on_lane (int x, int y)
 {
   for (int i = 0; i < NUM_INTS_X; i++)
   {
-    for (int j = 0; j < NUM_INTS_Y; j++)
+    if (x >= x_lower_bounds[i] && x <= x_upper_bounds[i])
     {
-      if ((x >= x_lower_bounds[i] && x <= x_upper_bounds[i]) ||
-          (y >= y_lower_bounds[j] && y <= y_upper_bounds[j]))
-      {
-        return true;
-      }
+      return true;
     }
   }
+
+  for (int i = 0; i < NUM_INTS_Y; i++)
+  {
+    if (y >= y_lower_bounds[i] && y <= y_upper_bounds[i])
+    {
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -151,6 +161,11 @@ CONST Y = 12;
 CONST NUM_INTS_X = 3;
 CONST NUM_INTS_Y = 2;
 
+CONST N = 0;
+CONST E = 1;
+CONST W = 2;
+CONST S = 3;
+
 // Number of lanes
 // in each direction
 CONST NUM_N_LANES = 3;
@@ -185,6 +200,7 @@ CONST TCL_LENGTH = 5;
 
 EXTERN int MOVE_TO (int x, int y);
 EXTERN int flip (double prob);
+EXTERN int rand_wrapper ();
 EXTERN void print_global_state();
 EXTERN void basic_node_init();
 
@@ -203,12 +219,6 @@ NODE uav (id)
   LOCAL int E_lanes [NUM_E_LANES];
   LOCAL int W_lanes [NUM_W_LANES];
   LOCAL int S_lanes [NUM_S_LANES];
-
-  // Direction vector field
-  LOCAL _Bool v_field_N [X][Y][#N];
-  LOCAL _Bool v_field_E [X][Y][#N];
-  LOCAL _Bool v_field_W [X][Y][#N];
-  LOCAL _Bool v_field_S [X][Y][#N];
 
   // END CONSTANTS
 
@@ -233,17 +243,16 @@ NODE uav (id)
   // -1 means no intersecting node
   LOCAL int TIN [TCL_LENGTH];
 
+  LOCAL int next_x;
+  LOCAL int next_y;
+
   void NODE_INIT () {
     int i, j; // for-loop variables
 
     // do basic initialization
     basic_node_init();
 
-    // Initialize TIN
-    for (i = 0; i < TCL_LENGTH; i = i + 1) {
-      // No intersecting node
-      TIN[i] = -1;
-    }
+    RESET_TCL();
 
     // Define intersection boundaries
     X_LOWER_BOUNDS[0] = Hx;
@@ -274,129 +283,166 @@ NODE uav (id)
     S_lanes[0] = Hx;
     S_lanes[1] = Ix;
     S_lanes[2] = Jx;
+  }
 
-    // Create vector field
+  // Get current lane
+  // Only called in states OUTSIDE and APPROACH
+  int ON_LANE () {
+    int i;
     for (i = 0; i < NUM_N_LANES; i = i + 1) {
-      // N
-      for (j = 0; j < Y; j = j + 1) {
-        v_field_N [N_lanes[i]][j] = 1;
+      if (x[id] == N_lanes[i]) {
+        return N;
       }
     }
-
-    for (i = 0; i < NUM_S_LANES; i = i + 1) {
-      // S
-      for (j = 0; j < Y; j = j + 1) {
-        v_field_S [S_lanes[i]][j] = 1;
-      }
-    }
-
     for (i = 0; i < NUM_E_LANES; i = i + 1) {
-      // E
-      for (j = 0; j < X; j = j + 1) {
-        v_field_E [j][E_lanes[i]] = 1;
+      if (y[id] == E_lanes[i]) {
+        return E;
       }
     }
-
     for (i = 0; i < NUM_W_LANES; i = i + 1) {
-      // W
-      for (j = 0; j < X; j = j + 1) {
-        v_field_W [j][W_lanes[i]] = 1;
+      if (y[id] == W_lanes[i]) {
+        return W;
       }
+    }
+    for (i = 0; i < NUM_S_LANES; i = i + 1) {
+      if (x[id] == S_lanes[i]) {
+        return S;
+      }
+    }
+    // should never get here
+    return -1;
+  }
+
+  // Get next_x, next_y
+  // Only called in state OUTSIDE
+  void NEXT_XY () {
+    int lane;
+    lane = ON_LANE();
+
+    if (lane == N) {
+      next_x = x[id];
+      next_y = y[id] + 1;
+    } else if (lane == E) {
+      next_x = x[id] + 1;
+      next_y = y[id];
+    } else if (lane == W) {
+      next_x = x[id] - 1;
+      next_y = y[id];
+    } else if (lane == S) {
+      next_x = x[id];
+      next_y = y[id] - 1;
     }
   }
 
+  // Reset TCL, TIC, TIN
+  void RESET_TCL () {
+    int i;
+    for (i = 0; i < TCL_LENGTH; i = i + 1) {
+      x_TCL[i][id] = -1;
+      y_TCL[i][id] = -1;
+      TIC[i] = 0;
+      TIN[i] = -1;
+    }
+  }
+
+  // Compute TCL
+  // Only called in state APPROACH
   void COMPUTE_TCL () {
-    int i; // for-loop variable
+    int lane, r;
 
     // Fill in 1st element in TCL (current x,y)
     x_TCL[0][id] = x[id];
     y_TCL[0][id] = y[id];
 
     // Fill in the rest of TCL
-    for (i = 1; i < TCL_LENGTH; i = i + 1) {
-      NEXT_XY(i);
+    lane = ON_LANE(x[id], y[id]);
+    r = rand_wrapper() % 3;
+
+    if (r == 0) {
+      // Go straight
+      if (lane == N) {
+        x_TCL[1][id] = x[id];
+        y_TCL[1][id] = y[id] + 1;
+        x_TCL[2][id] = x[id];
+        y_TCL[2][id] = y[id] + 2;
+        x_TCL[3][id] = x[id];
+        y_TCL[3][id] = y[id] + 3;
+      } else if (lane == E) {
+        x_TCL[1][id] = x[id] + 1;
+        y_TCL[1][id] = y[id];
+        x_TCL[2][id] = x[id] + 2;
+        y_TCL[2][id] = y[id];
+        x_TCL[3][id] = x[id] + 3;
+        y_TCL[3][id] = y[id];
+      } else if (lane == W) {
+        x_TCL[1][id] = x[id] - 1;
+        y_TCL[1][id] = y[id];
+        x_TCL[2][id] = x[id] - 2;
+        y_TCL[2][id] = y[id];
+        x_TCL[3][id] = x[id] - 3;
+        y_TCL[3][id] = y[id];
+      } else if (lane == S) {
+        x_TCL[1][id] = x[id];
+        y_TCL[1][id] = y[id] - 1;
+        x_TCL[2][id] = x[id];
+        y_TCL[2][id] = y[id] - 2;
+        x_TCL[3][id] = x[id];
+        y_TCL[3][id] = y[id] - 3;
+      }
+    } else if (r == 1) {
+      // Turn left
+      if (lane == N) {
+        x_TCL[1][id] = x[id];
+        y_TCL[1][id] = y[id] + 1;
+        x_TCL[2][id] = x[id];
+        y_TCL[2][id] = y[id] + 2;
+        x_TCL[3][id] = x[id] - 1;
+        y_TCL[3][id] = y[id] + 2;
+        x_TCL[3][id] = x[id] - 2;
+        y_TCL[3][id] = y[id] + 2;
+      } else if (lane == E) {
+        x_TCL[1][id] = x[id] + 1;
+        y_TCL[1][id] = y[id];
+        x_TCL[2][id] = x[id] + 2;
+        y_TCL[2][id] = y[id];
+        x_TCL[3][id] = x[id] + 2;
+        y_TCL[3][id] = y[id] + 1;
+        x_TCL[3][id] = x[id] + 2;
+        y_TCL[3][id] = y[id] + 2;
+      } else if (lane == W) {
+        x_TCL[1][id] = x[id] - 1;
+        y_TCL[1][id] = y[id];
+        x_TCL[2][id] = x[id] - 2;
+        y_TCL[2][id] = y[id];
+        x_TCL[3][id] = x[id] - 2;
+        y_TCL[3][id] = y[id] - 1;
+        x_TCL[3][id] = x[id] - 2;
+        y_TCL[3][id] = y[id] - 2;
+      }
+    } else {
+      // Turn right
+      if (lane == N) {
+        x_TCL[1][id] = x[id];
+        y_TCL[1][id] = y[id] + 1;
+        x_TCL[2][id] = x[id] + 1;
+        y_TCL[2][id] = y[id] + 1;
+      } else if (lane == E) {
+        x_TCL[1][id] = x[id] + 1;
+        y_TCL[1][id] = y[id];
+        x_TCL[2][id] = x[id] + 1;
+        y_TCL[2][id] = y[id] - 1;
+      } else if (lane == W) {
+        x_TCL[1][id] = x[id] - 1;
+        y_TCL[1][id] = y[id];
+        x_TCL[2][id] = x[id] - 1;
+        y_TCL[2][id] = y[id] + 1;
+      } else if (lane == S) {
+        x_TCL[1][id] = x[id];
+        y_TCL[1][id] = y[id] - 1;
+        x_TCL[2][id] = x[id] - 1;
+        y_TCL[2][id] = y[id] - 1;
+      }
     }
-  }
-
-  void UPDATE_TCL () {
-    int i; // for-loop variable
-
-    // Shift current elements in TCL to the left
-    for (i = 0; i < TCL_LENGTH - 1; i = i + 1) {
-      x_TCL[i][id] = x_TCL[i + 1][id];
-      y_TCL[i][id] = y_TCL[i + 1][id];
-    }
-
-    NEXT_XY(TCL_LENGTH - 1);
-  }
-
-  void NEXT_XY (int TCL_index) {
-    int cur_x, cur_y, next_x, next_y;
-    int b;
-
-    cur_x = x_TCL[TCL_index - 1][id];
-    cur_y = y_TCL[TCL_index - 1][id];
-
-    // Choose next legal point (randomly if 2 choices)
-    b = flip(0.5);
-
-    if (v_field_N [cur_x][cur_y] == 1 && v_field_E [cur_x][cur_y] == 1) {
-      // Go N or E
-      if (b) {
-        next_x = cur_x;
-        next_y = cur_y + 1;
-      } else {
-        next_x = cur_x + 1;
-        next_y = cur_y;
-      }
-    } else if (v_field_N [cur_x][cur_y] == 1 && v_field_W [cur_x][cur_y] == 1) {
-      // Go N or W
-      if (b) {
-        next_x = cur_x;
-        next_y = cur_y + 1;
-      } else {
-        next_x = cur_x - 1;
-        next_y = cur_y;
-      }
-    } else if (v_field_S [cur_x][cur_y] == 1 && v_field_E [cur_x][cur_y] == 1) {
-      // Go S or E
-      if (b) {
-        next_x = cur_x;
-        next_y = cur_y - 1;
-      } else {
-        next_x = cur_x + 1;
-        next_y = cur_y;
-      }
-    } else if (v_field_S [cur_x][cur_y] == 1 && v_field_W [cur_x][cur_y] == 1) {
-      // S or W
-      if (b) {
-        next_x = cur_x;
-        next_y = cur_y - 1;
-      } else {
-        next_x = cur_x - 1;
-        next_y = cur_y;
-      }
-    } else if (v_field_N [cur_x][cur_y] == 1) {
-      // Go N
-      next_x = cur_x;
-      next_y = cur_y + 1;
-    } else if (v_field_E [cur_x][cur_y] == 1) {
-      // Go E
-      next_x = cur_x + 1;
-      next_y = cur_y;
-    } else if (v_field_W [cur_x][cur_y] == 1) {
-      // Go W
-      next_x = cur_x - 1;
-      next_y = cur_y;
-    } else if (v_field_S [cur_x][cur_y] == 1) {
-      // Go S
-      next_x = cur_x;
-      next_y = cur_y - 1;
-    }
-
-    // Fill TCL_index with next point
-    x_TCL[TCL_index][id] = next_x;
-    y_TCL[TCL_index][id] = next_y;
   }
 
   int CDAI (int other) {
@@ -416,7 +462,8 @@ NODE uav (id)
     return -1;
   }
 
-  int in_intersection (int xp, int yp) {
+  // Check if xp, yp is inside intersection
+  int IN_INT (int xp, int yp) {
     int i, j;
     for (i = 0; i < NUM_INTS_X; i = i + 1) {
       for (j = 0; j < NUM_INTS_Y; j = j + 1) {
@@ -431,7 +478,6 @@ NODE uav (id)
   }
 
   void ROUND () {
-    int next_x, next_y, xp, yp;
     int TIC_index;
     int int_node; // intersecting node
     int i, j; // for-loop variable
@@ -443,8 +489,6 @@ NODE uav (id)
       // Assume valid initial location,
       // i.e., on a lane and not approaching or crossing intersection
 
-      // Create initial TCL
-      COMPUTE_TCL();
       state[id] = OUTSIDE;
     }
 
@@ -456,9 +500,8 @@ NODE uav (id)
         return;
       }
 
-      // Next point in TCL
-      next_x = x_TCL[1][id];
-      next_y = y_TCL[1][id];
+      // Get next point
+      NEXT_XY();
 
       if (!EXISTS_ANY (n, x[n] == next_x && y[n] == next_y)) {
         // Next point is unoccupied
@@ -467,17 +510,16 @@ NODE uav (id)
           // Move to next point
           x[id] = next_x;
           y[id] = next_y;
-          UPDATE_TCL();
 
-          // Check if approaching intersection
-          xp = x_TCL[1][id];
-          yp = y_TCL[1][id];
-
-          res = in_intersection (xp, yp);
+          // Check if approaching intersection,
+          // i.e., if next point is inside intersection
+          NEXT_XY();
+          res = IN_INT (next_x, next_y);
 
           if (res == 1) {
             // Approaching intersection
             state[id] = APPROACH;
+            COMPUTE_TCL(); //-- so that TCL gets broadcasted before next round
           }
         }
       }
@@ -504,6 +546,7 @@ NODE uav (id)
 
       state[id] = CROSS;
     } else if (state[id] == CROSS) {
+      // Get next point in TCL
       next_x = x_TCL[1][id];
       next_y = y_TCL[1][id];
 
@@ -524,13 +567,13 @@ NODE uav (id)
         // Move to next point
         x[id] = next_x;
         y[id] = next_y;
-        UPDATE_TCL();
 
         // Check if exiting intersection
-        res = in_intersection (x[id], y[id]);
+        res = IN_INT (x[id], y[id]);
         if (res == 0) {
           // Exiting intersection
           state[id] = OUTSIDE;
+          RESET_TCL(); //-- so that TCL gets broadcasted before next round
         }
       }
     }
