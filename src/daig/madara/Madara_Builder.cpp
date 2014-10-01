@@ -878,8 +878,6 @@ daig::madara::Madara_Builder::build_program_variable_binding (const Variable & v
     buffer_ << size;
   }
 
-  // Note: no multi-dimensional array for now
-
   buffer_ << ");\n";
 
   build_program_variable_assignment (var);
