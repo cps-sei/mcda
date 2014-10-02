@@ -11,6 +11,11 @@ TARGET GNU_CPP,WIN_CPP %%{
 
 const double MOVE_TO_PROB = 0.6;
 
+int MOVE_TO (int x, int y)
+{
+  return rand() < (RAND_MAX * MOVE_TO_PROB);
+}
+
 int flip (double prob)
 {
   return rand() < (RAND_MAX * prob);
@@ -19,11 +24,6 @@ int flip (double prob)
 int rand_wrapper ()
 {
   return rand();
-}
-
-int MOVE_TO (int x, int y)
-{
-  return flip(MOVE_TO_PROB);
 }
 
 int get_time ()
@@ -101,15 +101,18 @@ void print_global_state ()
           continue;
         }
 
+        // If 2 nodes are at same location,
+        // only lower-id node is visible
+
         if (i == true_x[k] && j == true_y[k]) {
-          // True locations of other nodes
+          // True location of other node
           printf("%d'|", k);
           taken = true;
           break;
         }
 
         if (i == x[k] && j == y[k]) {
-          // Locations of other nodes from this node's perception
+          // Location of other node from this node's perception
           printf("%d |", k);
           taken = true;
           break;
@@ -142,7 +145,8 @@ bool prob_distance_drop (Madara::Knowledge_Map & incoming_records,
   double dr = sqrt(dx * dx + dy * dy);
   double d = dr * MPU;
   double drop_prob = 1 - (1 / (1 + exp(-2 * k * (-d + M))));
-  return rand() < (RAND_MAX * drop_prob);
+  //return rand() < (RAND_MAX * drop_prob);
+  return false;
 }
 
 //do some basic initialization at the start of the node
@@ -231,6 +235,8 @@ NODE uav (id)
 
   // END CONSTANTS
 
+  // GLOBAL VARS
+
   // State of each node
   TRACK GLOBAL int state [#N];
 
@@ -239,6 +245,7 @@ NODE uav (id)
   TRACK GLOBAL int y [#N];
 
   // Current intersection of each node
+  // Node is at intersection when APPROACH or CROSS
   // -1 means node is not at any intersection
   GLOBAL int intersection [#N];
 
@@ -248,30 +255,38 @@ NODE uav (id)
 
   // Trajectory Cells List (TCL) of each node
   // 1st element is current location
+  // Only used when crossing intersection
   GLOBAL int x_TCL [TCL_LENGTH][#N];
   GLOBAL int y_TCL [TCL_LENGTH][#N];
 
   // Index into current cell in TCL of each node
   GLOBAL int TCL_index [#N];
 
+  // END GLOBAL VARS
+
+  // LOCAL VARS
+
   // Trajectory Intersecting Cells (TIC)
   // Each element indicates whether the corresponding (same index)
   // element in TCL is a TIC
   LOCAL _Bool TIC [TCL_LENGTH];
 
-  // Trajectory Intersecting Nodes
+  // Index of TIC in each other node's TCL
+  // that intersects with each cell in this node's TCL
   // Each TIC can have multiple intersecting nodes
-  LOCAL _Bool TIN [TCL_LENGTH][#N];
+  LOCAL int other_TIC_index [TCL_LENGTH][#N];
 
   LOCAL int next_x;
   LOCAL int next_y;
+
+  // END LOCAL VARS
 
   void NODE_INIT () {
     // do basic initialization
     basic_node_init();
 
     // Initialize variables
-    intersection[id] = - 1;
+    intersection[id] = -1;
     arrival_time[id] = -1;
     RESET_TCL();
 
@@ -306,7 +321,7 @@ NODE uav (id)
     S_lanes[2] = Jx;
   }
 
-  // Reset TCL and TCL_index of this node, TIC, and TIN
+  // Reset TCL and TCL_index of this node, TIC, and other_TIC_index
   void RESET_TCL () {
     int i;
     // Reset TCL_index
@@ -318,14 +333,14 @@ NODE uav (id)
       y_TCL[i][id] = -1;
       // Reset TIC
       TIC[i] = 0;
-      // Reset TIN
+      // Reset other_TIC_index
       FORALL_NODE (n) {
-        TIN[i][n] = 0;
+        other_TIC_index[i][n] = -1;
       }
     }
   }
 
-  // Get current lane
+  // Get current lane type N/E/W/S
   // Only called in states OUTSIDE and APPROACH
   int ON_LANE () {
     int i;
@@ -354,23 +369,32 @@ NODE uav (id)
   }
 
   // Get next_x, next_y
-  // Only called in state OUTSIDE
+  // Only called in states OUTSIDE and CROSS
   void NEXT_XY () {
-    int lane;
-    lane = ON_LANE();
+    int lane, next_index;
 
-    if (lane == N) {
-      next_x = x[id];
-      next_y = y[id] + 1;
-    } else if (lane == E) {
-      next_x = x[id] + 1;
-      next_y = y[id];
-    } else if (lane == W) {
-      next_x = x[id] - 1;
-      next_y = y[id];
-    } else if (lane == S) {
-      next_x = x[id];
-      next_y = y[id] - 1;
+    if (state[id] == OUTSIDE) {
+      // Get next point on current lane
+      lane = ON_LANE();
+
+      if (lane == N) {
+        next_x = x[id];
+        next_y = y[id] + 1;
+      } else if (lane == E) {
+        next_x = x[id] + 1;
+        next_y = y[id];
+      } else if (lane == W) {
+        next_x = x[id] - 1;
+        next_y = y[id];
+      } else if (lane == S) {
+        next_x = x[id];
+        next_y = y[id] - 1;
+      }
+    } else if (state[id] == CROSS) {
+      // Get next point in TCL
+      next_index = TCL_index[id] + 1;
+      next_x = x_TCL[next_index][id];
+      next_y = y_TCL[next_index][id];
     }
   }
 
@@ -486,14 +510,18 @@ NODE uav (id)
       }
     }
 
+    // Remaining elements in TCL are -1
+
     // Point TCL_index to 1st element in TCL
     TCL_index[id] = 0;
   }
 
   // Collision Detection Algorithm for Intersections (CDAI)
   // Find TIC between this node and other node
-  // Return index of TIC in this node's TCL
-  int CDAI (int other) {
+  // Keep track of:
+  // - index of TIC in this node's TCL
+  // - index of TIC in other node's TCL
+  void CDAI (int other) {
     int i, j;
     for (i = 0; i < TCL_LENGTH; i = i + 1) {
       for (j = 0; j < TCL_LENGTH; j = j + 1) {
@@ -501,12 +529,12 @@ NODE uav (id)
             && x_TCL[i][id] == x_TCL[j][other]
             && y_TCL[i][id] == y_TCL[j][other]) {
           // TIC
-          return i;
+          TIC[i] = 1;
+          other_TIC_index[i][other] = j;
         }
       }
     }
     // No TIC
-    return -1;
   }
 
   // Check if xp, yp is inside intersection
@@ -527,9 +555,7 @@ NODE uav (id)
   }
 
   void ROUND () {
-    int TIC_index;
-    int i; // for-loop variable
-    int res;
+    int res, next_index;
 
     print_global_state();
 
@@ -569,7 +595,8 @@ NODE uav (id)
             // Update current intersection and arrival time
             intersection[id] = res;
             arrival_time[id] = get_time ();
-            COMPUTE_TCL(); //-- so that TCL gets broadcasted before next round
+            // Get TCL and TCL_index
+            COMPUTE_TCL(); //-- so that TCL, TCL_index get broadcasted before next round
           }
         }
       }
@@ -579,7 +606,7 @@ NODE uav (id)
       // 2. Higher-id nodes > lower-id nodes
 
       FORALL_OTHER (n) {
-        if (intersection[n] == intersection[id]) {
+        if (intersection[n] != intersection[id]) {
           // n is not at this intersection
           continue;
         }
@@ -587,15 +614,8 @@ NODE uav (id)
         if (arrival_time[n] < arrival_time[id] || // n arrives earlier
             (arrival_time[n] == arrival_time[id] && n > id)) { // both arrive at same time but n has higher id
           // n has higher priority
-          // Get index of TIC in this node's TCL, if exists
-          TIC_index = CDAI(n);
-
-          if (TIC_index >= 0) {
-            // TIC exists
-            // Keep track of all TICs and ALL corresponding nodes
-            TIC[TIC_index] = 1;
-            TIN[TIC_index][n] = 1;
-          }
+          // Find and keep track of TIC, if exists
+          CDAI(n);
         }
 
         // Not keep track of TICs of lower-priority nodes
@@ -603,24 +623,19 @@ NODE uav (id)
 
       state[id] = CROSS;
     } else if (state[id] == CROSS) {
-      // Get next point in TCL
-      TCL_index[id] = TCL_index[id] + 1;
-      next_x = x_TCL[TCL_index[id]][id];
-      next_y = y_TCL[TCL_index[id]][id];
+      // Get next point
+      NEXT_XY();
+      next_index = TCL_index[id] + 1;
 
-      if (TIC[TCL_index[id]] == 1) {
+      if (TIC[next_index] == 1) {
         // Next cell is TIC
         FORALL_OTHER (n) {
-          if (TIN[TCL_index[id]][n] == 1) {
-            // n is intersecting node
-            for (i = 0; i < TCL_LENGTH; i = i + 1) {
-              if (x_TCL[i][n] == next_x && y_TCL[i][n] == next_y &&
-                  TCL_index[n] <= i) {
-                // The (higher-priority) intersecting node has not gone pass the TIC yet
-                // Must wait
-                return;
-              }
-            }
+          if (other_TIC_index[next_index][n] != -1 && // n is intersecting node with next cell
+              intersection[n] == intersection[id] && // n is still at intersection
+              TCL_index[n] <= other_TIC_index[next_index][n]) {
+            // The (higher-priority) intersecting node has not gone pass the TIC yet
+            // Must wait
+            return;
           }
         }
       }
@@ -631,12 +646,17 @@ NODE uav (id)
         // Move to next point
         x[id] = next_x;
         y[id] = next_y;
+        // Update TCL_index
+        TCL_index[id] = next_index;
 
         // Check if exiting intersection
         res = IN_INT (x[id], y[id]);
-        if (res == 0) {
+        if (res == -1) {
           // Exiting intersection
           state[id] = OUTSIDE;
+          // Reset intersection and arrival time
+          intersection[id] = -1;
+          arrival_time[id] = -1;
           RESET_TCL(); //-- so that TCL gets broadcasted before next round
         }
       }
