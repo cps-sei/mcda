@@ -365,7 +365,7 @@ daig::madara::Sync_Builder::build_refresh_modify_global (const Variable & var)
     buffer_ << spacer << "containers::Array_N::Index index (" << dims.size() << ");\n";
     for(int i = 0;i < dims.size () - 1;++i)
       buffer_ << spacer << "index[" << i << "] = i" << i << ";\n";
-    buffer_ << spacer << "index[" << dims.size() << "] = *id;\n";
+    buffer_ << spacer << "index[" << dims.size()-1 << "] = *id;\n";
     buffer_ << spacer << var.name << ".set (index, " << var.name << "(" << index_str << "*id).to_integer ());\n";
 
     //close for loops
