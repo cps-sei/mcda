@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="MCDA : Model Checking Distributed Algorithms">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>MCDA</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/cps-sei/mcda">View on GitHub</a>
+
+          <h1 id="project_title">MCDA</h1>
+          <h2 id="project_tagline">Model Checking Distributed Algorithms</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/cps-sei/mcda/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/cps-sei/mcda/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <p>In the Model Checking for Distributed Applications (MCDA) project, we are developing tools and demonstrations for producing verifiably correct distributed applications (i.e., software implementing distributed algorithms) with safety-critical requirements. Our current focus is on applications where nodes are mobile and communicate wirelessly. A canonical example is a team of robots sharing a physical area that must achieve a goal without collisions.</p>
+
+<hr>
+
+<p><em>Approach</em></p>
+
+<p>We have developed a domain specific language -- called DASL -- for writing distributed applications and their safety properties assuming synchronous network communication. We have also developed a <a href="https://asimod.informatik.tu-muenchen.de/2004/SLIDES/slides/mod04_hoare_02.pdf">verifying compiler</a> for DASL programs -- called <code>daslc</code> -- that first verifies a DASL program against its safety property using Software Model Checking (we are currently using <a href="http://www.cprover.org/cbmc">CBMC</a>). If the verification succeeds, <code>daslc</code> generates C++ code for the program against the <a href="http://madara.googlecode.com">MADARA</a> middleware. MADARA ensures the synchronous network abstraction assumed by the application even if the underlying network is asynchronous with unbounded latency. <code>daslc</code> can also generate code that can be simulated with the <a href="http://www.coppeliarobotics.com">VREP</a> simulator. See our <a href="https://code.google.com/p/mcda/wiki/Tutorial">tutorial</a> for details.</p>
+
+<hr>
+
+<p><em>Using</em></p>
+
+<p>Download and compile the <a href="https://code.google.com/p/mcda/source/checkout">source code</a>, follow the <a href="https://code.google.com/p/mcda/source/browse/INSTALL.txt">installation instructions</a>, and then follow the <a href="https://code.google.com/p/mcda/wiki/Tutorial">tutorial</a>. Also, check out the <a href="https://code.google.com/p/mcda/wiki/License">LICENSE</a>.</p>
+
+<hr>
+
+<p><em>Papers</em></p>
+
+<ul>
+<li>
+<a href="http://www.contrib.andrew.cmu.edu/%7Eschaki/publications/MODELS-2014.html">Model-Driven Verifying Compilation of Synchronous Distributed Applications</a>, Sagar Chaki, James Edmondson, Proceedings of the ACM/IEEE 17th International Conference on Model Driven Engineering Languages and Systems (<a href="http://modelsconference.org">MODELS</a>), Sep 28-Oct 3, 2014, Valencia, Spain.</li>
+<li>
+<a href="http://www.contrib.andrew.cmu.edu/%7Eschaki/publications/SPIN-2014.html">Toward Parameterized Verification of Synchronous Distributed Applications</a>, Sagar Chaki, James Edmondson, Proceedings of the 21st International SPIN Symposium on Model Checking of Software (<a href="http://spin2014.org%20SPIN">SPIN</a>), July 21-23, 2014, San Jose, CA, USA.</li>
+</ul>
+
+<hr>
+
+<p><em>Getting Involved</em></p>
+
+<p>Contact <a href="mailto:jedmondson@gmail.com">James Edmondson</a> or <a href="mailto:sagar.chaki@gmail.com">Sagar Chaki</a>.</p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">MCDA maintained by <a href="https://github.com/cps-sei">cps-sei</a></p>
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
