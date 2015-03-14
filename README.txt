@@ -1,6 +1,6 @@
 INTRODUCTION
 
-Welcome to the Model Checking for Distributed Algorithms code repository!
+Welcome to the Model Checking for Distributed Applications code repository!
 
 The MCDA project attempts to formally verify the correctness, safety or
 other critical properties of distributed algorithm implementations, before
